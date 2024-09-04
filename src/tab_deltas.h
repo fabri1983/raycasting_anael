@@ -1,3 +1,8 @@
+#ifndef _TAB_DELTAS_H_
+#define _TAB_DELTAS_H_
+
+#include <types.h>
+
 /*
 u16 *delta_ptr = tab_deltas;
 for (u16 i = 0; i < AP; i++) {
@@ -34,7 +39,7 @@ for (u16 i = 0; i < AP; i++) {
 		delta_ptr+=4;
 	}
 }*/
-static const u16 tab_deltas[AP*64*4] ={
+static const u16 tab_deltas[AP*64*4] = {
 260, 256, 252, 256,
 269, 256, 244, 256,
 278, 256, 236, 256,
@@ -8229,4 +8234,4 @@ static const u16 tab_deltas[AP*64*4] ={
 248, 269, 65272, 243,
 };
 
-
+#endif // _TAB_DELTAS_H_

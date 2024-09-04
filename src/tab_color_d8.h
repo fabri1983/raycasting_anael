@@ -1,3 +1,7 @@
+#ifndef _TAB_COLOR_D8_H_
+#define _TAB_COLOR_D8_H_
+
+#include <types.h>
 
 static const u16 tab_color_d8_x[FP * (STEP_COUNT + 1)] = {
 0,0,0,0,0,0,0,0,
@@ -1028,3 +1032,5 @@ static const u16 tab_color_d8_y[FP * (STEP_COUNT + 1)] = {
 0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0
 };
+
+#endif // _TAB_COLOR_D8_H_

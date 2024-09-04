@@ -1,25 +1,26 @@
 /*
-Expects a file with next format:
+Expects a file named tab_mulu_dist.txt generated from tab_mulu_dist_generator.js, with next format:
 	[N][M]=x
 	Eg:
 	[0][32]=1265
 	[0][33]=6855
 	[0][34]=45
 	...
-	[0][7175]=7853
-	[1][32]=12
-	[1][32]=256
+	[1][0]=12
+	[1][1]=256
 	...
-	[1][7175]=4901
 */
 
 const fs = require('fs');
 const readline = require('readline');
 
 const inputFile = 'tab_mulu_dist.txt';
-const outputFile = 'tab_mulu_dist_output.txt';
+const outputFile = 'tab_mulu_dist_FULL.txt';
 
-const expectedCount = 7176;
+const AP = 128; // angle precision
+const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
+
+const expectedCount = (1024/(1024/AP) - 1)*DELTA_DIST_VALUES + 64;
 const maxM = expectedCount - 1;
 const minM = 0;
 
@@ -39,22 +40,31 @@ async function processFile() {
         }
     }
 
-    // Sort lines
+    // Sort lines in ASC order (just in case they weren't aready sorted)
     lines.sort((a, b) => {
-        const [, nA, mA] = a.match(/\[(\d+)\]\[(\d+)\]/);
-        const [, nB, mB] = b.match(/\[(\d+)\]\[(\d+)\]/);
-        if (nA !== nB) return parseInt(nA) - parseInt(nB);
-        return parseInt(mA) - parseInt(mB);
+        const [, N1, M1, value1] = a.match(/\[(\d+)\]\[(\d+)\]=(.+)/); // [N][M]=number
+        const [, N2, M2, value2] = b.match(/\[(\d+)\]\[(\d+)\]=(.+)/); // [N][M]=number
+        // Not same N then sort according N
+        if (parseInt(N1) !== parseInt(N2)) {
+            return parseInt(N1) - parseInt(N2);
+        }
+        // Same N then sort according M
+        // If not same M then sort according M
+        if (parseInt(M1) !== parseInt(M2)) {
+            return parseInt(M1) - parseInt(M2);
+        }
+        // Same M then sort according value
+        return parseInt(value1) - parseInt(value2);
     });
 
-    let output = '';
+    const outputLines = [];
     let prevN = null;
     let prevM = -1;
     let currentNCount = 0;
 
     function checkConsecutiveM(n, m) {
         if (m === prevM) {
-            throw new Error(`Sanity check failed: N=${n} has consecutive M values: ${m}`);
+            throw new Error(`Sanity check failed: N=${n} has equal consecutive M: ${m}`);
         }
     }
 
@@ -64,9 +74,9 @@ async function processFile() {
         const currentM = parseInt(M);
 
         if (prevN !== null && currentN !== prevN) {
-            // Fill remaining M values for previous N up to 6159
+            // Fill remaining M values for previous N up to maxM
             for (let missingM = prevM + 1; missingM <= maxM; missingM++) {
-                output += `[${prevN}][${missingM}]=0\n`;
+                outputLines.push(`[${prevN}][${missingM}]=0`);
                 currentNCount++;
                 checkConsecutiveM(prevN, missingM);
                 prevM = missingM;
@@ -82,7 +92,7 @@ async function processFile() {
         if (prevN !== currentN) {
             // Fill initial M values for new N from 0 to currentM - 1
             for (let missingM = minM; missingM < currentM; missingM++) {
-                output += `[${currentN}][${missingM}]=0\n`;
+                outputLines.push(`[${currentN}][${missingM}]=0`);
                 currentNCount++;
                 checkConsecutiveM(currentN, missingM);
                 prevM = missingM;
@@ -90,14 +100,14 @@ async function processFile() {
         } else {
             // Fill gap within the same N
             for (let missingM = prevM + 1; missingM < currentM; missingM++) {
-                output += `[${currentN}][${missingM}]=0\n`;
+                outputLines.push(`[${currentN}][${missingM}]=0`);
                 currentNCount++;
                 checkConsecutiveM(currentN, missingM);
                 prevM = missingM;
             }
         }
 
-        output += `${line}\n`;
+        outputLines.push(`${line}`);
         currentNCount++;
         checkConsecutiveM(currentN, currentM);
         prevN = currentN;
@@ -107,7 +117,7 @@ async function processFile() {
     // Fill final sequence if necessary
     if (prevN !== null && prevM < maxM) {
         for (let missingM = prevM + 1; missingM <= maxM; missingM++) {
-            output += `[${prevN}][${missingM}]=0\n`;
+            outputLines.push(`[${prevN}][${missingM}]=0`);
             currentNCount++;
             checkConsecutiveM(prevN, missingM);
             prevM = missingM;
@@ -119,8 +129,22 @@ async function processFile() {
         throw new Error(`Sanity check failed: Last N=${prevN} has ${currentNCount} M values instead of ${expectedCount}`);
     }
 
-    fs.writeFileSync(outputFile, output);
-    console.log(`Processing complete. Output saved to ${outputFile}`);
+    const result = outputLines.reduce((acc, line) => {
+        const [, N, M, value] = line.match(/\[(\d+)\]\[(\d+)\]=(.+)/); // [N][M]=number
+        if (N !== null) {
+            if (!acc[N]) {
+                acc[N] = [];
+            }
+            acc[N].push(value);
+        }
+        return acc;
+    }, [])
+        .filter(Boolean) // Remove any undefined entries
+        .map(group => `{${group.join(',')}}`);
+
+    // Write output to file
+    fs.writeFileSync(outputFile, result.join(',\n'));
+    console.log('Processing complete. Output saved to ' + outputFile);
     console.log(`Sanity checks passed: All N sequences have exactly ${expectedCount} M values and no consecutive M values are equal.`);
 }
 
