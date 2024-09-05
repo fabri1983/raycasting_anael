@@ -215,6 +215,10 @@ static u8* frame_buffer_ptr = (u8*)frame_buffer;
 static u16 frame_buffer_xid[64];
 
 void vintCallback () {
+	*(vu16*) VDP_CTRL_PORT = 0x8C00 & ~0x81; // H32 mode
+	//VDP_setScreenWidth256(); // H32 mode
+	VDP_setPlaneSize(32, 32, FALSE);
+
 	// Reload the first 2 palettes that were overriden by the HUD palettes
 	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 0) * 2); // target starting color index multiplied by 2
     u32 fromAddrForDMA = (u32) (palette_grey + 0) >> 1; // TODO: this can be set outside the HInt
@@ -225,10 +229,6 @@ void vintCallback () {
     fromAddrForDMA = (u32) (palette_red + 0) >> 1; // TODO: this can be set outside the HInt
     setupDMAForPals(16, fromAddrForDMA);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-
-	*(vu16*) VDP_CTRL_PORT = 0x8C00 & ~0x81; // H32 mode
-	//VDP_setScreenWidth256(); // H32 mode
-	VDP_setPlaneSize(32, 32, FALSE);
 
 	// clear the frame buffer
 	__asm volatile (
@@ -352,17 +352,17 @@ int main (bool hardReset)
 
 	// Setup VDP
 	VDP_setScreenWidth256(); // H32 mode
-	VDP_setPlaneSize(32, 32, TRUE);
+	VDP_setPlaneSize(32, 32, TRUE); // if 64x32 then it forces to send an extended frame_buffer
 	VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 	VDP_setHorizontalScroll(BG_A, 0);
 	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
 	VDP_setBackgroundColor(1);
-	const u16 PAA = 57344; //VDP_getPlaneAddress(BG_A, 0, 0);
-	const u16 PBA = 49152; //VDP_getPlaneAddress(BG_B, 0, 0);
-
-	SYS_doVBlankProcess();
+	const u16 PAA = 0xE000; //VDP_getPlaneAddress(BG_A, 0, 0);
+	const u16 PBA = 0xC000; //VDP_getPlaneAddress(BG_B, 0, 0);
 
 	VDP_setEnable(TRUE);
+
+	SYS_doVBlankProcess();
 
 	u16 posX = 2 * FP, posY = 2 * FP;
 	u16 angle = 0; // angle max value is 1023 and is updated in +/- 8 units
