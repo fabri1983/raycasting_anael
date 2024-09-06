@@ -2,8 +2,10 @@
 #define _TAB_DELTAS_3_H_
 
 #include <types.h>
+#include "consts.h"
 
-static const u16 tab_deltas[AP*64*3] = {
+// Table body generated with script tab_deltas_3_generator.js. Check correct values of constants before script execution.
+static const u16 tab_deltas[AP*PIXEL_COLUMNS*3] = {
 260,256,3,
 269,256,3,
 278,256,3,

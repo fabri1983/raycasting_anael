@@ -3,7 +3,7 @@ const fs = require('fs');
 const inputFile = '../src/tab_deltas.h';
 const outputFile = 'tab_mulu_dist.txt';
 
-// Constants
+// Check correct values of constants before script execution. See consts.h.
 const FS = 8; // fixed point size in bits
 const FP = (1 << FS); // fixed precision
 const AP = 128; // angle precision

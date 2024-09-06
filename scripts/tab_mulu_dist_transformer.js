@@ -17,6 +17,7 @@ const readline = require('readline');
 const inputFile = 'tab_mulu_dist.txt';
 const outputFile = 'tab_mulu_dist_FULL.txt';
 
+// Check correct values of constants before script execution. See consts.h.
 const AP = 128; // angle precision
 const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
 

@@ -3,7 +3,9 @@ const fs = require('fs');
 const inputFile = '../src/tab_deltas.h';
 const outputFile = 'tab_deltas_3.txt';
 
+// Check correct values of constants before script execution. See consts.h.
 const AP = 128; // angle precision
+const PIXEL_COLUMNS = 64; // 64 for 256p, 80 for 320p
 
 function isInteger(value) {
     return !isNaN(parseInt(value)) && isFinite(value);
@@ -27,8 +29,8 @@ function readTabDeltas() {
         }
     }
 
-    if (tab_deltas.length !== AP * 64 * 4) {
-        throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * 64 * 4}): ${tab_deltas.length}`);
+    if (tab_deltas.length !== AP * PIXEL_COLUMNS * 4) {
+        throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * PIXEL_COLUMNS * 4}): ${tab_deltas.length}`);
     }
 
     return tab_deltas;

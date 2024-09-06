@@ -2,44 +2,10 @@
 #define _TAB_DELTAS_H_
 
 #include <types.h>
+#include "consts.h"
 
-/*
-u16 *delta_ptr = tab_deltas;
-for (u16 i = 0; i < AP; i++) {
-	
-	double a = (i * M_PI * 2) / AP;
-	double sina = sin(a);
-	double cosa = cos(a);
-	double dx = sina * FP;
-	double dy = cosa * FP;
-
-	double rx1 = dx + dy;
-	double ry1 = dy - dx;
-	double rx2 = dx - dy;
-	double ry2 = dy + dx;
-
-	for (u16 x = 0; x < 64; x++) {
-
-		double rayDirX = rx1 + (rx2 - rx1) * (x+0.5) / 64;
-		double rayDirY = ry1 + (ry2 - ry1) * (x+0.5) / 64;
-		double d, divisor;
-
-		divisor = abs(rayDirX);
-		d = (FP*FP) / max(1, divisor);
-
-		delta_ptr[0] = round(min(d, MAX_U16));
-
-		divisor = abs(rayDirY);
-		d = (FP*FP) / max(1, divisor);
-		delta_ptr[1] = round(min(d, MAX_U16));
-
-		*(s16 *)&delta_ptr[2] = round(rayDirX);
-		*(s16 *)&delta_ptr[3] = round(rayDirY);
-		
-		delta_ptr+=4;
-	}
-}*/
-static const u16 tab_deltas[AP*64*4] = {
+// Table body generated with script tab_deltas_generator.js. Check correct values of constants before script execution.
+static const u16 tab_deltas[AP*PIXEL_COLUMNS*4] = {
 260, 256, 252, 256,
 269, 256, 244, 256,
 278, 256, 236, 256,

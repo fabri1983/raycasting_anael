@@ -2,6 +2,7 @@
 #define _TAB_MULU_DIST_H_
 
 #include <types.h>
+#include "consts.h"
 
 #define DELTA_DIST_VALUES 60
 

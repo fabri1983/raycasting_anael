@@ -2,6 +2,7 @@
 #define _TAB_WALL_DIV_H_
 
 #include <types.h>
+#include "consts.h"
 
 /*
 for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
@@ -14,7 +15,7 @@ for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 // * values >= 112 were changed to 0 so the entire vertical line is written into framebuffer.
 // * values < 112 were changed to be 112 - value so the vertical pixel location is calculated ahead of time.
 
-// The calculation of the vertical height starts from the center.
+// Vertical height calculation starts at the center.
 // If VERTICAL_TILES=28 => (VERTICAL_TILES*8)/2=112
 // If VERTICAL_TILES=24 => (VERTICAL_TILES*8)/2=96
 #define WALL_H2 (VERTICAL_TILES*8)/2

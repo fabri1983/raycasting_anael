@@ -2,6 +2,7 @@
 #define _TAB_DIR_XY_H_
 
 #include <types.h>
+#include "consts.h"
 
 /*
 if (joy & (BUTTON_LEFT | BUTTON_RIGHT)) {
