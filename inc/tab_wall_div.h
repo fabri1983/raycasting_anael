@@ -16,9 +16,9 @@ for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 // * values < 112 were changed to be 112 - value so the vertical pixel location is calculated ahead of time.
 
 // Vertical height calculation starts at the center.
-// If VERTICAL_TILES=28 => (VERTICAL_TILES*8)/2=112
-// If VERTICAL_TILES=24 => (VERTICAL_TILES*8)/2=96
-#define WALL_H2 (VERTICAL_TILES*8)/2
+// If VERTICAL_COLUMNS=28 => (VERTICAL_COLUMNS*8)/2=112
+// If VERTICAL_COLUMNS=24 => (VERTICAL_COLUMNS*8)/2=96
+#define WALL_H2 (VERTICAL_COLUMNS*8)/2
 
 #define MIN_CLAMP(x) ((x) < 0 ? 0 : ((x) > WALL_H2 ? WALL_H2 : (x)))
 

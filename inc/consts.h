@@ -11,14 +11,17 @@
 #define AP 128 // angle precision (optimal for a rotation step of 8 : 1024/8 = 128)
 
 // 224 px display height / 8 = 28. Remember that tiles are 8 pixels wide.
-// The HUD we use the bottom 4 tiles.
-#define VERTICAL_TILES 24
+// The HUD takes the bottom 4 tiles => 28-4=24
+#define VERTICAL_COLUMNS 24
+
+// 32 for 256p, 40 for 320p
+#define TILEMAP_COLUMNS 40
 
 // 32 for 256p, 64 for 320p
-#define TILEMAP_COLUMNS 32
+#define PLANE_COLUMNS 64
 
 // 64 for 256p, 80 for 320p
-#define PIXEL_COLUMNS 64
+#define PIXEL_COLUMNS 80
 
 #define MAP_SIZE 16
 

@@ -46,17 +46,17 @@
 #include "tab_mulu_dist_div256.h"
 #endif
 
-// 224 px display height, but only VERTICAL_TILES height for the frame buffer (tilemap).
-// TILEMAP_COLUMNS is the width of the tilemap.
+// 224 px display height, but only VERTICAL_COLUMNS height for the frame buffer (tilemap).
+// PLANE_COLUMNS is the width of the tilemap on screen.
 // Multiplied by 2 because is shared between the 2 planes BG_A and BG_B
-static u16 frame_buffer[VERTICAL_TILES*TILEMAP_COLUMNS*2];
+static u16 frame_buffer[VERTICAL_COLUMNS*PLANE_COLUMNS*2];
 
 // Calculate the shift to access one of the 2 planes from the framebuffer.
-static u16 frame_buffer_xid[TILEMAP_COLUMNS*2];
+static u16 frame_buffer_xid[PLANE_COLUMNS*2];
 
 static void loadPlaneDisplacements () {
-	for (u16 i = 0; i < TILEMAP_COLUMNS*2; i++) {
-		frame_buffer_xid[i] = i&1 ? VERTICAL_TILES*TILEMAP_COLUMNS + i/2 : i/2;
+	for (u16 i = 0; i < PLANE_COLUMNS*2; i++) {
+		frame_buffer_xid[i] = i&1 ? VERTICAL_COLUMNS*PLANE_COLUMNS + i/2 : i/2;
 	}
 }
 
@@ -132,7 +132,7 @@ HINTERRUPT_CALLBACK hintCallback () {
     turnOnVDP(0x74);
 }
 
-void vintCallback () {
+void vBlankCallback () {
 	// Reload the first 2 palettes that were overriden by the HUD palettes
 	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
     u32 fromAddrForDMA = (u32) (palette_grey + 1) >> 1; // TODO: this can be set outside the HInt
@@ -166,7 +166,7 @@ int main (bool hardReset)
 
 	SYS_disableInts();
 	{
-		SYS_setVBlankCallback(vintCallback);
+		SYS_setVBlankCallback(vBlankCallback);
 		VDP_setHIntCounter(224-32-2); // scanline location for the HUD
     	SYS_setHIntCallback(hintCallback);
     	VDP_setHInterrupt(TRUE);
@@ -174,8 +174,8 @@ int main (bool hardReset)
 	SYS_enableInts();
 
 	// Setup VDP
-	VDP_setScreenWidth256();
-	VDP_setPlaneSize(TILEMAP_COLUMNS, 32, TRUE);
+	VDP_setScreenWidth320();
+	VDP_setPlaneSize(PLANE_COLUMNS, 32, TRUE);
 	VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 	VDP_setHorizontalScroll(BG_A, 0);
 	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
@@ -446,9 +446,12 @@ int main (bool hardReset)
 			}
 		}
 
-		// end of the frame and dma copy
-		DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_addr, VERTICAL_TILES*32, 2);
-		DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_TILES*32, PB_addr, VERTICAL_TILES*32, 2);
+		// Setup a DMA here of some bytes to aliviate DMA pressure during VBlank
+		//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_addr, (VERTICAL_COLUMNS/2)*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+
+		// Enqueue the rest of the frame buffer
+		DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_addr, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_addr, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
 		SYS_doVBlankProcess();
 

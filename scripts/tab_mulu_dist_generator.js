@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const inputFile = '../src/tab_deltas.h';
+const inputFile = '../inc/tab_deltas.h';
 const outputFile = 'tab_mulu_dist.txt';
 
 // Check correct values of constants before script execution. See consts.h.
