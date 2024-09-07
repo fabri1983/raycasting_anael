@@ -3,7 +3,7 @@
 #include "consts.h"
 
 FORCE_INLINE void clear_buffer (u8* frame_buffer_ptr) {
-#if PLANE_COLUMNS == 32 || PLANE_COLUMNS == 64
+#if PLANE_COLUMNS == 32
 	// We need to clear all the tilemap
 	__asm volatile (
 		"    lea     %c[_TOTAL_BYTES](%%a0),%%a0\n"    // a0: buffer end
@@ -60,7 +60,7 @@ FORCE_INLINE void clear_buffer (u8* frame_buffer_ptr) {
 		"    move.l  %%d0,%%a4\n"
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
-		".rept (%c[_VERTICAL_COLUMNS] - 1)\n"
+		".rept (%c[_VERTICAL_COLUMNS]*2 - 1)\n"
 		// Clear all the bytes of current row by using 14 registers with long word access.
 		"    .rept (%c[_TILEMAP_COLUMNS_BYTES] / (14*4))\n"
     	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"

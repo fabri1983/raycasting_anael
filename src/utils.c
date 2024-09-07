@@ -27,6 +27,20 @@ FORCE_INLINE void waitHCounter (u8 n) {
     );
 }
 
+FORCE_INLINE void waitVCounterReg (u16 n) {
+    u32* regA=0; // placeholder used to indicate the use of an An register
+    __asm volatile (
+        "    move.l    #0xC00008,%0\n"    // Load V Counter address into an An register
+        "1:\n"
+        "    cmp.w     (%0),%1\n"         // cmp: n - (0xC00008)
+        "    bhi.s     1b\n"              // loop back if n is higher than (0xC00008)
+            // bhi is for unsigned comparisons
+        : "+a" (regA)
+        : "d" (n << 8) // (n << 8) | 0xFF
+        : "cc"
+    );
+}
+
 void NO_INLINE setupDMAForPals (u16 len, u32 fromAddr) {
     // Uncomment if you previously change it to 1 (CPU access to VRAM is 1 byte length, and 2 bytes length for CRAM and VSRAM)
     //VDP_setAutoInc(2);

@@ -36,6 +36,11 @@ void turnOnVDP (u8 reg01);
 void waitHCounter (u8 n);
 
 /**
+ * Wait until VCounter 0xC00008 reaches nth scanline position. Parameter n is loaded into a register.
+*/
+void waitVCounterReg (u16 n);
+
+/**
  * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
  * Optimizations may apply manually if you know the source address is only 8 bits or 12 bits, and same for the length parameter.
  * \param len How many colors to move.

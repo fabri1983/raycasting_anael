@@ -100,7 +100,15 @@ static void loadHUD (u16 currentTileIndex) {
 	VDP_waitDMACompletion();
 }
 
-HINTERRUPT_CALLBACK hintCallback () {
+// Keep a copy of the first 2 SGDK default Palettes, which are used by the Walls.
+static const u16 colorsBackup[32] = {
+	// GREY
+    0x0000,0x0222,0x0444,0x0666,0x0888,0x0AAA,0x0CCC,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,
+	// RED
+    0x0000,0x0002,0x0004,0x0006,0x0008,0x000A,0x000C,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E
+};
+
+HINTERRUPT_CALLBACK hintCallbackHUD () {
 	// Prepare DMA cmd and source address for first palette
     u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
     u32 fromAddrForDMA = (u32) (img_hud.palette->data + 1) >> 1; // TODO: this can be set outside the HInt
@@ -130,19 +138,25 @@ HINTERRUPT_CALLBACK hintCallback () {
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
     turnOnVDP(0x74);
+
+	// Reload the first 2 palettes that were overriden by the HUD palettes
+	// waitVCounterReg(224);
+	// palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 0) * 2); // target starting color index multiplied by 2
+    // fromAddrForDMA = (u32) (colorsBackup + 0) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
+	// turnOffVDP(0x74);
+    // setupDMAForPals(32, fromAddrForDMA);
+    // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+	// turnOnVDP(0x74);
 }
 
 void vBlankCallback () {
 	// Reload the first 2 palettes that were overriden by the HUD palettes
-	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
-    u32 fromAddrForDMA = (u32) (palette_grey + 1) >> 1; // TODO: this can be set outside the HInt
-    setupDMAForPals(15, fromAddrForDMA);
+	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 0) * 2); // target starting color index multiplied by 2
+    u32 fromAddrForDMA = (u32) (colorsBackup + 0) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
+    setupDMAForPals(32, fromAddrForDMA);
+	turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-
-	palCmd = VDP_DMA_CRAM_ADDR((PAL1 * 16 + 0) * 2); // target starting color index multiplied by 2
-    fromAddrForDMA = (u32) (palette_red + 1) >> 1; // TODO: this can be set outside the HInt
-    setupDMAForPals(15, fromAddrForDMA);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+	turnOnVDP(0x74);
 
 	// clear the frame buffer
 	clear_buffer((u8*)frame_buffer);
@@ -168,7 +182,7 @@ int main (bool hardReset)
 	{
 		SYS_setVBlankCallback(vBlankCallback);
 		VDP_setHIntCounter(224-32-2); // scanline location for the HUD
-    	SYS_setHIntCallback(hintCallback);
+    	SYS_setHIntCallback(hintCallbackHUD);
     	VDP_setHInterrupt(TRUE);
 	}
 	SYS_enableInts();
