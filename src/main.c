@@ -275,10 +275,10 @@ int main (bool hardReset)
 
 		// DDA
 		{
-			u16 sideDistX_l0 = (posX - (posX/FP)*FP);
-			u16 sideDistX_l1 = (((posX/FP) + 1)*FP - posX);
-			u16 sideDistY_l0 = (posY - (posY/FP)*FP);
-			u16 sideDistY_l1 = (((posY/FP) + 1)*FP - posY);
+			u16 sideDistX_l0 = posX & (FP - 1); // (posX - (posX/FP)*FP);
+			u16 sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
+			u16 sideDistY_l0 = posY & (FP - 1); // (posY - (posY/FP)*FP);
+			u16 sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
 
 			u16 a = angle / (1024 / AP); // a is [0, 128)
 			#if USE_TAB_DELTAS_3
@@ -292,11 +292,12 @@ int main (bool hardReset)
 
 			// 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
 			for (u16 c = 0; c < PIXEL_COLUMNS; ++c) {
+
 				#if USE_TAB_DELTAS_3
 				const u16* delta_ptr = delta_a_ptr + c*3;
-				const u16 deltaDistX = delta_ptr[0];
-				const u16 deltaDistY = delta_ptr[1];
-				const s16 rayDir = (s16)delta_ptr[2];
+				u16 deltaDistX = delta_ptr[0];
+				u16 deltaDistY = delta_ptr[1];
+				s16 rayDir = (s16)delta_ptr[2];
 				#else
 				const u16* delta_ptr = delta_a_ptr + c*4;
 				const u16 deltaDistX = delta_ptr[0];
@@ -318,8 +319,8 @@ int main (bool hardReset)
 					sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
 					sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
 					#else
-					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
-					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
+					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
+					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
 					#endif
 				}
 				// rayDix < 0 and rayDirY > 0
@@ -331,8 +332,8 @@ int main (bool hardReset)
 					sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
 					sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
 					#else
-					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
-					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
+					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
+					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
 					#endif
 				}
 				// rayDix > 0 and rayDirY < 0
@@ -344,8 +345,8 @@ int main (bool hardReset)
 					sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
 					sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
 					#else
-					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
-					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
+					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
+					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
 					#endif
 				}
 				// rayDix > 0 and rayDirY > 0
@@ -357,8 +358,8 @@ int main (bool hardReset)
 					sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
 					sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
 					#else
-					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
-					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
+					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
+					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
 					#endif
 				}
 			#else
@@ -403,7 +404,7 @@ int main (bool hardReset)
 				u16 mapY = posY / FP;
 				const u8 *map_ptr = &map[mapY][mapX];
 
-				for (u16 n = STEP_COUNT; n--;) {
+				for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
 
 					// side X
 					if (sideDistX < sideDistY) {

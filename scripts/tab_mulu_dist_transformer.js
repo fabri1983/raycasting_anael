@@ -18,7 +18,8 @@ const inputFile = 'tab_mulu_dist.txt';
 const outputFile = 'tab_mulu_dist_FULL.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const AP = 128; // angle precision
+const { AP } = require('./consts');
+
 const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
 
 const expectedCount = (1024/(1024/AP) - 1)*DELTA_DIST_VALUES + 64;

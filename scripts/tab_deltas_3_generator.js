@@ -4,8 +4,7 @@ const inputFile = '../inc/tab_deltas.h';
 const outputFile = 'tab_deltas_3.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const AP = 128; // angle precision
-const PIXEL_COLUMNS = 80; // 64 for 256p, 80 for 320p
+const { AP, PIXEL_COLUMNS } = require('./consts');
 
 function isInteger(value) {
     return !isNaN(parseInt(value)) && isFinite(value);

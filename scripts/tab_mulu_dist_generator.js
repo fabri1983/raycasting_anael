@@ -4,14 +4,12 @@ const inputFile = '../inc/tab_deltas.h';
 const outputFile = 'tab_mulu_dist.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const FS = 8; // fixed point size in bits
-const FP = (1 << FS); // fixed precision
-const AP = 128; // angle precision
-const MAP_SIZE = 16;
+const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE } = require('./consts');
+
 const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
 
 function isInteger(value) {
-  return !isNaN(parseInt(value)) && isFinite(value);
+    return !isNaN(parseInt(value)) && isFinite(value);
 }
 
 // Read and parse tab_deltas.h
@@ -66,9 +64,9 @@ function processTabDeltas() {
 
             let a = Math.floor(angle / (1024 / AP));
 			const aa = a * DELTA_DIST_VALUES;
-            a *= 256;
+            a *= 256; // instead of: const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
 
-            for (let c = 0; c < 64; ++c) {
+            for (let c = 0; c < PIXEL_COLUMNS; ++c) {
                 const deltaDistX = tab_deltas[a + c*4 + 0];
                 const deltaDistY = tab_deltas[a + c*4 + 1];
                 const rayDirX = toSigned16Bit(tab_deltas[a + c*4 + 2]);

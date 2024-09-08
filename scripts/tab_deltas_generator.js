@@ -1,13 +1,12 @@
 const fs = require('fs');
 
+const outputFile = 'tab_deltas_content.txt';
+
 // Check correct values of constants before script execution. See consts.h.
-const FS = 8; // fixed point size in bits
-const FP = 1 << FS; // fixed precision
-const AP = 128; // angle precision (optimal for a rotation step of 8 : 1024/8 = 128)
+const { FP, AP, PIXEL_COLUMNS } = require('./consts');
+
 const M_PI = Math.PI;
 const MAX_U16 = 0xFFFF;
-const PIXEL_COLUMNS = 80; // 64 for 256p, 80 for 320p
-const outputFile = 'tab_deltas_content.txt';
 
 let tabDeltas = new Uint16Array(AP * PIXEL_COLUMNS * 4);
 let deltaPtr = 0;
