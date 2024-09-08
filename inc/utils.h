@@ -42,10 +42,20 @@ void waitVCounterReg (u16 n);
 
 /**
  * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
- * Optimizations may apply manually if you know the source address is only 8 bits or 12 bits, and same for the length parameter.
+ * Optimizations may apply manually if you know before hand the source address is only 8 bits or 12 bits, and same for the length parameter.
  * \param len How many colors to move.
  * \param fromAddr Must be >> 1 (shifted to right).
 */
 void setupDMAForPals (u16 len, u32 fromAddr);
+
+/// @brief Same than VDP_showCPULoad() but optimized. Show values up to 255%. Otherwise it crashes.
+/// @param xPos screen X position in tiles
+/// @param yPos screen Y position in tiles
+void showCPULoad (u16 xPos, u16 yPos);
+
+/// @brief Same than VDP_showFPS(FALSE) but optimized. Show values up to 255. Otherwise it crashes.
+/// @param xPos screen X position in tiles
+/// @param yPos screen Y position in tiles
+void showFPS (u16 xPos, u16 yPos);
 
 #endif // _UTILS_H_

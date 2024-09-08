@@ -8,7 +8,7 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 	// Tilemap width in tiles.
 
 	// draw a solid vertical line
-	/*if (h2 == 0) {
+	if (h2 == 0) {
 		// C version
 		//for (u16 y = 0; y < VERTICAL_COLUMNS*PLANE_COLUMNS; y+=PLANE_COLUMNS) {
 		// 	tilemap[y] = color;
@@ -26,7 +26,7 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 			:
 		);
 		return;
-	}*/
+	}
 
 	u16 ta = (h2 / 8); // vertical tilemap entry position
 
@@ -37,34 +37,34 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 
 	// VERTICAL_COLUMNS-2 remaining vertical tilemap entries
 
-	// C version (for 28 vertical tiles and 32 plane columns)
+	// C version (for 28 vertical tiles)
 	/*switch (ta) {
-		case 0:		tilemap[1*32] = color;
-					tilemap[26*32] = color; // fallthru
-		case 1:		tilemap[2*32] = color;
-					tilemap[25*32] = color; // fallthru
-		case 2:		tilemap[3*32] = color;
-					tilemap[24*32] = color; // fallthru
-		case 3:		tilemap[4*32] = color;
-					tilemap[23*32] = color; // fallthru
-		case 4:		tilemap[5*32] = color;
-					tilemap[22*32] = color; // fallthru
-		case 5:		tilemap[6*32] = color;
-					tilemap[21*32] = color; // fallthru
-		case 6:		tilemap[7*32] = color;
-					tilemap[20*32] = color; // fallthru
-		case 7:		tilemap[8*32] = color;
-					tilemap[19*32] = color; // fallthru
-		case 8:		tilemap[9*32] = color;
-					tilemap[18*32] = color; // fallthru
-		case 9:		tilemap[10*32] = color;
-					tilemap[17*32] = color; // fallthru
-		case 10:	tilemap[11*32] = color;
-					tilemap[16*32] = color; // fallthru
-		case 11:	tilemap[12*32] = color;
-					tilemap[15*32] = color; // fallthru
-		case 12:	tilemap[13*32] = color;
-					tilemap[14*32] = color; // fallthru
+		case 0:		tilemap[1*PLANE_COLUMNS] = color;
+					tilemap[26*PLANE_COLUMNS] = color; // fallthru
+		case 1:		tilemap[2*PLANE_COLUMNS] = color;
+					tilemap[25*PLANE_COLUMNS] = color; // fallthru
+		case 2:		tilemap[3*PLANE_COLUMNS] = color;
+					tilemap[24*PLANE_COLUMNS] = color; // fallthru
+		case 3:		tilemap[4*PLANE_COLUMNS] = color;
+					tilemap[23*PLANE_COLUMNS] = color; // fallthru
+		case 4:		tilemap[5*PLANE_COLUMNS] = color;
+					tilemap[22*PLANE_COLUMNS] = color; // fallthru
+		case 5:		tilemap[6*PLANE_COLUMNS] = color;
+					tilemap[21*PLANE_COLUMNS] = color; // fallthru
+		case 6:		tilemap[7*PLANE_COLUMNS] = color;
+					tilemap[20*PLANE_COLUMNS] = color; // fallthru
+		case 7:		tilemap[8*PLANE_COLUMNS] = color;
+					tilemap[19*PLANE_COLUMNS] = color; // fallthru
+		case 8:		tilemap[9*PLANE_COLUMNS] = color;
+					tilemap[18*PLANE_COLUMNS] = color; // fallthru
+		case 9:		tilemap[10*PLANE_COLUMNS] = color;
+					tilemap[17*PLANE_COLUMNS] = color; // fallthru
+		case 10:	tilemap[11*PLANE_COLUMNS] = color;
+					tilemap[16*PLANE_COLUMNS] = color; // fallthru
+		case 11:	tilemap[12*PLANE_COLUMNS] = color;
+					tilemap[15*PLANE_COLUMNS] = color; // fallthru
+		case 12:	tilemap[13*PLANE_COLUMNS] = color;
+					tilemap[14*PLANE_COLUMNS] = color; // fallthru
 					break;
 	}*/
 
@@ -74,11 +74,13 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 		"    andi.b  %[_clearBitsOffset],%[_offset]\n"
 		// jump into table using with _offset
 		"    jmp     .wvl_table_%=(%%pc,%[_offset].w)\n"
-		// color assignment table from tile[1*PLANE_COLUMNS] up to [((VERTICAL_COLUMNS-2)/2)*32] and from tile[(VERTICAL_COLUMNS-2)*32] down to [(((VERTICAL_COLUMNS-2)/2)+1)*32]
+		// color assignment table: 
+		//  from tile[1*PLANE_COLUMNS] up to [((VERTICAL_COLUMNS-2)/2)*PLANE_COLUMNS]
+		//  from tile[(VERTICAL_COLUMNS-2)*PLANE_COLUMNS] down to [(((VERTICAL_COLUMNS-2)/2)+1)*PLANE_COLUMNS]
 		// Eg for VERTICAL_COLUMNS=28: 
-		//  from tile[1*32] up to [13*32] and from tile[26*32] down to [14*32]
+		//  from tile[1*PLANE_COLUMNS] up to [13*PLANE_COLUMNS] and from tile[26*PLANE_COLUMNS] down to [14*PLANE_COLUMNS]
 		// Eg for VERTICAL_COLUMNS=24: 
-		//  from tile[1*32] up to [11*32] and from tile[22*32] down to [12*32]
+		//  from tile[1*PLANE_COLUMNS] up to [11*PLANE_COLUMNS] and from tile[22*PLANE_COLUMNS] down to [12*PLANE_COLUMNS]
 		".wvl_table_%=:\n"
 		".set offup,1 * %c[_PLANE_COLUMNS] * 2\n"
 		".set offdown,(%c[_VERTICAL_COLUMNS] - 2) * %c[_PLANE_COLUMNS]*2\n"

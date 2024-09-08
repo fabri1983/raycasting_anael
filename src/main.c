@@ -8,7 +8,6 @@
 // -----------------
 // * Rendered columns are 4 pixels wide, then 256p/4=64 or 320p/4=80 "pixels" columns.
 // * write_vline_full() moved into write_vline() so we save 1 condition before the call decision to both methods.
-//   Now is commented out given that the difference with write_vline() is the calculation of the top and bottom tiles.
 // * write_vline() translated into inline asm => 2% saved in cpu usage.
 // * Changed:
 //   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
@@ -51,12 +50,12 @@
 // Multiplied by 2 because is shared between the 2 planes BG_A and BG_B
 static u16 frame_buffer[VERTICAL_COLUMNS*PLANE_COLUMNS*2];
 
-// Calculate the shift to access one of the 2 planes from the framebuffer.
-static u16 frame_buffer_xid[PLANE_COLUMNS*2];
+// Calculate the offset to access every column one of the 2 planes from the framebuffer.
+static u16 frame_buffer_col_offset[PLANE_COLUMNS*2];
 
 static void loadPlaneDisplacements () {
 	for (u16 i = 0; i < PLANE_COLUMNS*2; i++) {
-		frame_buffer_xid[i] = i&1 ? VERTICAL_COLUMNS*PLANE_COLUMNS + i/2 : i/2;
+		frame_buffer_col_offset[i] = i&1 ? VERTICAL_COLUMNS*PLANE_COLUMNS + i/2 : i/2;
 	}
 }
 
@@ -75,9 +74,11 @@ static u16 loadRenderTiles () {
 	// All remaining 8 possible tile heights (1 to 8, tile height zero already loaded)
 	for (u16 i = 1; i <= 8; i++) {
 		memset(tile, 0, 32);
-		for (u16 c = 0; c < 8; c++) { // 8 values to create the depth gradient
+		// 8 values to create the depth gradient, using the SGDK's builtin palettes
+		for (u16 c = 0; c < 8; c++) {
 			for (u16 j = i-1; j < 8; j++) { // tile rows
 				for (u16 b = 0; b < 2; b++) { // tile width (4 pixels = 2 bytes)
+					// 4*j tells which half (4 pixels) of the tile
 					tile[4*j + b] = (c+0) + ((c+1) << 4);
 				}
 			}
@@ -99,14 +100,6 @@ static void loadHUD (u16 currentTileIndex) {
     VDP_setTileMapEx(BG_A, img_hud.tilemap, baseTileAttrib, 0, 24, 0, 0, 40, 4, DMA);
 	VDP_waitDMACompletion();
 }
-
-// Keep a copy of the first 2 SGDK default Palettes, which are used by the Walls.
-static const u16 colorsBackup[32] = {
-	// GREY
-    0x0000,0x0222,0x0444,0x0666,0x0888,0x0AAA,0x0CCC,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,0x0EEE,
-	// RED
-    0x0000,0x0002,0x0004,0x0006,0x0008,0x000A,0x000C,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E,0x000E
-};
 
 HINTERRUPT_CALLBACK hintCallbackHUD () {
 	// Prepare DMA cmd and source address for first palette
@@ -139,22 +132,37 @@ HINTERRUPT_CALLBACK hintCallbackHUD () {
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
     turnOnVDP(0x74);
 
+	// Send half of the PA
+	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+
 	// Reload the first 2 palettes that were overriden by the HUD palettes
 	// waitVCounterReg(224);
-	// palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 0) * 2); // target starting color index multiplied by 2
-    // fromAddrForDMA = (u32) (colorsBackup + 0) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
+	// // grey palette
+	// palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
+    // fromAddrForDMA = (u32) (palette_grey + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
 	// turnOffVDP(0x74);
-    // setupDMAForPals(32, fromAddrForDMA);
+    // setupDMAForPals(8, fromAddrForDMA);
+    // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+	// // red palette
+	// palCmd = VDP_DMA_CRAM_ADDR((PAL1 * 16 + 1) * 2); // target starting color index multiplied by 2
+    // fromAddrForDMA = (u32) (palette_red + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
+    // setupDMAForPals(8, fromAddrForDMA);
     // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
 	// turnOnVDP(0x74);
 }
 
 void vBlankCallback () {
 	// Reload the first 2 palettes that were overriden by the HUD palettes
-	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 0) * 2); // target starting color index multiplied by 2
-    u32 fromAddrForDMA = (u32) (colorsBackup + 0) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
-    setupDMAForPals(32, fromAddrForDMA);
+	// grey palette
+	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
+    u32 fromAddrForDMA = (u32) (palette_grey + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
 	turnOffVDP(0x74);
+    setupDMAForPals(8, fromAddrForDMA);
+    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+	// red palette
+	palCmd = VDP_DMA_CRAM_ADDR((PAL1 * 16 + 1) * 2); // target starting color index multiplied by 2
+    fromAddrForDMA = (u32) (palette_red + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
+    setupDMAForPals(8, fromAddrForDMA);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
 	turnOnVDP(0x74);
 
@@ -181,7 +189,7 @@ int main (bool hardReset)
 	SYS_disableInts();
 	{
 		SYS_setVBlankCallback(vBlankCallback);
-		VDP_setHIntCounter(224-32-2); // scanline location for the HUD
+		VDP_setHIntCounter((224-32)-2); // scanline location for the HUD
     	SYS_setHIntCallback(hintCallbackHUD);
     	VDP_setHInterrupt(TRUE);
 	}
@@ -193,9 +201,8 @@ int main (bool hardReset)
 	VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 	VDP_setHorizontalScroll(BG_A, 0);
 	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
-	VDP_setBackgroundColor(1);
-	const u16 PA_addr = 0xE000; //VDP_getPlaneAddress(BG_A, 0, 0);
-	const u16 PB_addr = 0xC000; //VDP_getPlaneAddress(BG_B, 0, 0);
+	PAL_setColor(0, 0x0222); // palette_grey[1]
+	//VDP_setBackgroundColor(1);
 
 	VDP_setEnable(TRUE);
 
@@ -403,7 +410,7 @@ int main (bool hardReset)
 						u16 hit = *map_ptr; // map[mapY][mapX];
 						if (hit) {
 
-							u16 t = tab_wall_div[sideDistX];
+							u16 h2 = tab_wall_div[sideDistX];
 							u16 d8 = tab_color_d8_x[sideDistX]; // it was: (7 - min(7, sideDistX / FP))*8 + 1;
 
 						#if SHOW_TEXCOORD
@@ -418,8 +425,8 @@ int main (bool hardReset)
 								color |= (PAL2 << TILE_ATTR_PALETTE_SFT);
 						#endif
 
-							u16 *idata = frame_buffer + frame_buffer_xid[c];
-							write_vline(idata, t, color);
+							u16 *idata = frame_buffer + frame_buffer_col_offset[c];
+							write_vline(idata, h2, color);
 							break;
 						}
 
@@ -434,7 +441,7 @@ int main (bool hardReset)
 						u16 hit = *map_ptr; // map[mapY][mapX];
 						if (hit) {
 
-							u16 t = tab_wall_div[sideDistY];
+							u16 h2 = tab_wall_div[sideDistY];
 							u16 d8 = tab_color_d8_y[sideDistY]; // it was: (7 - min(7, sideDistY / FP))*8 + 1;
 
 						#if SHOW_TEXCOORD
@@ -449,8 +456,8 @@ int main (bool hardReset)
 								color |= (PAL3 << TILE_ATTR_PALETTE_SFT);
 						#endif
 
-							u16 *idata = frame_buffer + frame_buffer_xid[c];
-							write_vline(idata, t, color);
+							u16 *idata = frame_buffer + frame_buffer_col_offset[c];
+							write_vline(idata, h2, color);
 							break;
 						}
 
@@ -460,17 +467,15 @@ int main (bool hardReset)
 			}
 		}
 
-		// Setup a DMA here of some bytes to aliviate DMA pressure during VBlank
-		//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_addr, (VERTICAL_COLUMNS/2)*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		// Enqueue the frame buffer
+		//DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
-		// Enqueue the rest of the frame buffer
-		DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_addr, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-		DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_addr, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		SYS_doVBlankProcessEx(ON_VBLANK_START);
 
-		SYS_doVBlankProcess();
-
-		//VDP_showFPS(TRUE);
-		VDP_showCPULoad();
+		//showFPS(0, 4);
+		showCPULoad(0,4);
 	}
 
 	SYS_disableInts();
@@ -481,10 +486,12 @@ int main (bool hardReset)
 	}
 	SYS_enableInts();
 
-	VDP_setBackgroundColor(0);
+	PAL_setColor(0, 0x000); // Black BG color
 	VDP_clearPlane(BG_B, TRUE);
 	VDP_clearPlane(BG_A, TRUE);
-	VDP_drawText("Game Over", (256/8 - 10)/2, (224/8)/2);
+	VDP_setHorizontalScroll(BG_A, 0);
+	VDP_setHorizontalScroll(BG_B, 0);
+	VDP_drawText("Game Over", (TILEMAP_COLUMNS - 10)/2, (224/8)/2);
 
 	return 0;
 }
