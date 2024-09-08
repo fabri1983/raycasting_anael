@@ -15,8 +15,9 @@
 //   if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
 // * Replaced dirX and dirY calculation in relation to the angle by two tables defined in tab_dir_xy.h => some cycles saved.
-// * Moved clear_buffer() into VBlank callback => ~%1 saved in cpu usage, plus we take advantage of the VBlank period.
 // * Replaced DMA_doDmaFast() by DMA_queueDmaFast() => 1% saved in cpu usage.
+// * clear_buffer() replaced by inline asm to take advantage of compiler optimizations => %1 saved in cpu usage.
+// * If clear_buffer() is moved into VBlank callback => %1 saved in cpu usage, but runs into next display period.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
 // * Replaced d for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
 // * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage.
@@ -93,12 +94,11 @@ static u16 loadRenderTiles () {
 }
 
 static void loadHUD (u16 currentTileIndex) {
-	u16 baseTileAttrib = TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, currentTileIndex);
+	const u16 baseTileAttrib = TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, currentTileIndex);
 	VDP_loadTileSet(img_hud.tileset, baseTileAttrib & TILE_INDEX_MASK, DMA);
-	VDP_waitDMACompletion();
 
-    VDP_setTileMapEx(BG_A, img_hud.tilemap, baseTileAttrib, 0, 24, 0, 0, 40, 4, DMA);
-	VDP_waitDMACompletion();
+	const u16 yPos = PLANE_COLUMNS == 64 ? 24 : 12;
+    VDP_setTileMapEx(BG_A, img_hud.tilemap, baseTileAttrib, 0, yPos, 0, 0, TILEMAP_COLUMNS, 4, DMA);
 }
 
 HINTERRUPT_CALLBACK hintCallbackHUD () {
@@ -167,7 +167,7 @@ void vBlankCallback () {
 	turnOnVDP(0x74);
 
 	// clear the frame buffer
-	clear_buffer((u8*)frame_buffer);
+	//clear_buffer((u8*)frame_buffer);
 }
 
 int main (bool hardReset)
@@ -213,6 +213,9 @@ int main (bool hardReset)
 
 	for (;;)
 	{
+		// clear the frame buffer
+		clear_buffer((u8*)frame_buffer);
+
 		// handle inputs
 		u16 joy = JOY_readJoypad(JOY_1);
 		if (joy) {
@@ -474,8 +477,8 @@ int main (bool hardReset)
 
 		SYS_doVBlankProcessEx(ON_VBLANK_START);
 
-		//showFPS(0, 4);
-		showCPULoad(0,4);
+		//showFPS(0, 1);
+		showCPULoad(0, 1);
 	}
 
 	SYS_disableInts();
