@@ -30,8 +30,8 @@ function readTabDeltas() {
         }
     }
 
-    if (tab_deltas.length !== AP * 64 * 4) {
-        throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * 64 * 4}): ${tab_deltas.length}`);
+    if (tab_deltas.length !== AP * PIXEL_COLUMNS * 4) {
+        throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * PIXEL_COLUMNS * 4}): ${tab_deltas.length}`);
     }
 
     return tab_deltas;

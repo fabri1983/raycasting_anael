@@ -9,10 +9,8 @@
 // * Rendered columns are 4 pixels wide, then 256p/4=64 or 320p/4=80 "pixels" columns.
 // * write_vline_full() moved into write_vline() so we save 1 condition before the call decision to both methods.
 // * write_vline() translated into inline asm => 2% saved in cpu usage.
-// * Changed:
-//   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
-//   by
-//   if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
+// * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
+//   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
 // * Replaced dirX and dirY calculation in relation to the angle by two tables defined in tab_dir_xy.h => some cycles saved.
 // * Replaced DMA_doDmaFast() by DMA_queueDmaFast() => 1% saved in cpu usage.
@@ -21,6 +19,7 @@
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
 // * Replaced d for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
 // * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage.
+// * Manual unrolling of 4 iterations for column processing => 2% saved in cpu usage.
 
 // the code is optimised further using GCC's automatic unrolling
 //#pragma GCC push_options
@@ -170,6 +169,9 @@ void vBlankCallback () {
 	//clear_buffer((u8*)frame_buffer);
 }
 
+// forward declaration
+static void process_column (u8 c, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
+
 int main (bool hardReset)
 {
 	// On soft reset do like a hard reset
@@ -291,184 +293,11 @@ int main (bool hardReset)
 			#endif
 
 			// 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-			for (u16 c = 0; c < PIXEL_COLUMNS; ++c) {
-
-				#if USE_TAB_DELTAS_3
-				const u16* delta_ptr = delta_a_ptr + c*3;
-				u16 deltaDistX = delta_ptr[0];
-				u16 deltaDistY = delta_ptr[1];
-				s16 rayDir = (s16)delta_ptr[2];
-				#else
-				const u16* delta_ptr = delta_a_ptr + c*4;
-				const u16 deltaDistX = delta_ptr[0];
-				const u16 deltaDistY = delta_ptr[1];
-				const s16 rayDirX = (s16)delta_ptr[2];
-				const s16 rayDirY = (s16)delta_ptr[3];
-				#endif
-
-				u16 sideDistX, sideDistY;
-				s16 stepX, stepY, stepYMS;
-
-			#if USE_TAB_DELTAS_3
-				// rayDix < 0 and rayDirY < 0
-				if (rayDir == 0) {
-					stepX = -1;
-					stepY = -1;
-					stepYMS = -MAP_SIZE;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
-					sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
-					#else
-					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
-					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
-					#endif
-				}
-				// rayDix < 0 and rayDirY > 0
-				else if (rayDir == 1) {
-					stepX = -1;
-					stepY = 1;
-					stepYMS = MAP_SIZE;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
-					sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
-					#else
-					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
-					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
-					#endif
-				}
-				// rayDix > 0 and rayDirY < 0
-				else if (rayDir == 2) {
-					stepX = 1;
-					stepY = -1;
-					stepYMS = -MAP_SIZE;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
-					sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
-					#else
-					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
-					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
-					#endif
-				}
-				// rayDix > 0 and rayDirY > 0
-				else {
-					stepX = 1;
-					stepY = 1;
-					stepYMS = MAP_SIZE;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
-					sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
-					#else
-					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
-					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
-					#endif
-				}
-			#else
-				if (rayDirX < 0) {
-					stepX = -1;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
-					#else
-					sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
-					#endif
-				}
-				else {
-					stepX = 1;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
-					#else
-					sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
-					#endif
-				}
-
-				if (rayDirY < 0) {
-					stepY = -1;
-					stepYMS = -MAP_SIZE;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
-					#else
-					sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
-					#endif
-				}
-				else {
-					stepY = 1;
-					stepYMS = MAP_SIZE;
-					#if USE_TAB_MULU_DIST_DIV256
-					sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
-					#else
-					sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
-					#endif
-				}
-			#endif
-
-				u16 mapX = posX / FP;
-				u16 mapY = posY / FP;
-				const u8 *map_ptr = &map[mapY][mapX];
-
-				for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
-
-					// side X
-					if (sideDistX < sideDistY) {
-
-						mapX += stepX;
-						map_ptr += stepX;
-
-						u16 hit = *map_ptr; // map[mapY][mapX];
-						if (hit) {
-
-							u16 h2 = tab_wall_div[sideDistX];
-							u16 d8 = tab_color_d8_x[sideDistX]; // it was: (7 - min(7, sideDistX / FP))*8 + 1;
-
-						#if SHOW_TEXCOORD
-							u16 wallY = posY + (muls(sideDistX, rayDirY) >> FS);
-							//wallY = ((wallY * 8) >> FS) & 7; // faster
-							wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
-							// if tab_color_d8_x[] optimization is removed then use min(d8, wallY)*8 at the end
-							u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d8-1, wallY*8);
-						#else
-							u16 color = d8; // PAL0 by default
-							if (mapY&1)
-								color |= (PAL2 << TILE_ATTR_PALETTE_SFT);
-						#endif
-
-							u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
-							write_vline(column_ptr, h2, color);
-							break;
-						}
-
-						sideDistX += deltaDistX;
-					}
-					// side Y
-					else {
-
-						mapY += stepY;
-						map_ptr += stepYMS;
-
-						u16 hit = *map_ptr; // map[mapY][mapX];
-						if (hit) {
-
-							u16 h2 = tab_wall_div[sideDistY];
-							u16 d8 = tab_color_d8_y[sideDistY]; // it was: (7 - min(7, sideDistY / FP))*8 + 1;
-
-						#if SHOW_TEXCOORD
-							u16 wallX = posX + (muls(sideDistY, rayDirX) >> FS);
-							//wallX = ((wallX * 8) >> FS) & 7; // faster
-							wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
-							// if tab_color_d8_y[] optimization is removed then use min(d8, wallX)*8 at the end
-							u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d8-1, wallX*8);
-						#else
-							u16 color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT); // PAL1 by default
-							if (mapX&1)
-								color |= (PAL3 << TILE_ATTR_PALETTE_SFT);
-						#endif
-
-							u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
-							write_vline(column_ptr, h2, color);
-							break;
-						}
-
-						sideDistY += deltaDistY;
-					}
-				}
+			for (u8 c = 0; c < PIXEL_COLUMNS; c+=4) {
+				process_column(c+0, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(c+1, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(c+2, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(c+3, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
 			}
 		}
 
@@ -499,4 +328,183 @@ int main (bool hardReset)
 	VDP_drawText("Game Over", (TILEMAP_COLUMNS - 10)/2, (224/8)/2);
 
 	return 0;
+}
+
+static FORCE_INLINE void process_column (u8 c, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
+#if USE_TAB_DELTAS_3
+	const u16* delta_ptr = delta_a_ptr + c*3;
+	u16 deltaDistX = delta_ptr[0];
+	u16 deltaDistY = delta_ptr[1];
+	s16 rayDir = (s16)delta_ptr[2];
+	#else
+	const u16* delta_ptr = delta_a_ptr + c*4;
+	const u16 deltaDistX = delta_ptr[0];
+	const u16 deltaDistY = delta_ptr[1];
+	const s16 rayDirX = (s16)delta_ptr[2];
+	const s16 rayDirY = (s16)delta_ptr[3];
+	#endif
+
+	u16 sideDistX, sideDistY;
+	s16 stepX, stepY, stepYMS;
+
+#if USE_TAB_DELTAS_3
+	// rayDix < 0 and rayDirY < 0
+	if (rayDir == 0) {
+		stepX = -1;
+		stepY = -1;
+		stepYMS = -MAP_SIZE;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
+		#else
+		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
+		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
+		#endif
+	}
+	// rayDix < 0 and rayDirY > 0
+	else if (rayDir == 1) {
+		stepX = -1;
+		stepY = 1;
+		stepYMS = MAP_SIZE;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
+		#else
+		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
+		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
+		#endif
+	}
+	// rayDix > 0 and rayDirY < 0
+	else if (rayDir == 2) {
+		stepX = 1;
+		stepY = -1;
+		stepYMS = -MAP_SIZE;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
+		#else
+		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
+		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
+		#endif
+	}
+	// rayDix > 0 and rayDirY > 0
+	else {
+		stepX = 1;
+		stepY = 1;
+		stepYMS = MAP_SIZE;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
+		#else
+		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
+		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
+		#endif
+	}
+#else
+	if (rayDirX < 0) {
+		stepX = -1;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
+		#else
+		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
+		#endif
+	}
+	else {
+		stepX = 1;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
+		#else
+		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
+		#endif
+	}
+
+	if (rayDirY < 0) {
+		stepY = -1;
+		stepYMS = -MAP_SIZE;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
+		#else
+		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
+		#endif
+	}
+	else {
+		stepY = 1;
+		stepYMS = MAP_SIZE;
+		#if USE_TAB_MULU_DIST_DIV256
+		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
+		#else
+		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
+		#endif
+	}
+#endif
+
+	u16 mapX = posX / FP;
+	u16 mapY = posY / FP;
+	const u8 *map_ptr = &map[mapY][mapX];
+
+	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
+
+		// side X
+		if (sideDistX < sideDistY) {
+
+			mapX += stepX;
+			map_ptr += stepX;
+
+			u16 hit = *map_ptr; // map[mapY][mapX];
+			if (hit) {
+
+				u16 h2 = tab_wall_div[sideDistX];
+				u16 d8 = tab_color_d8_x[sideDistX]; // it was: (7 - min(7, sideDistX / FP))*8 + 1;
+
+			#if SHOW_TEXCOORD
+				u16 wallY = posY + (muls(sideDistX, rayDirY) >> FS);
+				//wallY = ((wallY * 8) >> FS) & 7; // faster
+				wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
+				// if tab_color_d8_x[] optimization is removed then use min(d8, wallY)*8 at the end
+				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d8-1, wallY*8);
+			#else
+				u16 color = d8; // PAL0 by default
+				if (mapY&1)
+					color |= (PAL2 << TILE_ATTR_PALETTE_SFT);
+			#endif
+
+				u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
+				write_vline(column_ptr, h2, color);
+				break;
+			}
+
+			sideDistX += deltaDistX;
+		}
+		// side Y
+		else {
+
+			mapY += stepY;
+			map_ptr += stepYMS;
+
+			u16 hit = *map_ptr; // map[mapY][mapX];
+			if (hit) {
+
+				u16 h2 = tab_wall_div[sideDistY];
+				u16 d8 = tab_color_d8_y[sideDistY]; // it was: (7 - min(7, sideDistY / FP))*8 + 1;
+
+			#if SHOW_TEXCOORD
+				u16 wallX = posX + (muls(sideDistY, rayDirX) >> FS);
+				//wallX = ((wallX * 8) >> FS) & 7; // faster
+				wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
+				// if tab_color_d8_y[] optimization is removed then use min(d8, wallX)*8 at the end
+				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d8-1, wallX*8);
+			#else
+				u16 color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT); // PAL1 by default
+				if (mapX&1)
+					color |= (PAL3 << TILE_ATTR_PALETTE_SFT);
+			#endif
+
+				u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
+				write_vline(column_ptr, h2, color);
+				break;
+			}
+
+			sideDistY += deltaDistY;
+		}
+	}
 }
