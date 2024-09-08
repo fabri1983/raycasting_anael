@@ -5,7 +5,7 @@
 #include "consts.h"
 
 // Table body generated with script tab_deltas_3_generator.js. Check correct values of constants before script execution.
-static const u16 tab_deltas[AP*PIXEL_COLUMNS*3] = {
+const u16 tab_deltas[AP*PIXEL_COLUMNS*3] = {
 259,256,3,
 266,256,3,
 273,256,3,

@@ -22,7 +22,7 @@ for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 
 #define MIN_CLAMP(x) ((x) < 0 ? 0 : ((x) > WALL_H2 ? WALL_H2 : (x)))
 
-static const u8 tab_wall_div[FP * (STEP_COUNT + 1)] = {
+const u8 tab_wall_div[FP * (STEP_COUNT + 1)] = {
 0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,

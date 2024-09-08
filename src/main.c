@@ -180,6 +180,7 @@ int main (bool hardReset)
 
 	VDP_setEnable(FALSE);
 
+	// Basic game setup
 	loadPlaneDisplacements();
 	u16 currentTileIndex = loadRenderTiles();
 	loadHUD(currentTileIndex);
@@ -428,8 +429,8 @@ int main (bool hardReset)
 								color |= (PAL2 << TILE_ATTR_PALETTE_SFT);
 						#endif
 
-							u16 *idata = frame_buffer + frame_buffer_col_offset[c];
-							write_vline(idata, h2, color);
+							u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
+							write_vline(column_ptr, h2, color);
 							break;
 						}
 
@@ -459,8 +460,8 @@ int main (bool hardReset)
 								color |= (PAL3 << TILE_ATTR_PALETTE_SFT);
 						#endif
 
-							u16 *idata = frame_buffer + frame_buffer_col_offset[c];
-							write_vline(idata, h2, color);
+							u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
+							write_vline(column_ptr, h2, color);
 							break;
 						}
 
