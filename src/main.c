@@ -34,7 +34,7 @@
 #include "map_matrix.h"
 
 #include "tab_wall_div.h"
-#if USE_TAB_DELTAS_3
+#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
 #include "tab_deltas_3.h"
 #else
 #include "tab_deltas.h"
@@ -51,34 +51,37 @@
 static u16 frame_buffer[VERTICAL_COLUMNS*PLANE_COLUMNS*2];
 
 // Calculate the offset to access every column one of the 2 planes from the framebuffer.
-static u16 frame_buffer_col_offset[PLANE_COLUMNS*2];
+static u16 frame_buffer_column[PLANE_COLUMNS*2];
 
 static void loadPlaneDisplacements () {
 	for (u16 i = 0; i < PLANE_COLUMNS*2; i++) {
-		frame_buffer_col_offset[i] = i&1 ? VERTICAL_COLUMNS*PLANE_COLUMNS + i/2 : i/2;
+		frame_buffer_column[i] = i&1 ? VERTICAL_COLUMNS*PLANE_COLUMNS + i/2 : i/2;
 	}
 }
 
-// Load render tiles in VRAM. 72 tiles in total.
+// Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
 static u16 loadRenderTiles () {
-	// Create a tile
+	// Create a buffer tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4][8]
 	memset(tile, 0, 32);
 
 	// 9 possible tile heights
 
-	// Tile with height 0 is the tile zero
+	// Tile with height 0 is at index 0
 	VDP_loadTileData((u32*)tile, 0, 1, CPU);
 
-	// All remaining 8 possible tile heights (1 to 8, tile height zero already loaded)
+	// Remaining 8 possible tile heights, distributed in 8 sets
+
+	// 8 tiles per set
 	for (u16 i = 1; i <= 8; i++) {
-		memset(tile, 0, 32);
-		// 8 values to create the depth gradient, using the SGDK's builtin palettes
+		memset(tile, 0, 32); // clear the tile
+		// 8 sets
 		for (u16 c = 0; c < 8; c++) {
-			for (u16 j = i-1; j < 8; j++) { // tile rows
-				for (u16 b = 0; b < 2; b++) { // tile width (4 pixels = 2 bytes)
-					// 4*j tells which half (4 pixels) of the tile
+			// visit the rows of each tile in current set
+			for (u16 j = i-1; j < 8; j++) {
+				// visit the columns of each row. Tile width: 4 pixels = 2 bytes
+				for (u16 b = 0; b < 2; b++) {
 					tile[4*j + b] = (c+0) + ((c+1) << 4);
 				}
 			}
@@ -89,7 +92,7 @@ static u16 loadRenderTiles () {
 	MEM_free(tile);
 
 	// Returns next available tile index in VRAM
-	return 8 + 8*8;
+	return 9*8;
 }
 
 static void loadHUD (u16 currentTileIndex) {
@@ -170,7 +173,7 @@ void vBlankCallback () {
 }
 
 // forward declaration
-static void process_column (u8 c, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
+static void process_column (u8 column, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
 
 int main (bool hardReset)
 {
@@ -283,7 +286,7 @@ int main (bool hardReset)
 			u16 sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
 
 			u16 a = angle / (1024 / AP); // a is [0, 128)
-			#if USE_TAB_DELTAS_3
+			#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 3);
 			#else
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
@@ -330,14 +333,14 @@ int main (bool hardReset)
 	return 0;
 }
 
-static FORCE_INLINE void process_column (u8 c, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
-#if USE_TAB_DELTAS_3
-	const u16* delta_ptr = delta_a_ptr + c*3;
+static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
+#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
+	const u16* delta_ptr = delta_a_ptr + column*3;
 	u16 deltaDistX = delta_ptr[0];
 	u16 deltaDistY = delta_ptr[1];
 	s16 rayDir = (s16)delta_ptr[2];
 	#else
-	const u16* delta_ptr = delta_a_ptr + c*4;
+	const u16* delta_ptr = delta_a_ptr + column*4;
 	const u16 deltaDistX = delta_ptr[0];
 	const u16 deltaDistY = delta_ptr[1];
 	const s16 rayDirX = (s16)delta_ptr[2];
@@ -347,7 +350,7 @@ static FORCE_INLINE void process_column (u8 c, const u16* delta_a_ptr, u16 a, u1
 	u16 sideDistX, sideDistY;
 	s16 stepX, stepY, stepYMS;
 
-#if USE_TAB_DELTAS_3
+#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
 	// rayDix < 0 and rayDirY < 0
 	if (rayDir == 0) {
 		stepX = -1;
@@ -454,21 +457,21 @@ static FORCE_INLINE void process_column (u8 c, const u16* delta_a_ptr, u16 a, u1
 			if (hit) {
 
 				u16 h2 = tab_wall_div[sideDistX];
-				u16 d8 = tab_color_d8_x[sideDistX]; // it was: (7 - min(7, sideDistX / FP))*8 + 1;
 
-			#if SHOW_TEXCOORD
+				#if SHOW_TEXCOORD
+				u16 d = (7 - min(7, sideDistX / FP));
 				u16 wallY = posY + (muls(sideDistX, rayDirY) >> FS);
 				//wallY = ((wallY * 8) >> FS) & 7; // faster
 				wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
-				// if tab_color_d8_x[] optimization is removed then use min(d8, wallY)*8 at the end
-				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d8-1, wallY*8);
-			#else
+				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
+				#else
+				u16 d8 = tab_color_d8_x[sideDistX];
 				u16 color = d8; // PAL0 by default
 				if (mapY&1)
 					color |= (PAL2 << TILE_ATTR_PALETTE_SFT);
-			#endif
+				#endif
 
-				u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
+				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
 				write_vline(column_ptr, h2, color);
 				break;
 			}
@@ -485,21 +488,21 @@ static FORCE_INLINE void process_column (u8 c, const u16* delta_a_ptr, u16 a, u1
 			if (hit) {
 
 				u16 h2 = tab_wall_div[sideDistY];
-				u16 d8 = tab_color_d8_y[sideDistY]; // it was: (7 - min(7, sideDistY / FP))*8 + 1;
 
-			#if SHOW_TEXCOORD
+				#if SHOW_TEXCOORD
+				u16 d = (7 - min(7, sideDistY / FP));
 				u16 wallX = posX + (muls(sideDistY, rayDirX) >> FS);
 				//wallX = ((wallX * 8) >> FS) & 7; // faster
 				wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
-				// if tab_color_d8_y[] optimization is removed then use min(d8, wallX)*8 at the end
-				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d8-1, wallX*8);
-			#else
+				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
+				#else
+				u16 d8 = tab_color_d8_y[sideDistY];
 				u16 color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT); // PAL1 by default
 				if (mapX&1)
 					color |= (PAL3 << TILE_ATTR_PALETTE_SFT);
-			#endif
+				#endif
 
-				u16 *column_ptr = frame_buffer + frame_buffer_col_offset[c];
+				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
 				write_vline(column_ptr, h2, color);
 				break;
 			}
