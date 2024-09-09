@@ -1,14 +1,12 @@
 const fs = require('fs');
 
-const outputFile = 'tab_wall_div.txt';
+const outputFile = 'tab_wall_div_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { FP, STEP_COUNT, VERTICAL_COLUMNS, TILEMAP_COLUMNS } = require('./consts');
+const { FP, STEP_COUNT, VERTICAL_COLUMNS, TILEMAP_COLUMNS, MAX_U8 } = require('./consts');
 
 // Vertical height calculation starts at the center
 const WALL_H2 = (VERTICAL_COLUMNS * 8) / 2;
-
-const MAX_U8 = 255;  // Assuming MAX_U8 as 255 since it's an 8-bit value
 
 // Initialize the tab_wall_div array
 let tab_wall_div = new Array(FP * (STEP_COUNT + 1));

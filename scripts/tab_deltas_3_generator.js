@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 const inputFile = '../inc/tab_deltas.h';
-const outputFile = 'tab_deltas_3.txt';
+const outputFile = 'tab_deltas_3_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
 const { AP, PIXEL_COLUMNS } = require('./consts');

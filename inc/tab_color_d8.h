@@ -4,6 +4,13 @@
 #include <types.h>
 #include "consts.h"
 
+/*
+u16 d = 7 - min(7, sideDistY / FP);
+u16 color_d8 = 1 + d*8;
+
+color_d8 is the value stored in these two arrays: tab_color_d8_x[] and tab_color_d8_y[]
+*/
+
 const u16 tab_color_d8_x[FP * (STEP_COUNT + 1)] = {
 0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,

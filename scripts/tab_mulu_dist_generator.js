@@ -1,12 +1,10 @@
 const fs = require('fs');
 
 const inputFile = '../inc/tab_deltas.h';
-const outputFile = 'tab_mulu_dist.txt';
+const outputFile = 'tab_mulu_dist_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE } = require('./consts');
-
-const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
+const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE, DELTA_DIST_VALUES } = require('./consts');
 
 function isInteger(value) {
     return !isNaN(parseInt(value)) && isFinite(value);

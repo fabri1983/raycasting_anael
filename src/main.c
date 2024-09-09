@@ -34,13 +34,14 @@
 #include "map_matrix.h"
 
 #include "tab_wall_div.h"
-#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
+#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 #include "tab_deltas_3.h"
 #else
 #include "tab_deltas.h"
 #endif
 #include "tab_dir_xy.h"
 #include "tab_color_d8.h"
+#include "tab_color_d8_with_pal.h"
 #if USE_TAB_MULU_DIST_DIV256
 #include "tab_mulu_dist_div256.h"
 #endif
@@ -226,6 +227,8 @@ int main (bool hardReset)
 		u16 joy = JOY_readJoypad(JOY_1);
 		if (joy) {
 
+			// if (joy & BUTTON_START) break;
+
 			// movement and collisions
 			if (joy & (BUTTON_UP | BUTTON_DOWN)) {
 
@@ -286,7 +289,7 @@ int main (bool hardReset)
 			u16 sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
 
 			u16 a = angle / (1024 / AP); // a is [0, 128)
-			#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
+			#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 3);
 			#else
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
@@ -334,7 +337,7 @@ int main (bool hardReset)
 }
 
 static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
-#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
+#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 	const u16* delta_ptr = delta_a_ptr + column*3;
 	u16 deltaDistX = delta_ptr[0];
 	u16 deltaDistY = delta_ptr[1];
@@ -350,7 +353,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 	u16 sideDistX, sideDistY;
 	s16 stepX, stepY, stepYMS;
 
-#if USE_TAB_DELTAS_3 && !SHOW_TEXCOORD
+#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 	// rayDix < 0 and rayDirY < 0
 	if (rayDir == 0) {
 		stepX = -1;
@@ -466,9 +469,10 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
 				#else
 				u16 d8 = tab_color_d8_x[sideDistX];
-				u16 color = d8; // PAL0 by default
-				if (mapY&1)
-					color |= (PAL2 << TILE_ATTR_PALETTE_SFT);
+				u16 color;
+				if (mapY&1) color = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
+				else color = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
+				//u16 color = tab_color_d8_x_with_pal[mapY&1][sideDistX]; // this is indeed slower than previous calculations
 				#endif
 
 				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
@@ -497,9 +501,10 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
 				#else
 				u16 d8 = tab_color_d8_y[sideDistY];
-				u16 color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT); // PAL1 by default
-				if (mapX&1)
-					color |= (PAL3 << TILE_ATTR_PALETTE_SFT);
+				u16 color;
+				if (mapX&1) color = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
+				else color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
+				//u16 color = tab_color_d8_y_with_pal[mapX&1][sideDistY]; // this is indeed slower than previous calculations
 				#endif
 
 				u16 *column_ptr = frame_buffer + frame_buffer_column[column];

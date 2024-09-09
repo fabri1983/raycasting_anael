@@ -15,6 +15,21 @@ const PIXEL_COLUMNS = 80;
 
 const MAP_SIZE = 16;
 
+const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
+
+//---------------------
+// SGDK constants
+//---------------------
+const PAL0 = 0;
+const PAL1 = 1;
+const PAL2 = 2;
+const PAL3 = 3;
+const TILE_ATTR_PALETTE_SFT = 13;
+const M_PI = Math.PI;
+const MAX_U8 = 255;  // Assuming MAX_U8 as 255 since it's an 8-bit value
+const MAX_U16 = 0xFFFF;
+
+// Export all of them
 exports.FS = FS
 exports.FP = FP
 exports.AP = AP
@@ -23,3 +38,12 @@ exports.VERTICAL_COLUMNS = VERTICAL_COLUMNS
 exports.TILEMAP_COLUMNS = TILEMAP_COLUMNS
 exports.PIXEL_COLUMNS = PIXEL_COLUMNS
 exports.MAP_SIZE = MAP_SIZE
+exports.DELTA_DIST_VALUES = DELTA_DIST_VALUES
+exports.PAL0 = PAL0
+exports.PAL1 = PAL1
+exports.PAL2 = PAL2
+exports.PAL3 = PAL3
+exports.TILE_ATTR_PALETTE_SFT = TILE_ATTR_PALETTE_SFT
+exports.M_PI = M_PI
+exports.MAX_U8 = MAX_U8
+exports.MAX_U16 = MAX_U16

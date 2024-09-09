@@ -14,13 +14,11 @@ Expects a file named tab_mulu_dist.txt generated from tab_mulu_dist_generator.js
 const fs = require('fs');
 const readline = require('readline');
 
-const inputFile = 'tab_mulu_dist.txt';
+const inputFile = 'tab_mulu_OUTPUT.txt';
 const outputFile = 'tab_mulu_dist_FULL.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { AP } = require('./consts');
-
-const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
+const { AP, DELTA_DIST_VALUES } = require('./consts');
 
 const expectedCount = (1024/(1024/AP) - 1)*DELTA_DIST_VALUES + 64;
 const maxM = expectedCount - 1;

@@ -1,12 +1,9 @@
 const fs = require('fs');
 
-const outputFile = 'tab_deltas_content.txt';
+const outputFile = 'tab_deltas_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { FP, AP, PIXEL_COLUMNS } = require('./consts');
-
-const M_PI = Math.PI;
-const MAX_U16 = 0xFFFF;
+const { FP, AP, PIXEL_COLUMNS, M_PI, MAX_U16 } = require('./consts');
 
 let tabDeltas = new Uint16Array(AP * PIXEL_COLUMNS * 4);
 let deltaPtr = 0;
