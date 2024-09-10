@@ -42,9 +42,7 @@
 #include "tab_dir_xy.h"
 #include "tab_color_d8.h"
 #include "tab_color_d8_with_pal.h"
-#if USE_TAB_MULU_DIST_DIV256
 #include "tab_mulu_dist_div256.h"
-#endif
 
 // 224 px display height, but only VERTICAL_COLUMNS height for the frame buffer (tilemap).
 // PLANE_COLUMNS is the width of the tilemap on screen.
@@ -295,7 +293,7 @@ int main (bool hardReset)
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
 			#endif
 			#if USE_TAB_MULU_DIST_DIV256
-			a *= DELTA_DIST_VALUES; // offset into tab_mulu_dist_div256[...][a]
+			a *= APPROX_TAB_DELTA_DIST_VALUES; // offset into tab_mulu_dist_div256[...][a]
 			#endif
 
 			// 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
@@ -360,8 +358,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
+		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
 		#else
 		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
 		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
@@ -372,9 +370,9 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		stepX = -1;
 		stepY = 1;
 		stepYMS = MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
+		#if USE_TAB_MULU_DIS_DIV256
+		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
 		#else
 		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
 		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
@@ -386,8 +384,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
+		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
 		#else
 		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
 		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
@@ -399,8 +397,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		stepY = 1;
 		stepYMS = MAP_SIZE;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
+		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
 		#else
 		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
 		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
@@ -410,7 +408,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 	if (rayDirX < 0) {
 		stepX = -1;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+c)];
+		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
 		#else
 		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
 		#endif
@@ -418,7 +416,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 	else {
 		stepX = 1;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+c)];
+		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
 		#else
 		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
 		#endif
@@ -428,7 +426,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+c)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
 		#else
 		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
 		#endif
@@ -437,7 +435,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		stepY = 1;
 		stepYMS = MAP_SIZE;
 		#if USE_TAB_MULU_DIST_DIV256
-		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+c)];
+		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
 		#else
 		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
 		#endif

@@ -15,7 +15,9 @@ const PIXEL_COLUMNS = 80;
 
 const MAP_SIZE = 16;
 
-const DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
+// tab_deltas[] gives us access to 64 values for deltaDistX and deltaDistY.
+// This is an "approximation" to decrease size of the table (not producing a rom bigger than 4096 KB) while keeps giving "correct" results.
+const APPROX_TAB_DELTA_DIST_VALUES = 60; // this value same than the one in tab_mulu_dist_div256.h
 
 //---------------------
 // SGDK constants
@@ -38,7 +40,7 @@ exports.VERTICAL_COLUMNS = VERTICAL_COLUMNS
 exports.TILEMAP_COLUMNS = TILEMAP_COLUMNS
 exports.PIXEL_COLUMNS = PIXEL_COLUMNS
 exports.MAP_SIZE = MAP_SIZE
-exports.DELTA_DIST_VALUES = DELTA_DIST_VALUES
+exports.APPROX_TAB_DELTA_DIST_VALUES = APPROX_TAB_DELTA_DIST_VALUES
 exports.PAL0 = PAL0
 exports.PAL1 = PAL1
 exports.PAL2 = PAL2

@@ -1,10 +1,10 @@
 const fs = require('fs');
 
 const inputFile = '../inc/tab_deltas.h';
-const outputFile = 'tab_mulu_dist_OUTPUT.txt';
+const outputFile = 'tab_mulu_dist_div256_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE, DELTA_DIST_VALUES } = require('./consts');
+const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE, APPROX_TAB_DELTA_DIST_VALUES } = require('./consts');
 
 function isInteger(value) {
     return !isNaN(parseInt(value)) && isFinite(value);
@@ -50,7 +50,7 @@ function processTabDeltas() {
     const tab_deltas = readTabDeltas();
     const outputMap = new Map(); // Using a Map to keep track of the largest value for each [N][M]
 
-    for (let posX = 0; posX <= FP; posX += 1) {
+    for (let posX = 0; posX < FP; posX += 1) {
         for (let angle = 0; angle < 1024; angle += 8) {
 			
 			var posY = posX;
@@ -61,7 +61,7 @@ function processTabDeltas() {
             const sideDistY_l1 = ((Math.floor(posY / FP) + 1) * FP - posY);
 
             let a = Math.floor(angle / (1024 / AP));
-			const aa = a * DELTA_DIST_VALUES;
+			const aa = a * APPROX_TAB_DELTA_DIST_VALUES;
             a *= 256; // instead of: const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
 
             for (let c = 0; c < PIXEL_COLUMNS; ++c) {
@@ -83,9 +83,11 @@ function processTabDeltas() {
                     keyX = `[${sideDistX_l1}][${aa + c}]`;
                 }
 
-                // keep the line with biggest value
-                if (keyX != null && (!outputMap.has(keyX) || outputMap.get(keyX) < sideDistX)) {
-                    outputMap.set(keyX, sideDistX);
+                if (keyX != null) {
+                    // NOTE: not sure why I need to do this, something is wrong in the way the keys is generated, maybe the use APPROX_TAB_DELTA_DIST_VALUES.
+                    // Keep the line with biggest value
+                    //if (!outputMap.has(keyX) || outputMap.get(keyX) < sideDistX)
+                        outputMap.set(keyX, sideDistX);
                 }
 
                 let sideDistY, stepY, stepYMS;
@@ -103,9 +105,11 @@ function processTabDeltas() {
 					keyY = `[${sideDistY_l1}][${aa + c}]`;
                 }
 
-                // keep the line with biggest value
-                if (keyY != null && (!outputMap.has(keyY) || outputMap.get(keyY) < sideDistY)) {
-                    outputMap.set(keyY, sideDistY);
+                if (keyY != null) {
+                    // NOTE: not sure why I need to do this, something is wrong in the way the keys is generated, maybe the use APPROX_TAB_DELTA_DIST_VALUES.
+                    // Keep the line with biggest value
+                    //if (!outputMap.has(keyY) || outputMap.get(keyY) < sideDistY)
+                        outputMap.set(keyY, sideDistY);
                 }
             }
         }

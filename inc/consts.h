@@ -3,7 +3,6 @@
 
 #define SHOW_TEXCOORD FALSE // Show texture coords? This disabled the use of USE_TAB_DELTAS_3.
 #define USE_TAB_DELTAS_3 TRUE // Use smaller table with 3 columns where ray direction is encoded. Not suitable for texture coords calculation.
-#define USE_TAB_MULU_DIST_DIV256 FALSE // Use mega big table for mulu pre calculation. This only works for one of: sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1
 
 #define FS 8 // fixed point size in bits
 #define FP (1<<FS) // fixed precision
@@ -29,5 +28,11 @@
 #define PIXEL_COLUMNS 80
 
 #define MAP_SIZE 16
+
+#define USE_TAB_MULU_DIST_DIV256 FALSE // Use mega big table for mulu pre calculation. This only works for one of: sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1
+
+// tab_deltas[] gives us access to PIXEL_COLUMNS values for deltaDistX and deltaDistY.
+// This is an "approximation" to decrease size of the table (not producing a rom bigger than 4096 KB) while keeps giving "correct" results.
+#define APPROX_TAB_DELTA_DIST_VALUES 60
 
 #endif // _CONSTS_H_

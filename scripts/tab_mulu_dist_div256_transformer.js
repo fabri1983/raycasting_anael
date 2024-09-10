@@ -1,5 +1,5 @@
 /*
-Expects a file named tab_mulu_dist.txt generated from tab_mulu_dist_generator.js, with next format:
+Expects a file named generated from tab_mulu_dist_div256_generator.js, with next format:
 	[N][M]=x
 	Eg:
 	[0][32]=1265
@@ -14,13 +14,13 @@ Expects a file named tab_mulu_dist.txt generated from tab_mulu_dist_generator.js
 const fs = require('fs');
 const readline = require('readline');
 
-const inputFile = 'tab_mulu_OUTPUT.txt';
-const outputFile = 'tab_mulu_dist_FULL.txt';
+const inputFile = 'tab_mulu_dist_div256_OUTPUT.txt';
+const outputFile = 'tab_mulu_dist_div256_FULL.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { AP, DELTA_DIST_VALUES } = require('./consts');
+const { AP, APPROX_TAB_DELTA_DIST_VALUES, PIXEL_COLUMNS } = require('./consts');
 
-const expectedCount = (1024/(1024/AP) - 1)*DELTA_DIST_VALUES + 64;
+const expectedCount = (1024/(1024/AP) - 1)*APPROX_TAB_DELTA_DIST_VALUES + PIXEL_COLUMNS;
 const maxM = expectedCount - 1;
 const minM = 0;
 
