@@ -2,13 +2,14 @@
 #define _CONSTS_H_
 
 #define SHOW_TEXCOORD FALSE // Show texture coords? This disabled the use of USE_TAB_DELTAS_3.
-#define USE_TAB_DELTAS_3 TRUE // Use smaller table with 3 columns where ray direction is encoded. Not suitable for texture coords calculation.
+#define USE_TAB_DELTAS_3 FALSE // Use smaller table with 3 columns where ray direction is encoded. Not suitable for texture coords calculation.
+#define USE_TAB_MULU_DIST_DIV256 FALSE // Use mega big table for mulu pre calculation. Not working due to table size incurring rom size > 4096 KB.
 
 #define FS 8 // fixed point size in bits
 #define FP (1<<FS) // fixed precision
 #define AP 128 // angle precision (optimal for a rotation step of 8 : 1024/8 = 128)
 #define STEP_COUNT 15 // (STEP_COUNT+1 should be a power of two)
-#define STEP_COUNT_LOOP STEP_COUNT // If lower than STEP_COUNT then distant hits are ignored => less cpu usage
+#define STEP_COUNT_LOOP STEP_COUNT // If lower than STEP_COUNT then distant hits are ignored => less cpu usage but less display depth
 
 #define PB_ADDR 0xC000 // default Plane B address set in VDP_setPlaneSize()
 #define PA_ADDR 0xE000 // default Plane A address set in VDP_setPlaneSize()
@@ -28,11 +29,5 @@
 #define PIXEL_COLUMNS 80
 
 #define MAP_SIZE 16
-
-#define USE_TAB_MULU_DIST_DIV256 FALSE // Use mega big table for mulu pre calculation. This only works for one of: sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1
-
-// tab_deltas[] gives us access to PIXEL_COLUMNS values for deltaDistX and deltaDistY.
-// This is an "approximation" to decrease size of the table (not producing a rom bigger than 4096 KB) while keeps giving "correct" results.
-#define APPROX_TAB_DELTA_DIST_VALUES 60
 
 #endif // _CONSTS_H_

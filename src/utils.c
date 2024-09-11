@@ -2,6 +2,7 @@
 #include <vdp.h>
 #include <vdp_bg.h>
 #include <sys.h>
+#include "consts.h"
 
 FORCE_INLINE void turnOffVDP (u8 reg01) {
     //reg01 &= ~0x40;
@@ -57,6 +58,18 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr) {
     *dmaPtr = 0x9500 | (fromAddr & 0xff);
     *dmaPtr = 0x9600 | ((fromAddr >> 8) & 0xff); // This step is useless if the address has only set first 8 bits
     *dmaPtr = 0x9700 | ((fromAddr >> 16) & 0x7f); // This step is useless if the address has only set first 12 bits
+}
+
+FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2) {
+   u16 result = op1;
+   __asm (
+        "    mulu.w  %1, %0\n"
+        "    lsr.l   %[_FS], %0\n"
+        : "+d" (result)
+        : "d" (op2), [_FS] "i" (FS)
+        : "cc"
+    );
+   return result;
 }
 
 const unsigned char div_100[] = {

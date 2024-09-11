@@ -14,3 +14,7 @@ pids
 # Builds
 out/
 build/
+
+# Project specific
+scripts/*OUTPUT*
+scripts/*FULL*

@@ -48,6 +48,12 @@ void waitVCounterReg (u16 n);
 */
 void setupDMAForPals (u16 len, u32 fromAddr);
 
+/// @brief Multiply and shift by FS in asm to directly return u16 data type.
+/// @param op1 
+/// @param op2 
+/// @return u16 data type
+u16 mulu_shft_FS (u16 op1, u16 op2);
+
 /// @brief Same than VDP_showCPULoad() but optimized. Show values up to 255%. Otherwise it crashes.
 /// @param xPos screen X position in tiles
 /// @param yPos screen Y position in tiles

@@ -18,7 +18,7 @@ if (joy & (BUTTON_LEFT | BUTTON_RIGHT)) {
 */
 
 // dirX by angle divided by 24
-static const s16 tab_dir_x_div24[1017] = {
+const s16 tab_dir_x_div24[1017] = {
     0/24,  0,0,0,0,0,0,0,
     12/24,  0,0,0,0,0,0,0,
     24/24,  0,0,0,0,0,0,0,
@@ -150,7 +150,7 @@ static const s16 tab_dir_x_div24[1017] = {
 };
 
 // dirY by angle divided by 24
-static const s16 tab_dir_y_div24[1017] = {
+const s16 tab_dir_y_div24[1017] = {
     256/24,  0,0,0,0,0,0,0,
     252/24,  0,0,0,0,0,0,0,
     252/24,  0,0,0,0,0,0,0,

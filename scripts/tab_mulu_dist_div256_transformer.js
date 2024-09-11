@@ -18,9 +18,9 @@ const inputFile = 'tab_mulu_dist_div256_OUTPUT.txt';
 const outputFile = 'tab_mulu_dist_div256_FULL.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { AP, APPROX_TAB_DELTA_DIST_VALUES, PIXEL_COLUMNS } = require('./consts');
+const { AP, PIXEL_COLUMNS } = require('./consts');
 
-const expectedCount = (1024/(1024/AP) - 1)*APPROX_TAB_DELTA_DIST_VALUES + PIXEL_COLUMNS;
+const expectedCountM = (1024/(1024/AP))*PIXEL_COLUMNS;
 const maxM = expectedCount - 1;
 const minM = 0;
 
@@ -82,8 +82,8 @@ async function processFile() {
                 prevM = missingM;
             }
             // Sanity check for previous N
-            if (currentNCount !== expectedCount) {
-                throw new Error(`Sanity check failed: N=${prevN} has ${currentNCount} M values instead of ${expectedCount}`);
+            if (currentNCount !== expectedCountM) {
+                throw new Error(`Sanity check failed: N=${prevN} has ${currentNCount} M values instead of ${expectedCountM}`);
             }
             currentNCount = 0;
             prevM = -1;
@@ -125,8 +125,8 @@ async function processFile() {
     }
 
     // Final sanity check
-    if (currentNCount !== expectedCount) {
-        throw new Error(`Sanity check failed: Last N=${prevN} has ${currentNCount} M values instead of ${expectedCount}`);
+    if (currentNCount !== expectedCountM) {
+        throw new Error(`Sanity check failed: Last N=${prevN} has ${currentNCount} M values instead of ${expectedCountM}`);
     }
 
     const result = outputLines.reduce((acc, line) => {
@@ -145,8 +145,10 @@ async function processFile() {
     // Write output to file
     fs.writeFileSync(outputFile, result.join(',\n'));
     console.log('Processing complete. Output saved to ' + outputFile);
-    console.log(`Sanity checks passed: All N sequences have exactly ${expectedCount} M values and no consecutive M values are equal.`);
+    console.log(`Sanity checks passed: All N sequences have exactly ${expectedCountM} M values and no consecutive M values are equal.`);
 }
+
+console.log('Execution in progress...');
 
 processFile().catch(error => {
     console.error(`An error occurred: ${error.message}`);

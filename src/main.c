@@ -281,27 +281,29 @@ int main (bool hardReset)
 
 		// DDA
 		{
-			u16 sideDistX_l0 = posX & (FP - 1); // (posX - (posX/FP)*FP);
-			u16 sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
-			u16 sideDistY_l0 = posY & (FP - 1); // (posY - (posY/FP)*FP);
-			u16 sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
+			// Value goes from 0 up to 256 (FP)
+			u16 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
+			sideDistX_l0 = posX & (FP - 1); // (posX - (posX/FP)*FP);
+			sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
+			sideDistY_l0 = posY & (FP - 1); // (posY - (posY/FP)*FP);
+			sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
 
-			u16 a = angle / (1024 / AP); // a is [0, 128)
+			u16 a = angle / (1024 / AP); // a range is [0, 128)
 			#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 3);
 			#else
 			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
 			#endif
 			#if USE_TAB_MULU_DIST_DIV256
-			a *= APPROX_TAB_DELTA_DIST_VALUES; // offset into tab_mulu_dist_div256[...][a]
+			a *= PIXEL_COLUMNS; // offset into tab_mulu_dist_div256[...][a]
 			#endif
 
 			// 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-			for (u8 c = 0; c < PIXEL_COLUMNS; c+=4) {
-				process_column(c+0, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(c+1, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(c+2, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(c+3, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+			for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
+				process_column(column+0, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+1, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+2, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+3, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
 			}
 		}
 
@@ -337,18 +339,18 @@ int main (bool hardReset)
 static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
 #if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 	const u16* delta_ptr = delta_a_ptr + column*3;
-	u16 deltaDistX = delta_ptr[0];
-	u16 deltaDistY = delta_ptr[1];
+	u16 deltaDistX = delta_ptr[0]; // value up to 65536-1
+	u16 deltaDistY = delta_ptr[1]; // value up to 65536-1
 	s16 rayDir = (s16)delta_ptr[2];
-	#else
+#else
 	const u16* delta_ptr = delta_a_ptr + column*4;
-	const u16 deltaDistX = delta_ptr[0];
-	const u16 deltaDistY = delta_ptr[1];
+	const u16 deltaDistX = delta_ptr[0]; // value up to 65536-1
+	const u16 deltaDistY = delta_ptr[1]; // value up to 65536-1
 	const s16 rayDirX = (s16)delta_ptr[2];
 	const s16 rayDirY = (s16)delta_ptr[3];
-	#endif
+#endif
 
-	u16 sideDistX, sideDistY;
+	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 due to operation >> FS
 	s16 stepX, stepY, stepYMS;
 
 #if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
@@ -361,8 +363,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
 		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
 		#else
-		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
-		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
+		sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
+		sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
 		#endif
 	}
 	// rayDix < 0 and rayDirY > 0
@@ -374,8 +376,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
 		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
 		#else
-		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) / FP);
-		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
+		sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
+		sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
 		#endif
 	}
 	// rayDix > 0 and rayDirY < 0
@@ -387,8 +389,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
 		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
 		#else
-		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
-		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) / FP);
+		sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
+		sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
 		#endif
 	}
 	// rayDix > 0 and rayDirY > 0
@@ -400,8 +402,8 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
 		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
 		#else
-		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) / FP);
-		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) / FP);
+		sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
+		sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
 		#endif
 	}
 #else
@@ -410,7 +412,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		#if USE_TAB_MULU_DIST_DIV256
 		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
 		#else
-		sideDistX = (u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
+		sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
 		#endif
 	}
 	else {
@@ -418,7 +420,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		#if USE_TAB_MULU_DIST_DIV256
 		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
 		#else
-		sideDistX = (u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
+		sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
 		#endif
 	}
 
@@ -428,7 +430,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		#if USE_TAB_MULU_DIST_DIV256
 		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
 		#else
-		sideDistY = (u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
+		sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
 		#endif
 	}
 	else {
@@ -437,7 +439,7 @@ static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 
 		#if USE_TAB_MULU_DIST_DIV256
 		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
 		#else
-		sideDistY = (u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
+		sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
 		#endif
 	}
 #endif
