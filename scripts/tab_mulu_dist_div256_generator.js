@@ -82,7 +82,7 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                     } else {
                         stepX = 1;
                         sideDistX = (mulu(sideDistX_l1, deltaDistX) >> FS) & 0xFFFF;
-                        keyX = `[${sideDistX_l1}][${a_for_matrix + c}]`;
+                        //keyX = `[${sideDistX_l1}][${a_for_matrix + c}]`;
                     }
 
                     if (keyX != null) {
@@ -99,12 +99,12 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                         stepY = -1;
                         stepYMS = -MAP_SIZE;
                         sideDistY = (mulu(sideDistY_l0, deltaDistY) >> FS) & 0xFFFF;
-                        keyY = `[${sideDistY_l0}][${a_for_matrix + c}]`;
+                        //keyY = `[${sideDistY_l0}][${a_for_matrix + c}]`;
                     } else {
                         stepY = 1;
                         stepYMS = MAP_SIZE;
                         sideDistY = (mulu(sideDistY_l1, deltaDistY) >> FS) & 0xFFFF;
-                        keyY = `[${sideDistY_l1}][${a_for_matrix + c}]`;
+                        //keyY = `[${sideDistY_l1}][${a_for_matrix + c}]`;
                     }
 
                     if (keyY != null) {

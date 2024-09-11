@@ -48,7 +48,7 @@ void waitVCounterReg (u16 n);
 */
 void setupDMAForPals (u16 len, u32 fromAddr);
 
-/// @brief Multiply and shift by FS in asm to directly return u16 data type.
+/// @brief Multiply and shift by FS using asm to directly return u16 data type.
 /// @param op1 
 /// @param op2 
 /// @return u16 data type

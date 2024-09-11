@@ -21,7 +21,7 @@ const outputFile = 'tab_mulu_dist_div256_FULL.txt';
 const { AP, PIXEL_COLUMNS } = require('./consts');
 
 const expectedCountM = (1024/(1024/AP))*PIXEL_COLUMNS;
-const maxM = expectedCount - 1;
+const maxM = expectedCountM - 1;
 const minM = 0;
 
 async function processFile() {
