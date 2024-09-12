@@ -5,7 +5,7 @@
 #define USE_TAB_DELTAS_3 FALSE // Use smaller table with 3 columns where ray direction is encoded. Not suitable for texture coords calculation.
 
 // Use mega big table for pre calculated mulu results.
-// Not working due to table size incurring rom size > 4096 KB plus the table seems to only works for one of sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1.
+// Not working due to table size incurring rom size > 4096 KB plus the table seems to only works for one of: (sideDistX_l0,sideDistX_l1) or (sideDistY_l0,sideDistY_l1).
 #define USE_TAB_MULU_DIST_DIV256 FALSE
 
 #define FS 8 // fixed point size in bits
@@ -16,7 +16,8 @@
 
 #define PB_ADDR 0xC000 // default Plane B address set in VDP_setPlaneSize()
 #define PA_ADDR 0xE000 // default Plane A address set in VDP_setPlaneSize()
-#define HALF_PLANE_ADDR 0x0600 // In case we need to split in half the DMA of any plane
+#define HALF_PLANE_ADDR_OFFSET 0x0600 // In case we split in 2 the DMA of any plane and need to set the correct offset
+#define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 the DMA of any plane and need to set the correct offset
 
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24

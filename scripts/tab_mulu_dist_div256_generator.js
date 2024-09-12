@@ -82,7 +82,7 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                     } else {
                         stepX = 1;
                         sideDistX = (mulu(sideDistX_l1, deltaDistX) >> FS) & 0xFFFF;
-                        //keyX = `[${sideDistX_l1}][${a_for_matrix + c}]`;
+                        keyX = `[${sideDistX_l1}][${a_for_matrix + c}]`;
                     }
 
                     if (keyX != null) {

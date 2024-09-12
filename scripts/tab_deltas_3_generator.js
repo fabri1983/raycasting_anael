@@ -60,10 +60,11 @@ function calculateRayDirection(rayDirX, rayDirY) {
 async function processFile() {
     const tab_deltas = readTabDeltas();
     const outputLines = [];
+    let asm_block_size_factor = 12; // jump block size wise
 
     for (let c = 0; c < tab_deltas.length; c+=4) {
         var rayDirection = calculateRayDirection(tab_deltas[c+2], tab_deltas[c+3]);
-        outputLines.push(`${tab_deltas[c+0]},${tab_deltas[c+1]},${rayDirection},`);
+        outputLines.push(`${tab_deltas[c+0]}, ${tab_deltas[c+1]}, ${rayDirection}*${asm_block_size_factor},`);
     }
 
     // Write output to file

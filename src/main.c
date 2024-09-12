@@ -30,33 +30,15 @@
 #include "utils.h"
 #include "consts.h"
 #include "clear_buffer.h"
-#include "write_vline.h"
 #include "map_matrix.h"
-
-#include "tab_wall_div.h"
+#include "frame_buffer.h"
+#include "process_column.h"
+#include "tab_dir_xy.h"
 #if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
 #include "tab_deltas_3.h"
 #else
 #include "tab_deltas.h"
 #endif
-#include "tab_dir_xy.h"
-#include "tab_color_d8.h"
-#include "tab_color_d8_with_pal.h"
-#include "tab_mulu_dist_div256.h"
-
-// 224 px display height, but only VERTICAL_COLUMNS height for the frame buffer (tilemap).
-// PLANE_COLUMNS is the width of the tilemap on screen.
-// Multiplied by 2 because is shared between the 2 planes BG_A and BG_B
-static u16 frame_buffer[VERTICAL_COLUMNS*PLANE_COLUMNS*2];
-
-// Calculate the offset to access every column one of the 2 planes from the framebuffer.
-static u16 frame_buffer_column[PLANE_COLUMNS*2];
-
-static void loadPlaneDisplacements () {
-	for (u16 i = 0; i < PLANE_COLUMNS*2; i++) {
-		frame_buffer_column[i] = i&1 ? VERTICAL_COLUMNS*PLANE_COLUMNS + i/2 : i/2;
-	}
-}
 
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
@@ -133,8 +115,10 @@ HINTERRUPT_CALLBACK hintCallbackHUD () {
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
     turnOnVDP(0x74);
 
-	// Send half of the PA
+	// Send 1/2 of the PA
 	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+	// Send 1/4 of the PA
+	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
 	// Reload the first 2 palettes that were overriden by the HUD palettes
 	// waitVCounterReg(224);
@@ -170,9 +154,6 @@ void vBlankCallback () {
 	// clear the frame buffer
 	//clear_buffer((u8*)frame_buffer);
 }
-
-// forward declaration
-static void process_column (u8 column, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
 
 int main (bool hardReset)
 {
@@ -290,9 +271,9 @@ int main (bool hardReset)
 
 			u16 a = angle / (1024 / AP); // a range is [0, 128)
 			#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 3);
+			u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 3));
 			#else
-			const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
+			u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 4));
 			#endif
 			#if USE_TAB_MULU_DIST_DIV256
 			a *= PIXEL_COLUMNS; // offset into tab_mulu_dist_div256[...][a]
@@ -300,15 +281,18 @@ int main (bool hardReset)
 
 			// 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
 			for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
-				process_column(column+0, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(column+1, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(column+2, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(column+3, delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+0, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+1, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+2, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+				process_column(column+3, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
 			}
 		}
 
-		// Enqueue the frame buffer
-		//DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		// Enqueue the frame buffer for DMA during VBlank period
+		// Remaining 1/2 of PA
+		//DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+		// Remaining 3/4 of PA
+		//DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_COLUMNS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 		DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 		DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
@@ -334,185 +318,4 @@ int main (bool hardReset)
 	VDP_drawText("Game Over", (TILEMAP_COLUMNS - 10)/2, (224/8)/2);
 
 	return 0;
-}
-
-static FORCE_INLINE void process_column (u8 column, const u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
-#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-	const u16* delta_ptr = delta_a_ptr + column*3;
-	u16 deltaDistX = delta_ptr[0]; // value up to 65536-1
-	u16 deltaDistY = delta_ptr[1]; // value up to 65536-1
-	s16 rayDir = (s16)delta_ptr[2];
-#else
-	const u16* delta_ptr = delta_a_ptr + column*4;
-	const u16 deltaDistX = delta_ptr[0]; // value up to 65536-1
-	const u16 deltaDistY = delta_ptr[1]; // value up to 65536-1
-	const s16 rayDirX = (s16)delta_ptr[2];
-	const s16 rayDirY = (s16)delta_ptr[3];
-#endif
-
-	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 due to operation >> FS
-	s16 stepX, stepY, stepYMS;
-
-#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-	// rayDix < 0 and rayDirY < 0
-	if (rayDir == 0) {
-		stepX = -1;
-		stepY = -1;
-		stepYMS = -MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
-		#else
-		sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
-		sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
-		#endif
-	}
-	// rayDix < 0 and rayDirY > 0
-	else if (rayDir == 1) {
-		stepX = -1;
-		stepY = 1;
-		stepYMS = MAP_SIZE;
-		#if USE_TAB_MULU_DIS_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
-		#else
-		sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
-		sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
-		#endif
-	}
-	// rayDix > 0 and rayDirY < 0
-	else if (rayDir == 2) {
-		stepX = 1;
-		stepY = -1;
-		stepYMS = -MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
-		#else
-		sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
-		sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
-		#endif
-	}
-	// rayDix > 0 and rayDirY > 0
-	else {
-		stepX = 1;
-		stepY = 1;
-		stepYMS = MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
-		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
-		#else
-		sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
-		sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
-		#endif
-	}
-#else
-	if (rayDirX < 0) {
-		stepX = -1;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l0][(a+column)];
-		#else
-		sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
-		#endif
-	}
-	else {
-		stepX = 1;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistX = tab_mulu_dist_div256[sideDistX_l1][(a+column)];
-		#else
-		sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
-		#endif
-	}
-
-	if (rayDirY < 0) {
-		stepY = -1;
-		stepYMS = -MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistY = tab_mulu_dist_div256[sideDistY_l0][(a+column)];
-		#else
-		sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
-		#endif
-	}
-	else {
-		stepY = 1;
-		stepYMS = MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-		sideDistY = tab_mulu_dist_div256[sideDistY_l1][(a+column)];
-		#else
-		sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
-		#endif
-	}
-#endif
-
-	u16 mapX = posX / FP;
-	u16 mapY = posY / FP;
-	const u8 *map_ptr = &map[mapY][mapX];
-
-	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
-
-		// side X
-		if (sideDistX < sideDistY) {
-
-			mapX += stepX;
-			map_ptr += stepX;
-
-			u16 hit = *map_ptr; // map[mapY][mapX];
-			if (hit) {
-
-				u16 h2 = tab_wall_div[sideDistX];
-
-				#if SHOW_TEXCOORD
-				u16 d = (7 - min(7, sideDistX / FP));
-				u16 wallY = posY + (muls(sideDistX, rayDirY) >> FS);
-				//wallY = ((wallY * 8) >> FS) & 7; // faster
-				wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
-				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
-				#else
-				u16 d8 = tab_color_d8_x[sideDistX];
-				u16 color;
-				if (mapY&1) color = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
-				else color = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
-				//u16 color = tab_color_d8_x_with_pal[mapY&1][sideDistX]; // this is indeed slower than previous calculations
-				#endif
-
-				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
-				write_vline(column_ptr, h2, color);
-				break;
-			}
-
-			sideDistX += deltaDistX;
-		}
-		// side Y
-		else {
-
-			mapY += stepY;
-			map_ptr += stepYMS;
-
-			u16 hit = *map_ptr; // map[mapY][mapX];
-			if (hit) {
-
-				u16 h2 = tab_wall_div[sideDistY];
-
-				#if SHOW_TEXCOORD
-				u16 d = (7 - min(7, sideDistY / FP));
-				u16 wallX = posX + (muls(sideDistY, rayDirX) >> FS);
-				//wallX = ((wallX * 8) >> FS) & 7; // faster
-				wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
-				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
-				#else
-				u16 d8 = tab_color_d8_y[sideDistY];
-				u16 color;
-				if (mapX&1) color = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
-				else color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
-				//u16 color = tab_color_d8_y_with_pal[mapX&1][sideDistY]; // this is indeed slower than previous calculations
-				#endif
-
-				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
-				write_vline(column_ptr, h2, color);
-				break;
-			}
-
-			sideDistY += deltaDistY;
-		}
-	}
 }

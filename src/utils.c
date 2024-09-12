@@ -61,15 +61,14 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr) {
 }
 
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2) {
-   u16 result = op1;
    __asm (
-        "    mulu.w  %1, %0\n"
-        "    lsr.l   %[_FS], %0\n"
-        : "+d" (result)
+        "mulu.w  %1, %0\n\t"
+        "lsr.l   %[_FS], %0\n\t"
+        : "+d" (op1)
         : "d" (op2), [_FS] "i" (FS)
         : "cc"
     );
-   return result;
+   return op1;
 }
 
 const unsigned char div_100[] = {
