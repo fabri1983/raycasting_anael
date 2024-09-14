@@ -14,7 +14,7 @@
 //   Same with BUTTON_UP and BUTTON_DOWN.
 // * Replaced dirX and dirY calculation in relation to the angle by two tables defined in tab_dir_xy.h => some cycles saved.
 // * Replaced DMA_doDmaFast() by DMA_queueDmaFast() => 1% saved in cpu usage.
-// * clear_buffer() replaced by inline asm to take advantage of compiler optimizations => %1 saved in cpu usage.
+// * Moved clear_buffer() into inline asm to take advantage of compiler optimizations => %1 saved in cpu usage.
 // * If clear_buffer() is moved into VBlank callback => %1 saved in cpu usage, but runs into next display period.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
 // * Replaced d for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
@@ -42,10 +42,10 @@
 
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
-static u16 loadRenderTiles () {
+static u16 loadRenderingTiles () {
 	// Create a buffer tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4][8]
-	memset(tile, 0, 32);
+	memset(tile, 0, 32); // clear the tile with color index 0
 
 	// 9 possible tile heights
 
@@ -56,7 +56,7 @@ static u16 loadRenderTiles () {
 
 	// 8 tiles per set
 	for (u16 i = 1; i <= 8; i++) {
-		memset(tile, 0, 32); // clear the tile
+		memset(tile, 0, 32); // clear the tile with color index 0
 		// 8 sets
 		for (u16 c = 0; c < 8; c++) {
 			// visit the rows of each tile in current set
@@ -84,7 +84,17 @@ static void loadHUD (u16 currentTileIndex) {
     VDP_setTileMapEx(BG_A, img_hud.tilemap, baseTileAttrib, 0, yPos, 0, 0, TILEMAP_COLUMNS, 4, DMA);
 }
 
-HINTERRUPT_CALLBACK hintCallbackHUD () {
+HINTERRUPT_CALLBACK hIntCallback () {
+	if (GET_VCOUNTER <= 95) {
+		waitHCounter(156);
+		// set background color used for the floor
+		PAL_setColor(0, palette_grey[2]);
+		return;
+	}
+	
+	// We are one scanline earlier so wait until entering th HBlank region
+	waitHCounter(152);
+
 	// Prepare DMA cmd and source address for first palette
     u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
     u32 fromAddrForDMA = (u32) (img_hud.palette->data + 1) >> 1; // TODO: this can be set outside the HInt
@@ -94,7 +104,7 @@ HINTERRUPT_CALLBACK hintCallbackHUD () {
 
     // At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter(146);
+    waitHCounter(152);
 
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
@@ -102,18 +112,22 @@ HINTERRUPT_CALLBACK hintCallbackHUD () {
 
 	// Prepare DMA cmd and source address for second palette
     palCmd = VDP_DMA_CRAM_ADDR((PAL1 * 16 + 1) * 2); // target starting color index multiplied by 2
-    fromAddrForDMA = (u32) (img_hud.palette->data + 17) >> 1; // TODO: this can be set outside the HInt
+    fromAddrForDMA = (u32) (img_hud.palette->data + 16 + 1) >> 1; // TODO: this can be set outside the HInt
 
 	// This seems to take an entire scanline, if you turn off VDP then it will draw black scanline (or whatever the BG color is) as a way off measure.
     setupDMAForPals(15, fromAddrForDMA);
 
 	// At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter(146);
+    waitHCounter(152);
 
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
     turnOnVDP(0x74);
+
+	// set background color used for the roof
+	// THIS INTRODUCES A COLOR DOT GLITCH BARELY NOTICABLE. SOLUTION IS TO DO THIS IN VBLANK CALLBACK
+	PAL_setColor(0, palette_grey[1]);
 
 	// Send 1/2 of the PA
 	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -151,6 +165,9 @@ void vBlankCallback () {
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
 	turnOnVDP(0x74);
 
+	// set background color used for the roof
+	//PAL_setColor(0, palette_grey[1]);
+
 	// clear the frame buffer
 	//clear_buffer((u8*)frame_buffer);
 }
@@ -167,7 +184,7 @@ int main (bool hardReset)
 
 	// Basic game setup
 	loadPlaneDisplacements();
-	u16 currentTileIndex = loadRenderTiles();
+	u16 currentTileIndex = loadRenderingTiles();
 	loadHUD(currentTileIndex);
 
 	MEM_pack();
@@ -175,8 +192,11 @@ int main (bool hardReset)
 	SYS_disableInts();
 	{
 		SYS_setVBlankCallback(vBlankCallback);
-		VDP_setHIntCounter((224-32)-2); // scanline location for the HUD
-    	SYS_setHIntCallback(hintCallbackHUD);
+		// Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
+		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
+		// 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
+		VDP_setHIntCounter(95-1); // -1 since hintcounter is 0 based
+    	SYS_setHIntCallback(hIntCallback);
     	VDP_setHInterrupt(TRUE);
 	}
 	SYS_enableInts();
@@ -187,15 +207,22 @@ int main (bool hardReset)
 	VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 	VDP_setHorizontalScroll(BG_A, 0);
 	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
-	PAL_setColor(0, 0x0222); // palette_grey[1]
-	//VDP_setBackgroundColor(1);
+	//VDP_setBackgroundColor(1); // this set grey as bg color so floor and roof are the same color
+	// set background color used for the roof
+	PAL_setColor(0, palette_grey[1]);
 
 	VDP_setEnable(TRUE);
 
 	SYS_doVBlankProcess();
 
+	// It seems positions in the map are multiple of FP. From 1*FP (- fraction) to (MAP_SIZE-1)*FP (+ fraction).
+	// Smaller positions locate at top-left corner of the map[], bigger positions locate at bottom-right of the map[].
+	// But dx and dy, applied to posX and posY respectively, are a fraction of FP depending on the angle.
 	u16 posX = 2 * FP, posY = 2 * FP;
-	u16 angle = 0; // angle max value is 1023 and is updated in +/- 8 units
+
+	// angle max value is 1023 and is updated in +/- 8 units.
+	// 0 heads down in the map[], 256 heads right, 512 heads up, 768 heads left.
+	u16 angle = 0; 
 
 	for (;;)
 	{
@@ -220,35 +247,35 @@ int main (bool hardReset)
 
 				u16 x = posX / FP;
 				u16 y = posY / FP;
-				const u16 yt = (posY-63) / FP;
-				const u16 yb = (posY+63) / FP;
+				const u16 ytop = (posY-63) / FP;
+				const u16 ybottom = (posY+63) / FP;
 				posX += dx;
 				posY += dy;
 
 				// x collision
 				if (dx > 0) {
-					if (map[y][x+1] || map[yt][x+1] || map[yb][x+1]) {
+					if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
 						posX = min(posX, (x+1)*FP-64);
 						x = posX / FP;
 					}
 				}
 				else {
-					if (x == 0 || map[y][x-1] || map[yt][x-1] || map[yb][x-1]) {
+					if (x == 0 || map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
 						posX = max(posX, x*FP+64);
 						x = posX / FP;
 					}
 				}
 
-				const u16 xl = (posX-63) / FP;
-				const u16 xr = (posX+63) / FP;
+				const u16 xleft = (posX-63) / FP;
+				const u16 xright = (posX+63) / FP;
 
 				// y collision
 				if (dy > 0) {
-					if (map[y+1][x] || map[y+1][xl] || map[y+1][xr])
+					if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
 						posY = min(posY, (y+1)*FP-64);
 				}
 				else {
-					if (y == 0 || map[y-1][x] || map[y-1][xl] || map[y-1][xr])
+					if (y == 0 || map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
 						posY = max(posY, y*FP+64);
 				}
 			}
@@ -262,7 +289,7 @@ int main (bool hardReset)
 
 		// DDA
 		{
-			// Value goes from 0 up to 256 (FP)
+			// Value goes from 0...FP (including)
 			u16 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
 			sideDistX_l0 = posX & (FP - 1); // (posX - (posX/FP)*FP);
 			sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);

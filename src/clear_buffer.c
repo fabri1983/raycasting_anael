@@ -10,7 +10,7 @@ FORCE_INLINE void clear_buffer (u8* frame_buffer_ptr) {
 		// Save all registers (except scratch pad)
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Clear registers
-		"    moveq   #0,%%d0\n"
+		"    moveq   #0,%%d0\n" // tile index 0
 		"    move.l  %%d0,%%d1\n"
 		"    move.l  %%d0,%%d2\n"
 		"    move.l  %%d0,%%d3\n"
@@ -36,7 +36,7 @@ FORCE_INLINE void clear_buffer (u8* frame_buffer_ptr) {
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		: "+a" (frame_buffer_ptr)
 		: [_TOTAL_BYTES] "i" ((VERTICAL_COLUMNS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		: 
+		:
 	);
 #elif PLANE_COLUMNS == 64
 	// We need to clear only first PIXEL_COLUMNS columns of each row from the tilemap
@@ -46,7 +46,7 @@ FORCE_INLINE void clear_buffer (u8* frame_buffer_ptr) {
 		// Save all registers (except scratch pad)
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Clear registers
-		"    moveq   #0,%%d0\n"
+		"    moveq   #0,%%d0\n" // tile index 0
 		"    move.l  %%d0,%%d1\n"
 		"    move.l  %%d0,%%d2\n"
 		"    move.l  %%d0,%%d3\n"

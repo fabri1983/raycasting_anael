@@ -2,11 +2,11 @@ const fs = require('fs');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const os = require('os');
 
-const inputFile = '../inc/tab_deltas.h';
+const tabDeltasFile = '../inc/tab_deltas.h';
 const outputFile = 'tab_mulu_dist_div256_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
-const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE } = require('./consts');
+const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE, MIN_POS_XY, MAX_POS_XY } = require('./consts');
 
 function isInteger(value) {
     return !isNaN(parseInt(value)) && isFinite(value);
@@ -14,7 +14,7 @@ function isInteger(value) {
 
 // Read and parse tab_deltas.h
 function readTabDeltas() {
-    const content = fs.readFileSync(inputFile, 'utf8');
+    const content = fs.readFileSync(tabDeltasFile, 'utf8');
     const lines = content.split('\n');
     const tab_deltas = [];
 
@@ -42,23 +42,18 @@ function toSigned16Bit(value) {
     return value >= 32768 ? value - 65536 : value;
 }
 
-// Multiplication function (simulating mulu from C)
-function mulu(a, b) {
-    return Math.imul(a, b);
-}
-
 // Processing function to be run inside the worker thread
 function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
-    const outputMap = new Map(); // Using a Map to keep track of the largest value for each [N][M]
+    const outputMap = new Map();
 
     for (let posX = startPosX; posX <= endPosX; posX += 1) {
-        for (let posY = 0; posY <= FP; posY += 1) {
+        for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += 1) {
             for (let angle = 0; angle < 1024; angle += 8) {
 
-                const sideDistX_l0 = (posX - Math.floor(posX / FP) * FP);
-                const sideDistX_l1 = ((Math.floor(posX / FP) + 1) * FP - posX);
-                const sideDistY_l0 = (posY - Math.floor(posY / FP) * FP);
-                const sideDistY_l1 = ((Math.floor(posY / FP) + 1) * FP - posY);
+                const sideDistX_l0 = posX - (Math.floor(posX / FP) * FP);
+                const sideDistX_l1 = (Math.floor(posX / FP) + 1) * FP - posX;
+                const sideDistY_l0 = posY - (Math.floor(posY / FP) * FP);
+                const sideDistY_l1 = (Math.floor(posY / FP) + 1) * FP - posY;
 
                 let a = Math.floor(angle / (1024 / AP));
                 const a_for_matrix = a * PIXEL_COLUMNS;
@@ -77,11 +72,11 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
 
                     if (rayDirX < 0) {
                         stepX = -1;
-                        sideDistX = (mulu(sideDistX_l0, deltaDistX) >> FS) & 0xFFFF;
+                        sideDistX = ((sideDistX_l0 * deltaDistX) >> FS) & 0xFFFF;
                         keyX = `[${sideDistX_l0}][${a_for_matrix + c}]`;
                     } else {
                         stepX = 1;
-                        sideDistX = (mulu(sideDistX_l1, deltaDistX) >> FS) & 0xFFFF;
+                        sideDistX = ((sideDistX_l1 * deltaDistX) >> FS) & 0xFFFF;
                         keyX = `[${sideDistX_l1}][${a_for_matrix + c}]`;
                     }
 
@@ -98,12 +93,12 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                     if (rayDirY < 0) {
                         stepY = -1;
                         stepYMS = -MAP_SIZE;
-                        sideDistY = (mulu(sideDistY_l0, deltaDistY) >> FS) & 0xFFFF;
+                        sideDistY = ((sideDistY_l0 * deltaDistY) >> FS) & 0xFFFF;
                         //keyY = `[${sideDistY_l0}][${a_for_matrix + c}]`;
                     } else {
                         stepY = 1;
                         stepYMS = MAP_SIZE;
-                        sideDistY = (mulu(sideDistY_l1, deltaDistY) >> FS) & 0xFFFF;
+                        sideDistY = ((sideDistY_l1 * deltaDistY) >> FS) & 0xFFFF;
                         //keyY = `[${sideDistY_l1}][${a_for_matrix + c}]`;
                     }
 
@@ -123,16 +118,17 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
 
 // Function to run parallel workers
 function runWorkers() {
-    const numCores = Math.min(8, os.cpus().length); // otherwise it fails with out of heap memory exception
+    const numCores = Math.min(16, os.cpus().length);
     const tab_deltas = readTabDeltas();
     const workers = [];
-    const chunkSize = Math.ceil((FP + 1) / numCores);
+    const chunkSize = Math.ceil((MAX_POS_XY + 1) / numCores);
 
+    console.log('(Invoke with: node --max-old-space-size=5120 <script.js> to avoid running out of mem)');
     console.log(`Utilizing ${numCores} cores for processing.`);
 
     for (let i = 0; i < numCores; i++) {
-        const startPosX = i * chunkSize;
-        const endPosX = Math.min((i + 1) * chunkSize - 1, FP);
+        const startPosX = Math.max(i * chunkSize, MIN_POS_XY);
+        const endPosX = Math.min((i + 1) * chunkSize - 1, MAX_POS_XY);
 
         workers.push(
             new Promise((resolve, reject) => {

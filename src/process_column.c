@@ -18,7 +18,7 @@ FORCE_INLINE void process_column (u8 column, u16** delta_a_ptr, u16 a, u16 posX,
 	u16 deltaDistY = *(*delta_a_ptr)++; // value up to 65536-1
 	u16 rayDir = *(*delta_a_ptr)++; // jump block size multiple of 12
 
-	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 in the stepping loop due to condition control
+	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 once in the stepping loop due to condition control
 	s16 stepX, stepY, stepYMS;
 
 	// rayDix < 0 and rayDirY < 0
@@ -127,7 +127,7 @@ FORCE_INLINE void process_column (u8 column, u16** delta_a_ptr, u16 a, u16 posX,
 	const s16 rayDirX = (s16) *(*delta_a_ptr)++;
 	const s16 rayDirY = (s16) *(*delta_a_ptr)++;
 
-	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 due to operation >> FS
+	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 once in the stepping loop due to condition control
 	s16 stepX, stepY, stepYMS;
 
 	if (rayDirX < 0) {
