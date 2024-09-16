@@ -54,12 +54,12 @@ void setupDMAForPals (u16 len, u32 fromAddr);
 /// @return u16 data type
 u16 mulu_shft_FS (u16 op1, u16 op2);
 
-/// @brief Same than VDP_showCPULoad() but optimized. Show values up to 255%. Otherwise it crashes.
+/// @brief Same than VDP_showCPULoad() but optimized. Show values up to 255%. Otherwise it crashes or gives innacurate data.
 /// @param xPos screen X position in tiles
 /// @param yPos screen Y position in tiles
 void showCPULoad (u16 xPos, u16 yPos);
 
-/// @brief Same than VDP_showFPS(FALSE) but optimized. Show values up to 255. Otherwise it crashes.
+/// @brief Same than VDP_showFPS(FALSE) but optimized. Show values up to 255. Otherwise it crashes or gives innacurate data.
 /// @param xPos screen X position in tiles
 /// @param yPos screen Y position in tiles
 void showFPS (u16 xPos, u16 yPos);

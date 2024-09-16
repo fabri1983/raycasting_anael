@@ -84,8 +84,10 @@ static void loadHUD (u16 currentTileIndex) {
     VDP_setTileMapEx(BG_A, img_hud.tilemap, baseTileAttrib, 0, yPos, 0, 0, TILEMAP_COLUMNS, 4, DMA);
 }
 
+#define HINT_SCANLINE_CHANGE_BG_COLOR 95
+
 HINTERRUPT_CALLBACK hIntCallback () {
-	if (GET_VCOUNTER <= 95) {
+	if (GET_VCOUNTER <= HINT_SCANLINE_CHANGE_BG_COLOR) {
 		waitHCounter(156);
 		// set background color used for the floor
 		PAL_setColor(0, palette_grey[2]);
@@ -127,7 +129,7 @@ HINTERRUPT_CALLBACK hIntCallback () {
 
 	// set background color used for the roof
 	// THIS INTRODUCES A COLOR DOT GLITCH BARELY NOTICABLE. SOLUTION IS TO DO THIS IN VBLANK CALLBACK
-	PAL_setColor(0, palette_grey[1]);
+	//PAL_setColor(0, palette_grey[1]);
 
 	// Send 1/2 of the PA
 	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -151,6 +153,8 @@ HINTERRUPT_CALLBACK hIntCallback () {
 }
 
 void vBlankCallback () {
+	// NOTE: AT THIS POINT THE DMA QUEUE HAS BEEN FLUSHED
+
 	// Reload the first 2 palettes that were overriden by the HUD palettes
 	// grey palette
 	u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
@@ -163,10 +167,11 @@ void vBlankCallback () {
     fromAddrForDMA = (u32) (palette_red + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
     setupDMAForPals(8, fromAddrForDMA);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-	turnOnVDP(0x74);
 
 	// set background color used for the roof
-	//PAL_setColor(0, palette_grey[1]);
+	PAL_setColor(0, palette_grey[1]);
+
+	turnOnVDP(0x74);
 
 	// clear the frame buffer
 	//clear_buffer((u8*)frame_buffer);
@@ -195,7 +200,7 @@ int main (bool hardReset)
 		// Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
 		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
 		// 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-		VDP_setHIntCounter(95-1); // -1 since hintcounter is 0 based
+		VDP_setHIntCounter(HINT_SCANLINE_CHANGE_BG_COLOR-1); // -1 since hintcounter is 0 based
     	SYS_setHIntCallback(hIntCallback);
     	VDP_setHInterrupt(TRUE);
 	}
@@ -215,10 +220,13 @@ int main (bool hardReset)
 
 	SYS_doVBlankProcess();
 
-	// It seems positions in the map are multiple of FP. From 1*FP (- fraction) to (MAP_SIZE-1)*FP (+ fraction).
+	// Frame load is calculated after user's VBlank callback
+	//SYS_showFrameLoad(FALSE);
+
+	// It seems positions in the map are multiple of FP +- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
 	// Smaller positions locate at top-left corner of the map[], bigger positions locate at bottom-right of the map[].
-	// But dx and dy, applied to posX and posY respectively, are a fraction of FP depending on the angle.
-	u16 posX = 2 * FP, posY = 2 * FP;
+	// But dx and dy, applied to posX and posY respectively, goes from 0 to 256/24=10 of FP depending on the angle (see tab_dir_xy.h).
+	u16 posX = MIN_POS_XY, posY = MIN_POS_XY;
 
 	// angle max value is 1023 and is updated in +/- 8 units.
 	// 0 heads down in the map[], 256 heads right, 512 heads up, 768 heads left.
@@ -247,36 +255,36 @@ int main (bool hardReset)
 
 				u16 x = posX / FP;
 				u16 y = posY / FP;
-				const u16 ytop = (posY-63) / FP;
-				const u16 ybottom = (posY+63) / FP;
+				const u16 ytop = (posY-(MAP_FRACTION-1)) / FP;
+				const u16 ybottom = (posY+(MAP_FRACTION-1)) / FP;
 				posX += dx;
 				posY += dy;
 
 				// x collision
 				if (dx > 0) {
 					if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
-						posX = min(posX, (x+1)*FP-64);
+						posX = min(posX, (x+1)*FP-MAP_FRACTION);
 						x = posX / FP;
 					}
 				}
 				else {
 					if (x == 0 || map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
-						posX = max(posX, x*FP+64);
+						posX = max(posX, x*FP+MAP_FRACTION);
 						x = posX / FP;
 					}
 				}
 
-				const u16 xleft = (posX-63) / FP;
-				const u16 xright = (posX+63) / FP;
+				const u16 xleft = (posX-(MAP_FRACTION-1)) / FP;
+				const u16 xright = (posX+(MAP_FRACTION-1)) / FP;
 
 				// y collision
 				if (dy > 0) {
 					if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
-						posY = min(posY, (y+1)*FP-64);
+						posY = min(posY, (y+1)*FP-MAP_FRACTION);
 				}
 				else {
 					if (y == 0 || map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
-						posY = max(posY, y*FP+64);
+						posY = max(posY, y*FP+MAP_FRACTION);
 				}
 			}
 
@@ -328,6 +336,8 @@ int main (bool hardReset)
 		//showFPS(0, 1);
 		showCPULoad(0, 1);
 	}
+
+	SYS_hideFrameLoad();
 
 	SYS_disableInts();
 	{

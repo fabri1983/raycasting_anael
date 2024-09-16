@@ -1,50 +1,28 @@
 const fs = require('fs');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const os = require('os');
+const utils = require('./utils');
 
 const tabDeltasFile = '../inc/tab_deltas.h';
-const outputFile = 'tab_mulu_dist_div256_OUTPUT.txt';
+const outputFile = 'tab_mulu_dist_div256_PARTIAL.txt';
 
 // Check correct values of constants before script execution. See consts.h.
 const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE, MIN_POS_XY, MAX_POS_XY } = require('./consts');
 
-function isInteger(value) {
-    return !isNaN(parseInt(value)) && isFinite(value);
-}
+// Progress tracking
+const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024 / 8);
+let completedIterations = 0;
 
-// Read and parse tab_deltas.h
-function readTabDeltas() {
-    const content = fs.readFileSync(tabDeltasFile, 'utf8');
-    const lines = content.split('\n');
-    const tab_deltas = [];
-
-    for (const line of lines) {
-        const numbers = line.trim().replace(/,\s*$/, '').split(/[,\s]+/)
-            .filter(n => !isNaN(n) && isInteger(n))
-            .map(n => parseInt(n));
-        if (numbers.length >= 4) {
-            tab_deltas.push(numbers[0]);
-            tab_deltas.push(numbers[1]);
-            tab_deltas.push(numbers[2]);
-            tab_deltas.push(numbers[3]);
-        }
-    }
-
-    if (tab_deltas.length !== AP * PIXEL_COLUMNS * 4) {
-        throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * PIXEL_COLUMNS * 4}): ${tab_deltas.length}`);
-    }
-
-    return tab_deltas;
-}
-
-// Convert 16-bit unsigned to 16-bit signed
-function toSigned16Bit(value) {
-    return value >= 32768 ? value - 65536 : value;
+function displayProgress () {
+    const progress = (completedIterations / totalIterations) * 100;
+    const progressBar = '='.repeat(Math.floor(progress / 2)) + '-'.repeat(50 - Math.floor(progress / 2));
+    process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
 // Processing function to be run inside the worker thread
-function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
+function processTabDeltasChunk (workerId, startPosX, endPosX, tab_deltas) {
     const outputMap = new Map();
+    let localCompletedIterations = 0;
 
     for (let posX = startPosX; posX <= endPosX; posX += 1) {
         for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += 1) {
@@ -64,19 +42,19 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                     // we use the offset directly when accessing tab_deltas
                     const deltaDistX = tab_deltas[(a * PIXEL_COLUMNS * 4) + c*4 + 0];
                     const deltaDistY = tab_deltas[(a * PIXEL_COLUMNS * 4) + c*4 + 1];
-                    const rayDirX = toSigned16Bit(tab_deltas[(a * PIXEL_COLUMNS * 4) + c*4 + 2]);
-                    const rayDirY = toSigned16Bit(tab_deltas[(a * PIXEL_COLUMNS * 4) + c*4 + 3]);
+                    const rayDirX = utils.toSignedFrom16b(tab_deltas[(a * PIXEL_COLUMNS * 4) + c*4 + 2]);
+                    const rayDirY = utils.toSignedFrom16b(tab_deltas[(a * PIXEL_COLUMNS * 4) + c*4 + 3]);
 
                     let sideDistX, stepX;
                     let keyX = null;
 
                     if (rayDirX < 0) {
                         stepX = -1;
-                        sideDistX = ((sideDistX_l0 * deltaDistX) >> FS) & 0xFFFF;
+                        sideDistX = utils.toUnsigned16Bit((sideDistX_l0 * deltaDistX) >> FS);
                         keyX = `[${sideDistX_l0}][${a_for_matrix + c}]`;
                     } else {
                         stepX = 1;
-                        sideDistX = ((sideDistX_l1 * deltaDistX) >> FS) & 0xFFFF;
+                        sideDistX = utils.toUnsigned16Bit((sideDistX_l1 * deltaDistX) >> FS);
                         keyX = `[${sideDistX_l1}][${a_for_matrix + c}]`;
                     }
 
@@ -93,12 +71,12 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                     if (rayDirY < 0) {
                         stepY = -1;
                         stepYMS = -MAP_SIZE;
-                        sideDistY = ((sideDistY_l0 * deltaDistY) >> FS) & 0xFFFF;
+                        sideDistY = utils.toUnsigned16Bit((sideDistY_l0 * deltaDistY) >> FS);
                         //keyY = `[${sideDistY_l0}][${a_for_matrix + c}]`;
                     } else {
                         stepY = 1;
                         stepYMS = MAP_SIZE;
-                        sideDistY = ((sideDistY_l1 * deltaDistY) >> FS) & 0xFFFF;
+                        sideDistY = utils.toUnsigned16Bit((sideDistY_l1 * deltaDistY) >> FS);
                         //keyY = `[${sideDistY_l1}][${a_for_matrix + c}]`;
                     }
 
@@ -109,34 +87,55 @@ function processTabDeltasChunk(startPosX, endPosX, tab_deltas) {
                             outputMap.set(keyY, sideDistY);
                     }
                 }
+
+                // Update progress
+                localCompletedIterations++;
+                // Send progress update to main thread every 1000 iterations
+                if (localCompletedIterations % 1000 === 0) {
+                    parentPort.postMessage({ type: 'progress', value: 1000 });
+                }
             }
         }
     }
+
+    // Send remaining portion of iterations
+    parentPort.postMessage({ type: 'progress', value: localCompletedIterations % 1000 });
 
     return outputMap;
 }
 
 // Function to run parallel workers
-function runWorkers() {
+function runWorkers () {
     const numCores = Math.min(16, os.cpus().length);
-    const tab_deltas = readTabDeltas();
+    const tab_deltas = utils.readTabDeltas(tabDeltasFile);
     const workers = [];
     const chunkSize = Math.ceil((MAX_POS_XY + 1) / numCores);
 
     console.log('(Invoke with: node --max-old-space-size=5120 <script.js> to avoid running out of mem)');
     console.log(`Utilizing ${numCores} cores for processing.`);
+    let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+    console.log(startTimeStr);
 
-    for (let i = 0; i < numCores; i++) {
-        const startPosX = Math.max(i * chunkSize, MIN_POS_XY);
-        const endPosX = Math.min((i + 1) * chunkSize - 1, MAX_POS_XY);
+    // Reset iterations counter
+    completedIterations = 0;
+
+    for (let i=0, startPosX=MIN_POS_XY; i < numCores && startPosX < MAX_POS_XY; i++, startPosX+=chunkSize) {
+        const endPosX = Math.min(startPosX + chunkSize - 1, MAX_POS_XY);
+        const workerId = `[${startPosX}-${endPosX}]`;
 
         workers.push(
             new Promise((resolve, reject) => {
                 const worker = new Worker(__filename, {
-                    workerData: { startPosX, endPosX, tab_deltas }
+                    workerData: { workerId, startPosX, endPosX, tab_deltas }
                 });
 
-                worker.on('message', resolve);
+                worker.on('message', (message) => {
+                    if (message.type === 'progress')
+                        completedIterations += message.value;
+                    else
+                        resolve(message);
+                });
+
                 worker.on('error', reject);
             })
         );
@@ -144,8 +143,16 @@ function runWorkers() {
 
     console.log('Main thread: Waiting for all workers to complete...');
 
+    displayProgress(); // Initial progress display
+    // Set up progress display interval
+    const progressInterval = setInterval(displayProgress, 2000);
+
     Promise.all(workers)
         .then(results => {
+            clearInterval(progressInterval); // Stop progress display
+            displayProgress(); // Last update with updated counter
+            process.stdout.write('\n'); // Move to the next line after progress bar
+
             const finalMap = new Map();
             results.forEach(result => {
                 result.forEach(([key, value]) => {
@@ -156,29 +163,37 @@ function runWorkers() {
                 });
             });
 
-            // Convert Map to Array and sort in ASC order
+            // Sort by key in ASC order, then save key=value into an array
             const sortedOutputLines = Array.from(finalMap.entries()).sort((a, b) => {
-                const [, N1, M1] = a[0].match(/\[(\d+)\]\[(\d+)\]/);
-                const [, N2, M2] = b[0].match(/\[(\d+)\]\[(\d+)\]/);
-                if (parseInt(N1) !== parseInt(N2)) {
-                    return parseInt(N1) - parseInt(N2);
-                }
-                return parseInt(M1) - parseInt(M2);
-            }).map(entry => `${entry[0]}=${entry[1]}`);
+                    const [, N1, M1] = a[0].match(/\[(\d+)\]\[(\d+)\]/);
+                    const [, N2, M2] = b[0].match(/\[(\d+)\]\[(\d+)\]/);
+                    if (parseInt(N1) !== parseInt(N2)) {
+                        return parseInt(N1) - parseInt(N2);
+                    }
+                    return parseInt(M1) - parseInt(M2);
+                })
+                .map(entry => `${entry[0]}=${entry[1]}`);
 
             // Write output to file
             fs.writeFileSync(outputFile, sortedOutputLines.join('\n'));
             console.log('Processing complete. Output saved to ' + outputFile);
+
+            let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+            console.log(endTimeStr);
         })
         .catch(error => {
+            process.stdout.write('\n'); // Move to the next line after progress bar
             console.error('An error occurred:', error);
+
+            let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+            console.log(endTimeStr);
         });
 }
 
 if (isMainThread) {
     runWorkers();
 } else {
-    const { startPosX, endPosX, tab_deltas } = workerData;
-    const result = processTabDeltasChunk(startPosX, endPosX, tab_deltas);
+    const { workerId, startPosX, endPosX, tab_deltas } = workerData;
+    const result = processTabDeltasChunk(workerId, startPosX, endPosX, tab_deltas);
     parentPort.postMessage(Array.from(result.entries()));
 }

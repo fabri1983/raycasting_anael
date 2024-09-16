@@ -17,4 +17,5 @@ build/
 
 # Project specific
 scripts/*OUTPUT*
+scripts/*PARTIAL*
 scripts/*FULL*

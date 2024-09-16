@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const os = require('os');
+const utils = require('./utils');
 
 const tabDeltasFile = '../inc/tab_deltas.h';
 const mapMatrixFile = '../src/map_matrix.c';
@@ -13,77 +14,14 @@ const {
     MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDIST
 } = require('./consts');
 
-function isInteger (value) {
-    return !isNaN(parseInt(value)) && isFinite(value);
-}
+// Progress tracking
+const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024 / 8);
+let completedIterations = 0;
 
-// Read and parse tab_deltas.h
-function readTabDeltas () {
-    const content = fs.readFileSync(tabDeltasFile, 'utf8');
-    const lines = content.split('\n');
-    const tab_deltas = [];
-
-    for (const line of lines) {
-        const numbers = line.trim().replace(/,\s*$/, '').split(/[,\s]+/)
-            .filter(n => !isNaN(n) && isInteger(n))
-            .map(n => parseInt(n));
-        if (numbers.length >= 4) {
-            tab_deltas.push(numbers[0]);
-            tab_deltas.push(numbers[1]);
-            tab_deltas.push(numbers[2]);
-            tab_deltas.push(numbers[3]);
-        }
-    }
-
-    if (tab_deltas.length !== AP * PIXEL_COLUMNS * 4) {
-        throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * PIXEL_COLUMNS * 4}): ${tab_deltas.length}`);
-    }
-
-    return tab_deltas;
-}
-
-// Read and parse map_matrix.c
-function readMapMatrix () {
-    const content = fs.readFileSync(mapMatrixFile, 'utf8');
-    const lines = content.split('\n');
-    const map_matrix = [];
-
-    let inMapDefinition = false;
-
-    for (const line of lines) {
-        if (line.includes('const u8 map[MAP_SIZE][MAP_SIZE] =')) {
-            inMapDefinition = true;
-            continue;
-        }
-
-        if (inMapDefinition) {
-            if (line.includes('};')) {
-                break; // End of map definition
-            }
-
-            const numbers = line.trim()
-                .replace(/^{/, '') // Remove opening brace
-                .replace(/},?$/, '') // Remove closing brace and optional comma
-                .split(',')
-                .map(n => parseInt(n.trim(), 10))
-                .filter(n => !isNaN(n));
-
-            if (numbers.length > 0) {
-                map_matrix.push(...numbers); // use spread operator
-            }
-        }
-    }
-
-    if (map_matrix.length !== (MAP_SIZE * MAP_SIZE)) {
-        throw new Error(`Invalid map_matrix dimensions (expected ${MAP_SIZE} * ${MAP_SIZE})`);
-    }
-
-    return map_matrix;
-}
-
-// Convert 16-bit unsigned to 16-bit signed
-function toSigned16Bit (value) {
-    return value >= 32768 ? value - 65536 : value;
+function displayProgress () {
+    const progress = (completedIterations / totalIterations) * 100;
+    const progressBar = '='.repeat(Math.floor(progress / 2)) + '-'.repeat(50 - Math.floor(progress / 2));
+    process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
 function calculateOutputHitMapEntry (posX, posY, a, column, mapXY, side, sideDistXY) {
@@ -96,8 +34,9 @@ function calculateOutputHitMapEntry (posX, posY, a, column, mapXY, side, sideDis
 }
 
 // Processing function to be run inside the worker thread
-function processGameChunk (startPosX, endPosX, tab_deltas, map) {
+function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
     const outputHitMap = new Map();
+    let localCompletedIterations = 0;
 
     for (let posX = startPosX; posX <= endPosX; posX += 1) {
         for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += 1) {
@@ -116,17 +55,17 @@ function processGameChunk (startPosX, endPosX, tab_deltas, map) {
                     // we use the offset directly when accessing tab_deltas
                     const deltaDistX = tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 0];
                     const deltaDistY = tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 1];
-                    const rayDirX = toSigned16Bit(tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 2]);
-                    const rayDirY = toSigned16Bit(tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 3]);
+                    const rayDirX = utils.toSignedFrom16b(tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 2]);
+                    const rayDirY = utils.toSignedFrom16b(tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 3]);
 
                     let sideDistX, stepX;
 
                     if (rayDirX < 0) {
                         stepX = -1;
-                        sideDistX = ((sideDistX_l0 * deltaDistX) >> FS) & 0xFFFF;
+                        sideDistX = utils.toUnsigned16Bit((sideDistX_l0 * deltaDistX) >> FS);
                     } else {
                         stepX = 1;
-                        sideDistX = ((sideDistX_l1 * deltaDistX) >> FS) & 0xFFFF;
+                        sideDistX = utils.toUnsigned16Bit((sideDistX_l1 * deltaDistX) >> FS);
                     }
 
                     let sideDistY, stepY, stepYMS;
@@ -134,11 +73,11 @@ function processGameChunk (startPosX, endPosX, tab_deltas, map) {
                     if (rayDirY < 0) {
                         stepY = -1;
                         stepYMS = -MAP_SIZE;
-                        sideDistY = ((sideDistY_l0 * deltaDistY) >> FS) & 0xFFFF;
+                        sideDistY = utils.toUnsigned16Bit((sideDistY_l0 * deltaDistY) >> FS);
                     } else {
                         stepY = 1;
                         stepYMS = MAP_SIZE;
-                        sideDistY = ((sideDistY_l1 * deltaDistY) >> FS) & 0xFFFF;
+                        sideDistY = utils.toUnsigned16Bit((sideDistY_l1 * deltaDistY) >> FS);
                     }
 
                     let mapX = Math.floor(posX / FP);
@@ -186,9 +125,19 @@ console.log(entry);
                         outputHitMap[entry.key] = entry.value;
                     }
                 }
+
+                // Update progress
+                localCompletedIterations++;
+                // Send progress update to main thread every 1000 iterations
+                if (localCompletedIterations % 1000 === 0) {
+                    parentPort.postMessage({ type: 'progress', value: 1000 });
+                }
             }
         }
     }
+
+    // Send remaining portion of iterations
+    parentPort.postMessage({ type: 'progress', value: localCompletedIterations % 1000 });
 
     return outputHitMap;
 }
@@ -217,25 +166,36 @@ function writeOutputToFile (arr, outputFile) {
 // Function to run parallel workers
 function runWorkers () {
     const numCores = Math.min(16, os.cpus().length);
-    const tab_deltas = readTabDeltas();
-    const map = readMapMatrix();
+    const tab_deltas = utils.readTabDeltas(tabDeltasFile);
+    const map = utils.readMapMatrix(mapMatrixFile);
     const workers = [];
     const chunkSize = Math.ceil((MAX_POS_XY + 1) / numCores);
 
     console.log('(Invoke with: node --max-old-space-size=5120 <script.js> to avoid running out of mem)');
     console.log(`Utilizing ${numCores} cores for processing.`);
+    let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+    console.log(startTimeStr);
 
-    for (let i = 0; i < numCores; i++) {
-        const startPosX = Math.max(i * chunkSize, MIN_POS_XY);
-        const endPosX = Math.min((i + 1) * chunkSize, MAX_POS_XY);
+    // Reset iterations counter
+    completedIterations = 0;
+
+    for (let i=0, startPosX=MIN_POS_XY; i < numCores && startPosX < MAX_POS_XY; i++, startPosX+=chunkSize) {
+        const endPosX = Math.min(startPosX + chunkSize - 1, MAX_POS_XY);
+        const workerId = `[${startPosX}-${endPosX}]`;
 
         workers.push(
             new Promise((resolve, reject) => {
                 const worker = new Worker(__filename, {
-                    workerData: { startPosX, endPosX, tab_deltas, map }
+                    workerData: { workerId, startPosX, endPosX, tab_deltas, map }
                 });
 
-                worker.on('message', resolve);
+                worker.on('message', (message) => {
+                    if (message.type === 'progress')
+                        completedIterations += message.value;
+                    else
+                        resolve(message);
+                });
+
                 worker.on('error', reject);
             })
         );
@@ -243,47 +203,62 @@ function runWorkers () {
 
     console.log('Main thread: Waiting for all workers to complete...');
 
+    displayProgress(); // Initial progress display
+    // Set up progress display interval
+    const progressInterval = setInterval(displayProgress, 4000);
+
     Promise.all(workers)
         .then(results => {
+            clearInterval(progressInterval); // Stop progress display
+            displayProgress(); // Last update with updated counter
+            process.stdout.write('\n'); // Move to the next line after progress bar
+
             const finalMap = new Map();
             results.forEach(result => {
-console.log(result);
                 result.forEach(([key, value]) => {
                     finalMap.set(key, value);
                 });
             });
-console.log(finalMap);
-            // Convert Map to Array and sort in ASC order
+
+            // Sort by key in ASC order, then save value into an array
             const sortedOutput = Array.from(finalMap.entries()).sort((a, b) => {
-                const [, posX_FP_1, posY_FP_1, angle_1, col_1] = a[0].match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
-                const [, posX_FP_2, posY_FP_2, angle_2, col_2] = b[0].match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
-                if (parseInt(posX_FP_1) !== parseInt(posX_FP_2)) {
-                    return parseInt(posX_FP_1) - parseInt(posX_FP_2);
-                }
-                if (parseInt(posY_FP_1) !== parseInt(posY_FP_2)) {
-                    return parseInt(posY_FP_1) - parseInt(posY_FP_2);
-                }
-                if (parseInt(angle_1) !== parseInt(angle_2)) {
-                    return parseInt(angle_1) - parseInt(angle_2);
-                }
-                return parseInt(col_1) - parseInt(col_2);
-            }).map(entry => entry[1]);
+                    const [, posX_FP_1, posY_FP_1, angle_1, col_1] = a[0].match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
+                    const [, posX_FP_2, posY_FP_2, angle_2, col_2] = b[0].match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
+                    if (parseInt(posX_FP_1) !== parseInt(posX_FP_2)) {
+                        return parseInt(posX_FP_1) - parseInt(posX_FP_2);
+                    }
+                    if (parseInt(posY_FP_1) !== parseInt(posY_FP_2)) {
+                        return parseInt(posY_FP_1) - parseInt(posY_FP_2);
+                    }
+                    if (parseInt(angle_1) !== parseInt(angle_2)) {
+                        return parseInt(angle_1) - parseInt(angle_2);
+                    }
+                    return parseInt(col_1) - parseInt(col_2);
+                })
+                .map(entry => entry[1]); // keep the value
 
             // Sanity check on size
             checkFinalSize(sortedOutput);
 
             // Write output to file
             writeOutputToFile(sortedOutput, outputFile);
+
+            let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+            console.log(endTimeStr);
         })
         .catch(error => {
+            process.stdout.write('\n'); // Move to the next line after progress bar
             console.error('An error occurred:', error);
+
+            let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+            console.log(endTimeStr);
         });
 }
 
 if (isMainThread) {
     runWorkers();
 } else {
-    const { startPosX, endPosX, tab_deltas, map } = workerData;
-    const result = processGameChunk(startPosX, endPosX, tab_deltas, map);
+    const { workerId, startPosX, endPosX, tab_deltas, map } = workerData;
+    const result = processGameChunk(workerId, startPosX, endPosX, tab_deltas, map);
     parentPort.postMessage(Array.from(result.entries()));
 }

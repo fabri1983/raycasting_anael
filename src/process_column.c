@@ -114,7 +114,7 @@ FORCE_INLINE void process_column (u8 column, u16** delta_a_ptr, u16 a, u16 posX,
         : "cc"
     );
 
-	// Previous inlined asm block stores multiplication result and other results in the variables used as input/output
+	// Previous inlined asm block stored results in the variables used as input/output
 	sideDistX = sideDistX_l0;
     sideDistY = sideDistY_l0;
 	stepX = sideDistX_l1;
@@ -187,7 +187,9 @@ FORCE_INLINE void process_column (u8 column, u16** delta_a_ptr, u16 a, u16 posX,
 				u16 color;
 				if (mapY&1) color = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
 				else color = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
-				//u16 color = tab_color_d8_x_with_pal[mapY&1][sideDistX]; // this is indeed slower than previous calculations
+				// Next try out is indeed slower than all previous calculations
+				// u16 cIdx = (FP * (STEP_COUNT + 1)) * (mapY&1) + sideDistX;
+				// u16 color = tab_color_d8_x_with_pal[cIdx];
 				#endif
 
 				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
@@ -219,7 +221,9 @@ FORCE_INLINE void process_column (u8 column, u16** delta_a_ptr, u16 a, u16 posX,
 				u16 color;
 				if (mapX&1) color = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
 				else color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
-				//u16 color = tab_color_d8_y_with_pal[mapX&1][sideDistY]; // this is indeed slower than previous calculations
+				// Next try out is indeed slower than all previous calculations
+				// u16 cIdx = (FP * (STEP_COUNT + 1)) * (mapX&1) + sideDistY;
+				// u16 color = tab_color_d8_y_with_pal[cIdx];
 				#endif
 
 				u16 *column_ptr = frame_buffer + frame_buffer_column[column];

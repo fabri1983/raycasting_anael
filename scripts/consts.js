@@ -14,8 +14,9 @@ const TILEMAP_COLUMNS = 40;
 const PIXEL_COLUMNS = 80;
 
 const MAP_SIZE = 16;
-const MIN_POS_XY = FP; // - fraction
-const MAX_POS_XY = FP*(MAP_SIZE-1); // + fraction
+const MAP_FRACTION = 64;
+const MIN_POS_XY = (FP + MAP_FRACTION);
+const MAX_POS_XY = (FP*(MAP_SIZE-1) - MAP_FRACTION);
 const MAP_HIT_MASK_SIDE = 1;
 const MAP_HIT_MASK_SIDEDISTXY = 4096-1;
 const MAP_HIT_MASK_MAPXY = 16-1;
