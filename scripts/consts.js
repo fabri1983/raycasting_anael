@@ -1,7 +1,7 @@
 const FS = 8;  // fixed point size in bits
 const FP = (1 << FS);  // fixed precision
 const AP = 128;  // angle precision (optimal for a rotation step of 8 : 1024/8 = 128)
-const STEP_COUNT = 15;  // (STEP_COUNT+1 should be a power of two)
+const STEP_COUNT = 15;  // View distance depth. (STEP_COUNT+1 should be a power of two)
 
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24

@@ -6,16 +6,16 @@
 
 // fabri1983's notes (since Aug/18/2024)
 // -----------------
-// * Rendered columns are 4 pixels wide, then 256p/4=64 or 320p/4=80 "pixels" columns.
-// * write_vline_full() moved into write_vline() so we save 1 condition before the call decision to both methods.
-// * write_vline() translated into inline asm => 2% saved in cpu usage.
+// * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
+// * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
+// * If clear_buffer() is moved into VBlank callback => %1 saved in cpu usage, but runs into next display period.
+// * Moved write_vline_full() into write_vline() and translated into inline ASM.
+// * write_vline() translated into inline ASM => 2% saved in cpu usage.
 // * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
 //   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
 // * Replaced dirX and dirY calculation in relation to the angle by two tables defined in tab_dir_xy.h => some cycles saved.
 // * Replaced DMA_doDmaFast() by DMA_queueDmaFast() => 1% saved in cpu usage.
-// * Moved clear_buffer() into inline asm to take advantage of compiler optimizations => %1 saved in cpu usage.
-// * If clear_buffer() is moved into VBlank callback => %1 saved in cpu usage, but runs into next display period.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
 // * Replaced d for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
 // * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage.
@@ -30,15 +30,7 @@
 #include "utils.h"
 #include "consts.h"
 #include "clear_buffer.h"
-#include "map_matrix.h"
 #include "frame_buffer.h"
-#include "process_column.h"
-#include "tab_dir_xy.h"
-#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-#include "tab_deltas_3.h"
-#else
-#include "tab_deltas.h"
-#endif
 
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
@@ -220,124 +212,11 @@ int main (bool hardReset)
 
 	SYS_doVBlankProcess();
 
-	// Frame load is calculated after user's VBlank callback
-	//SYS_showFrameLoad(FALSE);
-
-	// It seems positions in the map are multiple of FP +- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
-	// Smaller positions locate at top-left corner of the map[], bigger positions locate at bottom-right of the map[].
-	// But dx and dy, applied to posX and posY respectively, goes from 0 to 256/24=10 of FP depending on the angle (see tab_dir_xy.h).
-	u16 posX = MIN_POS_XY, posY = MIN_POS_XY;
-
-	// angle max value is 1023 and is updated in +/- 8 units.
-	// 0 heads down in the map[], 256 heads right, 512 heads up, 768 heads left.
-	u16 angle = 0; 
-
-	for (;;)
-	{
-		// clear the frame buffer
-		clear_buffer((u8*)frame_buffer);
-
-		// handle inputs
-		u16 joy = JOY_readJoypad(JOY_1);
-		if (joy) {
-
-			// if (joy & BUTTON_START) break;
-
-			// movement and collisions
-			if (joy & (BUTTON_UP | BUTTON_DOWN)) {
-
-				s16 dx = tab_dir_x_div24[angle];
-				s16 dy = tab_dir_y_div24[angle];
-				if (joy & BUTTON_DOWN) {
-					dx = -dx;
-					dy = -dy;
-				}
-
-				u16 x = posX / FP;
-				u16 y = posY / FP;
-				const u16 ytop = (posY-(MAP_FRACTION-1)) / FP;
-				const u16 ybottom = (posY+(MAP_FRACTION-1)) / FP;
-				posX += dx;
-				posY += dy;
-
-				// x collision
-				if (dx > 0) {
-					if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
-						posX = min(posX, (x+1)*FP-MAP_FRACTION);
-						x = posX / FP;
-					}
-				}
-				else {
-					if (x == 0 || map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
-						posX = max(posX, x*FP+MAP_FRACTION);
-						x = posX / FP;
-					}
-				}
-
-				const u16 xleft = (posX-(MAP_FRACTION-1)) / FP;
-				const u16 xright = (posX+(MAP_FRACTION-1)) / FP;
-
-				// y collision
-				if (dy > 0) {
-					if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
-						posY = min(posY, (y+1)*FP-MAP_FRACTION);
-				}
-				else {
-					if (y == 0 || map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
-						posY = max(posY, y*FP+MAP_FRACTION);
-				}
-			}
-
-			// rotation
-			if (joy & BUTTON_LEFT)
-				angle = (angle + 8) & 1023;
-			if (joy & BUTTON_RIGHT)
-				angle = (angle - 8) & 1023;
-		}
-
-		// DDA
-		{
-			// Value goes from 0...FP (including)
-			u16 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
-			sideDistX_l0 = posX & (FP - 1); // (posX - (posX/FP)*FP);
-			sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
-			sideDistY_l0 = posY & (FP - 1); // (posY - (posY/FP)*FP);
-			sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
-
-			u16 a = angle / (1024 / AP); // a range is [0, 128)
-			#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-			u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 3));
-			#else
-			u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 4));
-			#endif
-			#if USE_TAB_MULU_DIST_DIV256
-			a *= PIXEL_COLUMNS; // offset into tab_mulu_dist_div256[...][a]
-			#endif
-
-			// 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-			for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
-				process_column(column+0, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(column+1, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(column+2, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-				process_column(column+3, &delta_a_ptr, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-			}
-		}
-
-		// Enqueue the frame buffer for DMA during VBlank period
-		// Remaining 1/2 of PA
-		//DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-		// Remaining 3/4 of PA
-		//DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_COLUMNS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-		DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-		DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-
-		SYS_doVBlankProcessEx(ON_VBLANK_START);
-
-		//showFPS(0, 1);
-		showCPULoad(0, 1);
-	}
-
-	SYS_hideFrameLoad();
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+	gameLoop();
+	//gameLoopAuto();
+	#pragma GCC diagnostic pop
 
 	SYS_disableInts();
 	{

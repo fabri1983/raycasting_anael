@@ -8,11 +8,11 @@
 // Not working due to table size incurring rom size > 4096 KB plus the table seems to only works for one of: (sideDistX_l0,sideDistX_l1) or (sideDistY_l0,sideDistY_l1).
 #define USE_TAB_MULU_DIST_DIV256 FALSE
 
-#define FS 8 // fixed point size in bits
-#define FP (1<<FS) // fixed precision
-#define AP 128 // angle precision (optimal for a rotation step of 8 : 1024/8 = 128)
-#define STEP_COUNT 15 // (STEP_COUNT+1 should be a power of two)
-#define STEP_COUNT_LOOP STEP_COUNT // If lower than STEP_COUNT then distant hits are ignored => less cpu usage but less display depth
+#define FS 8 // Fixed Point size in bits
+#define FP (1<<FS) // Fixed Precision
+#define AP 128 // Angle Precision (optimal for a rotation step of 8 : 1024/8 = 128)
+#define STEP_COUNT 15 // View distance depth. (STEP_COUNT+1 should be a power of two)
+#define STEP_COUNT_LOOP STEP_COUNT // If lower than STEP_COUNT then far distant attempts are ignored => less cpu usage but less view depth
 
 #define PB_ADDR 0xC000 // default Plane B address set in VDP_setPlaneSize()
 #define PA_ADDR 0xE000 // default Plane A address set in VDP_setPlaneSize()

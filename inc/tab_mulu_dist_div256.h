@@ -5,9 +5,9 @@
 #include "consts.h"
 
 /*
-    This table is created out of mulu(sideDistX_l0|l1, deltaDistX) >> FS (and the same for Y).
-    sideDistX_l0|l1 has max value 256. Same apply for sideDistY_l0|l1.
-    deltaDistX is obtained from a = angle/(1024/AP), ie 128 posible rotation values for each X position in the map.
+    This table is created out of: mulu(sideDistX_l0|l1, deltaDistX) >> FS (and the same for Y).
+    sideDistX_l0|l1 has max value 256 (including). Same apply for sideDistY_l0|l1.
+    deltaDistX|Y is obtained from a = angle/(1024/AP), ie 128 posible rotation values for each (X,Y) position in the map.
     "a" is then used to get the tab_deltas[] entry which gives us access to the PIXEL_COLUMNS values for deltaDistX and deltaDistY.
     So (1024/(1024/AP))=128, then 128*PIXEL_COLUMNS possible entries to get into tab_deltas[], then values for deltaDistX and deltaDistY 
     are obtained from x=0 up to x=PIXEL_COLUMNS-1.

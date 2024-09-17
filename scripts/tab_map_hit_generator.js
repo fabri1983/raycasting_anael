@@ -9,7 +9,7 @@ const outputFile = 'tab_map_hit_OUTPUT.txt';
 
 // Check correct values of constants before script execution. See consts.h.
 const {
-    FS, FP, AP, STEP_COUNT, PIXEL_COLUMNS, MAP_SIZE, MIN_POS_XY, MAX_POS_XY, 
+    FS, FP, AP, STEP_COUNT, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
     MAP_HIT_MASK_MAPXY, MAP_HIT_MASK_SIDEDISTXY, MAP_HIT_MASK_SIDE, 
     MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDIST
 } = require('./consts');
@@ -36,11 +36,54 @@ function calculateOutputHitMapEntry (posX, posY, a, column, mapXY, side, sideDis
 // Processing function to be run inside the worker thread
 function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
     const outputHitMap = new Map();
-    let localCompletedIterations = 0;
 
     for (let posX = startPosX; posX <= endPosX; posX += 1) {
+
         for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += 1) {
+
+            // Current location normalized
+            let x = Math.floor(posX / FP);
+            let y = Math.floor(posY / FP);
+
+            // Limit Y axis location normalized
+            const ytop = Math.floor((posY - (MAP_FRACTION-1)) / FP);
+            const ybottom = Math.floor((posY + (MAP_FRACTION-1)) / FP);
+
+            // Check X axis collision
+            if (map[y*MAP_SIZE + x+1] || map[ytop*MAP_SIZE + x+1] || map[ybottom*MAP_SIZE + x+1]) {
+                // Send progress update to main thread
+                parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024 / 8) });
+                // Stop current Y and continue with next X until it gets outside the collision
+                break;
+            }
+            if (x == 0 || map[y*MAP_SIZE + x-1] || map[ytop*MAP_SIZE + x-1] || map[ybottom*MAP_SIZE + x-1]) {
+                // Send progress update to main thread
+                parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024 / 8) });
+                // Stop current Y and continue with next X until it gets outside the collision
+                break;
+            }
+
+            // Limit X axis location normalized
+            const xleft = Math.floor((posX - (MAP_FRACTION-1)) / FP);
+            const xright = Math.floor((posX + (MAP_FRACTION-1)) / FP);
+
+            // Check Y axis collision
+            if (map[(y+1)*MAP_SIZE + x] || map[(y+1)*MAP_SIZE + xleft] || map[(y+1)*MAP_SIZE + xright]) {
+                // Send progress update to main thread
+                parentPort.postMessage({ type: 'progress', value: 1024 / 8 });
+                // Continue with next Y until it gets outside the collision
+                continue;
+            }
+            if (y == 0 || map[(y-1)*MAP_SIZE + x] || map[(y-1)*MAP_SIZE + xleft] || map[(y-1)*MAP_SIZE + xright]) {
+                // Send progress update to main thread
+                parentPort.postMessage({ type: 'progress', value: 1024 / 8 });
+                // Continue with next Y until it gets outside the collision
+                continue;
+            }
+
             for (let angle = 0; angle < 1024; angle += 8) {
+
+                // DDA (Digital Differential Analyzer)
 
                 const sideDistX_l0 = posX - (Math.floor(posX / FP) * FP);
                 const sideDistX_l1 = (Math.floor(posX / FP) + 1) * FP - posX;
@@ -125,19 +168,12 @@ console.log(entry);
                         outputHitMap[entry.key] = entry.value;
                     }
                 }
-
-                // Update progress
-                localCompletedIterations++;
-                // Send progress update to main thread every 1000 iterations
-                if (localCompletedIterations % 1000 === 0) {
-                    parentPort.postMessage({ type: 'progress', value: 1000 });
-                }
             }
+
+            // Send progress update to main thread
+            parentPort.postMessage({ type: 'progress', value: 1024/8 });
         }
     }
-
-    // Send remaining portion of iterations
-    parentPort.postMessage({ type: 'progress', value: localCompletedIterations % 1000 });
 
     return outputHitMap;
 }

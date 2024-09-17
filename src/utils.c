@@ -61,7 +61,7 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr) {
 }
 
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2) {
-   __asm (
+   __asm volatile (
         "mulu.w  %1, %0\n\t"
         "lsr.l   %[_FS], %0\n\t"
         : "+d" (op1)

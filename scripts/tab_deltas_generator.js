@@ -8,6 +8,7 @@ const { FP, AP, PIXEL_COLUMNS, M_PI, MAX_U16 } = require('./consts');
 let tabDeltas = new Uint16Array(AP * PIXEL_COLUMNS * 4);
 let deltaPtr = 0;
 
+// precompute ray deltas for all angles, one axis is enough because of symmetry
 for (let i = 0; i < AP; i++) {
     let a = (i * M_PI * 2) / AP;
     let sina = Math.sin(a);
@@ -20,6 +21,7 @@ for (let i = 0; i < AP; i++) {
     let rx2 = dx - dy;
     let ry2 = dy + dx;
 
+    // interpolate rayDir and fill the delta table
     for (let x = 0; x < PIXEL_COLUMNS; x++) {
         let rayDirX = rx1 + (rx2 - rx1) * (x + 0.5) / PIXEL_COLUMNS;
         let rayDirY = ry1 + (ry2 - ry1) * (x + 0.5) / PIXEL_COLUMNS;

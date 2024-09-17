@@ -16,7 +16,8 @@
     "tab_shift_for_mulu_dist_approx_div256.h": "c",
     "tab_wall_div.h": "c",
     "map_matrix.h": "c",
-    "frame_buffer.h": "c"
+    "frame_buffer.h": "c",
+    "game_loop.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {
