@@ -22,6 +22,10 @@
 #define NO_INLINE               __declspec(noinline)
 #endif
 
+// Calculates the position/index of the highest bit of n which corresponds to the power of 2 that 
+// is the closest integer logarithm base 2 of n. The result is thus FLOOR(LOG2(n))
+#define LOG2(n) (((sizeof(u32) * 8) - 1) - (__builtin_clz((n))))
+
 /// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOffVDP (u8 reg01);

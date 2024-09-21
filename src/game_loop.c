@@ -25,8 +25,8 @@ extern void gameLoop () {
 	//SYS_showFrameLoad(FALSE);
 
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
-	// Smaller positions locate at top-left corner of the map[], bigger positions locate at bottom-right of the map[].
-	// But dx and dy, applied to posX and posY respectively, goes from 0 to 256/24=10 of FP depending on the angle (see tab_dir_xy.h).
+	// Smaller positions locate at top-left corner of the map[][] layout, bigger positions locate at bottom-right of the map[][] layout.
+	// But dx and dy, applied to posX and posY respectively, goes from 0 to (+/-)FP/ANGLE_DIR_NORMALIZATION depending on the angle (see tab_dir_xy.h).
 	u16 posX = 2*FP, posY = 2*FP;
 
 	// angle max value is 1023 and is updated in +/- 8 units.
@@ -44,7 +44,7 @@ extern void gameLoop () {
         // movement and collisions
         if (joy & (BUTTON_UP | BUTTON_DOWN)) {
 
-            // Displacement amount and direction sign depending on angle
+            // Direction amount and sign depending on angle
             s16 dx = tab_dir_x_div24[angle];
             s16 dy = tab_dir_y_div24[angle];
             if (joy & BUTTON_DOWN) {
@@ -53,8 +53,8 @@ extern void gameLoop () {
             }
 
             // Current location (normalized) before displacement
-            u16 x = posX / FP;
-            u16 y = posY / FP;
+            u16 x = posX / FP; // x > 0 always because min pos x is bigger than FP
+            u16 y = posY / FP; // y > 0 always because min pos y is bigger than FP
 
             // Limit y axis location (normalized)
             const u16 ytop = (posY - (MAP_FRACTION-1)) / FP;
@@ -65,14 +65,16 @@ extern void gameLoop () {
             posY += dy;
 
             // Check x axis collision
-            if (dx > 0) {   
+            // Moving right as per map[][] layout?
+            if (dx > 0) {
                 if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
                     posX = min(posX, (x+1)*FP - MAP_FRACTION);
                     x = posX / FP;
                 }
             }
+            // Moving left as per map[][] layout?
             else {
-                if (x == 0 || map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
+                if (map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
                     posX = max(posX, x*FP + MAP_FRACTION);
                     x = posX / FP;
                 }
@@ -83,21 +85,23 @@ extern void gameLoop () {
             const u16 xright = (posX + (MAP_FRACTION-1)) / FP;
 
             // Check y axis collision
+            // Moving down as per map[][] layout?
             if (dy > 0) {
                 if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
                     posY = min(posY, (y+1)*FP - MAP_FRACTION);
             }
+            // Moving up as per map[][] layout?
             else {
-                if (y == 0 || map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
+                if (map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
                     posY = max(posY, y*FP + MAP_FRACTION);
             }
         }
 
         // rotation
         if (joy & BUTTON_LEFT)
-            angle = (angle + 8) & 1023;
+            angle = (angle + (1024/AP)) & 1023;
         if (joy & BUTTON_RIGHT)
-            angle = (angle - 8) & 1023;
+            angle = (angle - (1024/AP)) & 1023;
 
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, angle);
@@ -120,40 +124,65 @@ extern void gameLoop () {
 }
 
 extern void gameLoopAuto () {
-    for (u16 posX = 2*FP; posX <= MAX_POS_XY; posX += 1) {
-        for (u16 posY = 4*FP; posY <= MAX_POS_XY; posY += 1) {
+    const u16 posStepping = 1;
+
+    // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
+    // stepping DOWN into Y Axis, and RIGHT into X Axis, where in each position we do a full rotation.
+    // Therefore we only interesting in collisions with x+1 and y+1.
+
+    for (u16 posX = MIN_POS_XY; posX <= MAX_POS_XY; posX += posStepping) {
+
+        for (u16 posY = MIN_POS_XY; posY <= MIN_POS_XY; posY += posStepping) {
 
             // Current location (normalized)
-            u16 x = posX / FP;
-            u16 y = posY / FP;
+            u16 x = posX / FP; // x > 0 always because min pos x is bigger than FP
+            u16 y = posY / FP; // y > 0 always because min pos y is bigger than FP
 
             // Limit y axis location (normalized)
             const u16 ytop = (posY - (MAP_FRACTION-1)) / FP;
             const u16 ybottom = (posY + (MAP_FRACTION-1)) / FP;
 
             // Check x axis collision
+            // Moving right as per map[][] layout?
             if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
-                posX = min(posX, (x+1)*FP - MAP_FRACTION);
-                x = posX / FP;
+                if (posX > ((x+1)*FP - MAP_FRACTION)) {
+                    // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+                    posX += (FP + 2*MAP_FRACTION) - posStepping;
+                    break; // Stop current Y and continue with next X until it gets outside the collision
+                }
             }
-            else if (x == 0 || map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
-                posX = max(posX, x*FP + MAP_FRACTION);
-                x = posX / FP;
-            }
+            // Moving left as per map[][] layout?
+            // else if (map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
+            //     if (posX < (x*FP + MAP_FRACTION)) {
+            //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+            //         posX -= (FP + 2*MAP_FRACTION) + posStepping;
+            //         break; // Stop current Y and continue with next X until it gets outside the collision
+            //     }
+            // }
 
             // Limit x axis location (normalized)
             const u16 xleft = (posX - (MAP_FRACTION-1)) / FP;
             const u16 xright = (posX + (MAP_FRACTION-1)) / FP;
 
             // Check y axis collision
+            // Moving down as per map[][] layout?
             if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright]) {
-                posY = min(posY, (y+1)*FP - MAP_FRACTION);
+                if (posY > ((y+1)*FP - MAP_FRACTION)) {
+                    // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+                    posY += (FP + 2*MAP_FRACTION) - posStepping;
+                    continue; // Continue with next Y until it gets outside the collision
+                }
             }
-            else if (y == 0 || map[y-1][x] || map[y-1][xleft] || map[y-1][xright]) {
-                posY = max(posY, y*FP + MAP_FRACTION);
-            }
+            // Moving up as per map[][] layout?
+            // else if (map[y-1][x] || map[y-1][xleft] || map[y-1][xright]) {
+            //     if (posY < (y*FP + MAP_FRACTION)) {
+            //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+            //         posY -= (FP + 2*MAP_FRACTION) + posStepping;
+            //         continue; // Continue with next Y until it gets outside the collision
+            //     }
+            // }
 
-            for (u16 angle = 0; angle < 1024; angle += 8) {
+            for (u16 angle = 0; angle < 1024; angle += (1024/AP)) {
 
                 // clear the frame buffer
                 clear_buffer((u8*)frame_buffer);
@@ -172,9 +201,9 @@ extern void gameLoopAuto () {
                 SYS_doVBlankProcessEx(ON_VBLANK_START);
 
                 // handle inputs
-                u16 joy = JOY_readJoypad(JOY_1);
-                if (joy & BUTTON_START)
-                    break;
+                // u16 joy = JOY_readJoypad(JOY_1);
+                // if (joy & BUTTON_START)
+                //     break;
             }
         }
     }
@@ -192,7 +221,7 @@ static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
     sideDistY_l0 = posY & (FP - 1); // (posY - (posY/FP)*FP);
     sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
 
-    u16 a = angle / (1024 / AP); // a range is [0, 128)
+    u16 a = angle / (1024/AP); // a range is [0, 128)
     #if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
     u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 3));
     #else
@@ -339,31 +368,39 @@ static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16
 
 	if (rayDirX < 0) {
 		stepX = -1;
-		sideDistX = sideDistX_l0;
+        #if USE_TAB_MULU_DIST_DIV256
+        sideDistX = tab_mulu_dist_div256[sideDistX][(a+column)];
+        #else
+        sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
+        #endif
 	}
 	else {
 		stepX = 1;
-		sideDistX = sideDistX_l1;
+        #if USE_TAB_MULU_DIST_DIV256
+        sideDistX = tab_mulu_dist_div256[sideDistX][(a+column)];
+        #else
+        sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
+        #endif
 	}
 
 	if (rayDirY < 0) {
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
-		sideDistY = sideDistY_l0;
+		#if USE_TAB_MULU_DIST_DIV256
+        sideDistY = tab_mulu_dist_div256[sideDistY][(a+column)];
+        #else
+        sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
+        #endif
 	}
 	else {
 		stepY = 1;
 		stepYMS = MAP_SIZE;
-		sideDistY = sideDistY_l1;
+		#if USE_TAB_MULU_DIST_DIV256
+        sideDistY = tab_mulu_dist_div256[sideDistY][(a+column)];
+        #else
+        sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
+        #endif
 	}
-
-	#if USE_TAB_MULU_DIST_DIV256
-	sideDistX = tab_mulu_dist_div256[sideDistX][(a+column)];
-	sideDistY = tab_mulu_dist_div256[sideDistY][(a+column)];
-	#else
-	sideDistX = mulu_shft_FS(sideDistX, deltaDistX); //(u16)(mulu(sideDistX, deltaDistX) >> FS);
-	sideDistY = mulu_shft_FS(sideDistY, deltaDistY); //(u16)(mulu(sideDistY, deltaDistY) >> FS);
-	#endif
 #endif
 
 	u16 mapX = posX / FP;

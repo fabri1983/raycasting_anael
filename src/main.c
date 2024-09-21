@@ -9,8 +9,9 @@
 // * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
 // * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
 // * If clear_buffer() is moved into VBlank callback => %1 saved in cpu usage, but runs into next display period.
-// * Moved write_vline_full() into write_vline() and translated into inline ASM.
-// * write_vline() translated into inline ASM => 2% saved in cpu usage.
+// * Moved write_vline_full() into write_vline() and translated into inline ASM => ~1% saved in cpu usage.
+// * write_vline(): translated into inline ASM => 2% saved in cpu usage.
+// * write_vline(): access optimization for top and bottom tiles of current column in ASM => 4% saved in cpu usage.
 // * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
 //   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
@@ -212,10 +213,12 @@ int main (bool hardReset)
 
 	SYS_doVBlankProcess();
 
+	// For some unknown reason if we use a game_loop.h and declare gameLoop() function, later when defining 
+	// the body of the function in its own game_loop.c unit it crashes the emulator/console with an illegal instruction.
+	// So solution is: remove game_loop.h, declare gameLoop() as extern in game_loop.c, and just call it here.
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
 	gameLoop();
-	//gameLoopAuto();
 	#pragma GCC diagnostic pop
 
 	SYS_disableInts();

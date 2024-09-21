@@ -11,7 +11,7 @@ const outputFile = 'tab_mulu_dist_div256_PARTIAL.txt';
 const { FS, FP, AP, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY } = require('./consts');
 
 // Progress tracking
-const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024 / 8);
+const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024/(1024/AP));
 let completedIterations = 0;
 
 function displayProgress () {
@@ -23,10 +23,15 @@ function displayProgress () {
 // Processing function to be run inside the worker thread
 function processTabDeltasChunk (workerId, startPosX, endPosX, tab_deltas, map) {
     const outputMap = new Map();
+    const posStepping = 1;
 
-    for (let posX = startPosX; posX <= endPosX; posX += 1) {
+    // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
+    // stepping DOWN into Y Axis, and RIGHT into X Axis, where in each position we do a full rotation.
+    // Therefore we only interesting in collisions with x+1 and y+1.
 
-        for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += 1) {
+    for (let posX = startPosX; posX <= endPosX; posX += posStepping) {
+
+        for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += posStepping) {
 
             // Current location normalized
             let x = Math.floor(posX / FP);
@@ -37,38 +42,58 @@ function processTabDeltasChunk (workerId, startPosX, endPosX, tab_deltas, map) {
             const ybottom = Math.floor((posY + (MAP_FRACTION-1)) / FP);
 
             // Check X axis collision
-            if (map[y*MAP_SIZE + x+1] || map[ytop*MAP_SIZE + x+1] || map[ybottom*MAP_SIZE + x+1]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024 / 8) });
-                // Stop current Y and continue with next X until it gets outside the collision
-                break;
+            // Moving right as per map[][] layout?
+            if (map[y*MAP_SIZE + (x+1)] || map[ytop*MAP_SIZE + (x+1)] || map[ybottom*MAP_SIZE + (x+1)]) {
+                if (posX > ((x+1)*FP - MAP_FRACTION)) {
+                    // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+                    posX += (FP + 2*MAP_FRACTION) - posStepping;
+                    // Send progress update to main thread
+                    parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024/(1024/AP)) });
+                    // Stop current Y and continue with next X until it gets outside the collision
+                    break;
+                }
             }
-            else if (x == 0 || map[y*MAP_SIZE + x-1] || map[ytop*MAP_SIZE + x-1] || map[ybottom*MAP_SIZE + x-1]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024 / 8) });
-                // Stop current Y and continue with next X until it gets outside the collision
-                break;
-            }
+            // Moving left as per map[][] layout?
+            // else if (map[y*MAP_SIZE + (x-1)] || map[ytop*MAP_SIZE + (x-1)] || map[ybottom*MAP_SIZE + (x-1)]) {
+            //     if (posX < (x*FP + MAP_FRACTION)) {
+            //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+            //         posX -= (FP + 2*MAP_FRACTION) + posStepping;
+            //         // Send progress update to main thread
+            //         parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024/(1024/AP)) });
+            //         // Stop current Y and continue with next X until it gets outside the collision
+            //         break;
+            //     }
+            // }
 
             // Limit X axis location normalized
             const xleft = Math.floor((posX - (MAP_FRACTION-1)) / FP);
             const xright = Math.floor((posX + (MAP_FRACTION-1)) / FP);
 
             // Check Y axis collision
+            // Moving down as per map[][] layout?
             if (map[(y+1)*MAP_SIZE + x] || map[(y+1)*MAP_SIZE + xleft] || map[(y+1)*MAP_SIZE + xright]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: 1024 / 8 });
-                // Continue with next Y until it gets outside the collision
-                continue;
+                if (posY > ((y+1)*FP - MAP_FRACTION)) {
+                    // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+                    posY += (FP + 2*MAP_FRACTION) - posStepping;
+                    // Send progress update to main thread
+                    parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });
+                    // Continue with next Y until it gets outside the collision
+                    continue;
+                }
             }
-            else if (y == 0 || map[(y-1)*MAP_SIZE + x] || map[(y-1)*MAP_SIZE + xleft] || map[(y-1)*MAP_SIZE + xright]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: 1024 / 8 });
-                // Continue with next Y until it gets outside the collision
-                continue;
-            }
+            // Moving up as per map[][] layout?
+            // else if (map[(y-1)*MAP_SIZE + x] || map[(y-1)*MAP_SIZE + xleft] || map[(y-1)*MAP_SIZE + xright]) {
+            //     if (posY < (y*FP + MAP_FRACTION)) {
+            //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+            //         posY -= (FP + 2*MAP_FRACTION) + posStepping;
+            //         // Send progress update to main thread
+            //         parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });
+            //         // Continue with next Y until it gets outside the collision
+            //         continue;
+            //     }
+            // }
 
-            for (let angle = 0; angle < 1024; angle += 8) {
+            for (let angle = 0; angle < 1024; angle += (1024/AP)) {
 
                 // DDA (Digital Differential Analyzer)
 
@@ -77,7 +102,7 @@ function processTabDeltasChunk (workerId, startPosX, endPosX, tab_deltas, map) {
                 const sideDistY_l0 = posY - (Math.floor(posY / FP) * FP);
                 const sideDistY_l1 = (Math.floor(posY / FP) + 1) * FP - posY;
 
-                let a = Math.floor(angle / (1024 / AP));
+                let a = Math.floor(angle / (1024/AP));
                 const a_for_matrix = a * PIXEL_COLUMNS;
 
                 for (let c = 0; c < PIXEL_COLUMNS; ++c) {
@@ -134,7 +159,7 @@ function processTabDeltasChunk (workerId, startPosX, endPosX, tab_deltas, map) {
             }
 
             // Send progress update to main thread
-            parentPort.postMessage({ type: 'progress', value: 1024/8 });
+            parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });
         }
     }
 
@@ -185,6 +210,7 @@ function runWorkers () {
     // Set up progress display interval
     const progressInterval = setInterval(displayProgress, 2000);
 
+    // Join all workers and wait
     Promise.all(workers)
         .then(results => {
             clearInterval(progressInterval); // Stop progress display

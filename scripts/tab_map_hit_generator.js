@@ -10,12 +10,12 @@ const outputFile = 'tab_map_hit_OUTPUT.txt';
 // Check correct values of constants before script execution. See consts.h.
 const {
     FS, FP, AP, STEP_COUNT, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
-    MAP_HIT_MASK_MAPXY, MAP_HIT_MASK_SIDEDISTXY, MAP_HIT_MASK_SIDE, 
-    MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDIST
+    MAP_HIT_MASK_MAPXY, MAP_HIT_MASK_SIDEDISTXY, MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDISTXY, 
+    MAX_U32
 } = require('./consts');
 
 // Progress tracking
-const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024 / 8);
+const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024/(1024/AP));
 let completedIterations = 0;
 
 function displayProgress () {
@@ -24,22 +24,29 @@ function displayProgress () {
     process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
-function calculateOutputHitMapEntry (posX, posY, a, column, mapXY, side, sideDistXY) {
-    const key = `[${Math.floor(posX/FP)}][${Math.floor(posY/FP)}][${a}][${column}]`;
-    // At this point we know sideDistXY < 4096, mapXY < MAP_SIZE, and side is [0,1]
-    const value = ((mapXY & MAP_HIT_MASK_MAPXY) << MAP_HIT_OFFSET_MAPXY) 
-                | ((sideDistXY & MAP_HIT_MASK_SIDEDISTXY) << MAP_HIT_OFFSET_SIDEDIST) 
-                | (side & MAP_HIT_MASK_SIDE);
+function calculateHitMapEntry (mapX, mapY, a, column, sideDistXY, mapXY) {
+    const key = `[${mapX}][${mapY}][${a}][${column}]`;
+    // At this point we know sideDistXY < 4096, mapXY < MAP_SIZE
+    // The value is calculated in next layout: 
+    //   16 bits:  mmmm    dddddddddddd
+    //             mapXY    sideDistXY
+    const value = ((sideDistXY & MAP_HIT_MASK_SIDEDISTXY) << MAP_HIT_OFFSET_SIDEDISTXY) 
+                    | ((mapXY & MAP_HIT_MASK_MAPXY) << MAP_HIT_OFFSET_MAPXY) 
     return { key, value };
 }
 
 // Processing function to be run inside the worker thread
 function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
     const outputHitMap = new Map();
+    const posStepping = 1;
 
-    for (let posX = startPosX; posX <= endPosX; posX += 1) {
+    // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
+    // stepping DOWN into Y Axis, and RIGHT into X Axis, where in each position we do a full rotation.
+    // Therefore we only interesting in collisions with x+1 and y+1.
 
-        for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += 1) {
+    for (let posX = startPosX; posX <= endPosX; posX += posStepping) {
+
+        for (let posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += posStepping) {
 
             // Current location normalized
             let x = Math.floor(posX / FP);
@@ -50,38 +57,58 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
             const ybottom = Math.floor((posY + (MAP_FRACTION-1)) / FP);
 
             // Check X axis collision
-            if (map[y*MAP_SIZE + x+1] || map[ytop*MAP_SIZE + x+1] || map[ybottom*MAP_SIZE + x+1]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024 / 8) });
-                // Stop current Y and continue with next X until it gets outside the collision
-                break;
+            // Moving right as per map[][] layout?
+            if (map[y*MAP_SIZE + (x+1)] || map[ytop*MAP_SIZE + (x+1)] || map[ybottom*MAP_SIZE + (x+1)]) {
+                if (posX > ((x+1)*FP - MAP_FRACTION)) {
+                    // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+                    posX += (FP + 2*MAP_FRACTION) - posStepping;
+                    // Send progress update to main thread
+                    parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024/(1024/AP)) });
+                    // Stop current Y and continue with next X until it gets outside the collision
+                    break;
+                }
             }
-            if (x == 0 || map[y*MAP_SIZE + x-1] || map[ytop*MAP_SIZE + x-1] || map[ybottom*MAP_SIZE + x-1]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024 / 8) });
-                // Stop current Y and continue with next X until it gets outside the collision
-                break;
-            }
+            // Moving left as per map[][] layout?
+            // else if (map[y*MAP_SIZE + (x-1)] || map[ytop*MAP_SIZE + (x-1)] || map[ybottom*MAP_SIZE + (x-1)]) {
+            //     if (posX < (x*FP + MAP_FRACTION)) {
+            //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+            //         posX -= (FP + 2*MAP_FRACTION) + posStepping;
+            //         // Send progress update to main thread
+            //         parentPort.postMessage({ type: 'progress', value: (MAX_POS_XY - posY + 1) * (1024/(1024/AP)) });
+            //         // Stop current Y and continue with next X until it gets outside the collision
+            //         break;
+            //     }
+            // }
 
             // Limit X axis location normalized
             const xleft = Math.floor((posX - (MAP_FRACTION-1)) / FP);
             const xright = Math.floor((posX + (MAP_FRACTION-1)) / FP);
 
             // Check Y axis collision
+            // Moving down as per map[][] layout?
             if (map[(y+1)*MAP_SIZE + x] || map[(y+1)*MAP_SIZE + xleft] || map[(y+1)*MAP_SIZE + xright]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: 1024 / 8 });
-                // Continue with next Y until it gets outside the collision
-                continue;
+                if (posY > ((y+1)*FP - MAP_FRACTION)) {
+                    // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+                    posY += (FP + 2*MAP_FRACTION) - posStepping;
+                    // Send progress update to main thread
+                    parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });
+                    // Continue with next Y until it gets outside the collision
+                    continue;
+                }
             }
-            if (y == 0 || map[(y-1)*MAP_SIZE + x] || map[(y-1)*MAP_SIZE + xleft] || map[(y-1)*MAP_SIZE + xright]) {
-                // Send progress update to main thread
-                parentPort.postMessage({ type: 'progress', value: 1024 / 8 });
-                // Continue with next Y until it gets outside the collision
-                continue;
-            }
+            // Moving up as per map[][] layout?
+            // else if (map[(y-1)*MAP_SIZE + x] || map[(y-1)*MAP_SIZE + xleft] || map[(y-1)*MAP_SIZE + xright]) {
+            //     if (posY < (y*FP + MAP_FRACTION)) {
+            //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
+            //         posY -= (FP + 2*MAP_FRACTION) + posStepping;
+            //         // Send progress update to main thread
+            //         parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });
+            //         // Continue with next Y until it gets outside the collision
+            //         continue;
+            //     }
+            // }
 
-            for (let angle = 0; angle < 1024; angle += 8) {
+            for (let angle = 0; angle < 1024; angle += (1024/AP)) {
 
                 // DDA (Digital Differential Analyzer)
 
@@ -90,7 +117,7 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
                 const sideDistY_l0 = posY - (Math.floor(posY / FP) * FP);
                 const sideDistY_l1 = (Math.floor(posY / FP) + 1) * FP - posY;
 
-                let a = Math.floor(angle / (1024 / AP));
+                let a = Math.floor(angle / (1024/AP));
 
                 for (let column = 0; column < PIXEL_COLUMNS; ++column) {
 
@@ -125,8 +152,6 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
 
                     let mapX = Math.floor(posX / FP);
                     let mapY = Math.floor(posY / FP);
-                    
-                    let hitInLoop = false;
 
                     for (let n = 0; n < STEP_COUNT; ++n) {
                         // side X
@@ -134,12 +159,9 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
                             mapX += stepX;
                             let hit = map[mapY * MAP_SIZE + mapX];
                             if (hit != 0) {
-                                hitInLoop = true;
                                 // Here we found a hit for side X when user is at (posX/FP,posY/FP,a,column).
-                                // Store in outputHitMap at key [${posX/FP}][${posY/FP}][${a}] the value X,${mapY},${sideDistX}
-                                const entry = calculateOutputHitMapEntry(posX, posY, a, column, 0, mapY, sideDistX);
-                                outputHitMap[entry.key] = entry.value;
-console.log(entry);
+                                const entry = calculateHitMapEntry(Math.floor(posX/FP), Math.floor(posY/FP), a, column, sideDistX, mapY);
+                                outputHitMap.set(entry.key, entry.value);
                                 break;
                             }
                             sideDistX += deltaDistX;
@@ -149,46 +171,95 @@ console.log(entry);
                             mapY += stepY;
                             let hit = map[mapY * MAP_SIZE + mapX];
                             if (hit != 0) {
-                                hitInLoop = true;
                                 // Here we found a hit for side Y when user is at (posX/FP,posY/FP,a,column).
-                                // Store in outputHitMap at key [${posX/FP}][${posY/FP}][${a}] the value Y,${mapX},${sideDistY}
-                                const entry = calculateOutputHitMapEntry(posX, posY, a, column, 1, mapX, sideDistY);
-                                outputHitMap[entry.key] = entry.value;
-console.log(entry);
+                                const entry = calculateHitMapEntry(Math.floor(posX/FP), Math.floor(posY/FP), a, column, sideDistY, mapX);
+                                outputHitMap.set(entry.key, entry.value);
                                 break;
                             }
                             sideDistY += deltaDistY;
                         }
                     }
-
-                    // no hit inside the loop? Just in case
-                    if (hitInLoop == false) {
-                        // Store in outputHitMap at key [${posX/FP}][${posY/FP}][${a}] the value 0
-                        const entry = calculateOutputHitMapEntry(posX, posY, a, column, 0, 0, 0);
-                        outputHitMap[entry.key] = entry.value;
-                    }
                 }
             }
 
+            //global.gc(false); // Not sure if false sets a Minor GC call but it works fine.
+
             // Send progress update to main thread
-            parentPort.postMessage({ type: 'progress', value: 1024/8 });
+            parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });
         }
     }
 
     return outputHitMap;
 }
 
-function checkFinalSize (arr) {
+function checkFinalSize (map) {
     const expectedCount = MAP_SIZE * MAP_SIZE * (1024/(1024/AP)) * PIXEL_COLUMNS;
-    if (arr.length != expectedCount)
-        throw new Error(`Sanity check failed: hit map size is ${arr.length} instead of ${expectedCount}`);
+    if (map.size != expectedCount)
+        throw new Error(`Sanity check failed: hit map size is ${map.size} instead of ${expectedCount}`);
+}
+
+function toIndex (key) {
+    const match = key.match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
+    if (!match) {
+        throw new Error('Invalid key format');
+    }
+
+    const [, mapX, mapY, a, column] = match.map(Number);
+
+    if (mapX < 0 || mapX >= MAP_SIZE ||
+        mapY < 0 || mapY >= MAP_SIZE ||
+        a < 0 || a >= (1024/(1024/AP)) ||
+        column < 0 || column >= PIXEL_COLUMNS) {
+        throw new Error('Invalid key format or values out of range. key: ' + key);
+    }
+
+    const index = ((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS + column;
+    return index;
+}
+
+function getMinIndex (map) {
+    let minIndex = MAX_U32;
+    for (const [key, value] of map.entries()) {
+        const index = toIndex(key);
+        if (index < minIndex)
+            minIndex = index;
+    }
+    return minIndex;
+}
+
+function getMaxIndex (map) {
+    let maxIndex = 0;
+    for (const [key, value] of map.entries()) {
+        const index = toIndex(key);
+        if (index > maxIndex)
+            maxIndex = index;
+    }
+    return maxIndex;
+}
+
+function convertToFullArray (map) {
+    const minIndex = getMinIndex(map);
+    const maxIndex = getMaxIndex(map);
+    const finalArraySize = (maxIndex - minIndex) + 1;
+    console.log(`min calculated index: ${minIndex}`);
+    console.log(`max calculated index: ${maxIndex}`);
+    console.log(`final array size: (${maxIndex} - ${minIndex}) + 1 = ${finalArraySize}`);
+    const fullArray = new Array(finalArraySize).fill(0);
+
+    for (const [key, value] of map.entries()) {
+        const index = toIndex(key);
+        fullArray[index - minIndex] = value;
+    }
+
+    return fullArray;
 }
 
 function writeOutputToFile (arr, outputFile) {
     // Take groups of 16 elems
     const lines = [];
-    for (let i = 0; i < arr.length; i += 16) {
-        const line = arr.slice(i, i + 16).join(',');
+    for (let i = 0; i < arr.length; i += 32) {
+        const limit = Math.min(i + 32, arr.length);
+        const line = arr.slice(i, limit).join(',');
         lines.push(line);
     }
 
@@ -207,7 +278,7 @@ function runWorkers () {
     const workers = [];
     const chunkSize = Math.ceil((MAX_POS_XY + 1) / numCores);
 
-    console.log('(Invoke with: node --max-old-space-size=5120 <script.js> to avoid running out of mem)');
+    console.log('(Invoke with: node --max-old-space-size=2048 <script.js> to avoid running out of mem)');
     console.log(`Utilizing ${numCores} cores for processing.`);
     let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
     console.log(startTimeStr);
@@ -243,6 +314,7 @@ function runWorkers () {
     // Set up progress display interval
     const progressInterval = setInterval(displayProgress, 4000);
 
+    // Join all workers and wait
     Promise.all(workers)
         .then(results => {
             clearInterval(progressInterval); // Stop progress display
@@ -256,28 +328,14 @@ function runWorkers () {
                 });
             });
 
-            // Sort by key in ASC order, then save value into an array
-            const sortedOutput = Array.from(finalMap.entries()).sort((a, b) => {
-                    const [, posX_FP_1, posY_FP_1, angle_1, col_1] = a[0].match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
-                    const [, posX_FP_2, posY_FP_2, angle_2, col_2] = b[0].match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
-                    if (parseInt(posX_FP_1) !== parseInt(posX_FP_2)) {
-                        return parseInt(posX_FP_1) - parseInt(posX_FP_2);
-                    }
-                    if (parseInt(posY_FP_1) !== parseInt(posY_FP_2)) {
-                        return parseInt(posY_FP_1) - parseInt(posY_FP_2);
-                    }
-                    if (parseInt(angle_1) !== parseInt(angle_2)) {
-                        return parseInt(angle_1) - parseInt(angle_2);
-                    }
-                    return parseInt(col_1) - parseInt(col_2);
-                })
-                .map(entry => entry[1]); // keep the value
-
             // Sanity check on size
-            checkFinalSize(sortedOutput);
+            //checkFinalSize(finalMap);
+
+            // Complete the array of values with the missing elements (those unaccessible map regions)
+            const completeOutputArray = convertToFullArray(finalMap);
 
             // Write output to file
-            writeOutputToFile(sortedOutput, outputFile);
+            writeOutputToFile(completeOutputArray, outputFile);
 
             let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
             console.log(endTimeStr);
@@ -290,6 +348,11 @@ function runWorkers () {
             console.log(endTimeStr);
         });
 }
+
+// if (!global.gc) {
+//     console.log('Garbage collection unavailable. Pass --expose-gc when launching node to enable forced garbage collection.');
+//     return;
+// }
 
 if (isMainThread) {
     runWorkers();
