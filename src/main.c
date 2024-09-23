@@ -81,14 +81,14 @@ static void loadHUD (u16 currentTileIndex) {
 
 HINTERRUPT_CALLBACK hIntCallback () {
 	if (GET_VCOUNTER <= HINT_SCANLINE_CHANGE_BG_COLOR) {
-		waitHCounter(156);
+		waitHCounter_DMA(156);
 		// set background color used for the floor
 		PAL_setColor(0, palette_grey[2]);
 		return;
 	}
 	
 	// We are one scanline earlier so wait until entering th HBlank region
-	waitHCounter(152);
+	waitHCounter_DMA(152);
 
 	// Prepare DMA cmd and source address for first palette
     u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
@@ -99,7 +99,7 @@ HINTERRUPT_CALLBACK hIntCallback () {
 
     // At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter(152);
+    waitHCounter_DMA(152);
 
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
@@ -114,7 +114,7 @@ HINTERRUPT_CALLBACK hIntCallback () {
 
 	// At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter(152);
+    waitHCounter_DMA(152);
 
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
@@ -167,7 +167,11 @@ void vBlankCallback () {
 	turnOnVDP(0x74);
 
 	// clear the frame buffer
-	//clear_buffer((u8*)frame_buffer);
+	#if USE_CLEAR_FRAMEBUFFER_WITH_SP
+	//clear_buffer_sp(frame_buffer);
+	#else
+	//clear_buffer(frame_buffer);
+	#endif
 }
 
 int main (bool hardReset)
@@ -234,7 +238,6 @@ int main (bool hardReset)
 	VDP_clearPlane(BG_A, TRUE);
 	VDP_setHorizontalScroll(BG_A, 0);
 	VDP_setHorizontalScroll(BG_B, 0);
-	VDP_drawText("Game Over", (TILEMAP_COLUMNS - 10)/2, (224/8)/2);
 
 	return 0;
 }

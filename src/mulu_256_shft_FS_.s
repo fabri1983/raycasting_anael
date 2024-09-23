@@ -1,13 +1,15 @@
-;// This instructions needs to be beat: 
+;// These instructions needs to be beat: 
 ;//   op1(d6) * op2(d7) => mulu  d7,d6
 ;//   op1(d6) >> FS     => lsr.l #8,d6
 ;// Result stored in op1 (d6).
+;// Timings:
+;//   mulu   d7,d6  => 38~70 cycles
+;//   lsr.l  #8,d6  => 24 cycles
 ;// NOTES: 
 ;//  - high word part of the result matters, and since after multiplication 
 ;//  - we have to: d6 >> FS (FS=256), then is safe to not clear d6 with moveq #0,d6 in those case_N blocks having the optimized instructions.
 ;//  - d6 = 0..256 and d7 = 0..65535
-;//mulu   d7,d6  ;// 38~70 cycles
-;//lsr.l  #8,d6  ;// 24 cycles
+
 
 ;// This works on GCC GAS with C pre-processor
 .set PAD_NUM_BYTES, 16  // this needs to be 16 otherwise you'll have to modify macro shft_adjusted

@@ -5,6 +5,8 @@
 #include "consts.h"
 
 // Table body generated with script tab_deltas_generator.js. Check correct values of constants before script execution.
+// Two first columns are used as sideDistX and sideDistY.
+// Two last columns are used as ray direction (signed) and distance?
 const u16 tab_deltas[AP*PIXEL_COLUMNS*4] = {
 259, 256, 253, 256,
 266, 256, 246, 256,

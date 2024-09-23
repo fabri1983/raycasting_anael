@@ -26,6 +26,12 @@
 // is the closest integer logarithm base 2 of n. The result is thus FLOOR(LOG2(n))
 #define LOG2(n) (((sizeof(u32) * 8) - 1) - (__builtin_clz((n))))
 
+/// Blastem-nightly builds supports KDebug integration and there's a built-in 68K cycle counter. 
+/// Just write to unused to VDP register to start/stop this counter.
+/// See also Stef's tools.h BLASTEM_PROFIL_START and BLASTEM_PROFIL_END.
+#define STOPWATCH_68K_CYCLES_START() __asm volatile ("move.w  #0x9FC0, (0xC00004).l\n" :::"memory")
+#define STOPWATCH_68K_CYCLES_STOP() __asm volatile ("move.w  #0x9F00, (0xC00004).l\n" :::"memory")
+
 /// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOffVDP (u8 reg01);
@@ -37,7 +43,12 @@ void turnOnVDP (u8 reg01);
 /**
  * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
 */
-void waitHCounter (u8 n);
+void waitHCounter_CPU (u8 n);
+
+/**
+ * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
+*/
+void waitHCounter_DMA (u8 n);
 
 /**
  * Wait until VCounter 0xC00008 reaches nth scanline position. Parameter n is loaded into a register.

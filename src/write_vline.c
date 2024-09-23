@@ -18,10 +18,10 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 		__asm volatile (
 			".set off,0\n"
 			".rept %c[_VERTICAL_COLUMNS]\n"
-			"    move.w  %[_color],off(%[_tilemap])\n"
+			"    move.w  %[color],off(%[tilemap])\n"
 			"    .set off,off+%c[_PLANE_COLUMNS]*2\n"
 			".endr\n"
-			: [_tilemap] "+a" (tilemap), [_color] "+d" (color)
+			: [tilemap] "+a" (tilemap), [color] "+d" (color)
 			: [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
 			:
 		);
@@ -33,7 +33,7 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 		// bottom tilemap entry (with flipped attribute)
 		//tilemap[((VERTICAL_COLUMNS-1)-ta)*PLANE_COLUMNS] = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
 
-		// THIS is slightly faster:
+		// THIS is slightly faster in C, but super fast when implemented in the inline ASM block:
 		// top tilemap entry
 		//tilemap[(h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))] = color + (h2 & 7); // offsets the color by the halved pixel height modulo 8
 		// bottom tilemap entry (with flipped attribute)
@@ -75,26 +75,26 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 		// inline ASM version
 		u16 h2_aux = h2, color_aux = color;
 		__asm volatile (
-			"    andi.w  #7,%[_h2_aux]\n" // _h2_aux = (h2 & 7)
-			"    add.w   %[_h2_aux],%[_color_aux]\n" // _color_aux = color + (h2 & 7);
+			"    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7)
+			"    add.w   %[h2_aux],%[color_aux]\n" // color_aux = color + (h2 & 7);
 
 			// offset h2 comes already multiplied by 8, but we need to clear the first 3 bits so 
 			// we can use it as a multiple of the jump block size (8 bytes)
-			"    andi.w  %[_clearBitsOffset],%[_h2]\n" // (h2 & ~(8-1))
+			"    andi.w  %[clearBitsOffset],%[h2]\n" // (h2 & ~(8-1))
 
 			// top tilemap entry
-			"    move.w  %[_h2],%[_h2_aux]\n" // _h2_aux = (h2 & ~(8-1))
-			"    lsl.w   %[_SHIFT_TOP_COLUMN_BYTES],%[_h2_aux]\n" // _h2_aux = (h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))
-			"    move.w  %[_color_aux],(%[_tilemap],%[_h2_aux])\n"
+			"    move.w  %[h2],%[h2_aux]\n" // h2_aux = (h2 & ~(8-1))
+			"    lsl.w   %[_SHIFT_TOP_COLUMN_BYTES],%[h2_aux]\n" // h2_aux = (h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))
+			"    move.w  %[color_aux],(%[tilemap],%[h2_aux])\n"
 
 			// bottom tilemap entry
-			"    or.w    %[_TILE_ATTR_VFLIP_MASK],%[_color_aux]\n" // _color_aux = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
-			"    neg.w   %[_h2_aux]\n"
-			"    addi.w  %[_BOTTOM_COLUMN_BYTES],%[_h2_aux]\n" // _h2_aux = (VERTICAL_COLUMNS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))
-			"    move.w  %[_color_aux],(%[_tilemap],%[_h2_aux])\n"
+			"    or.w    %[_TILE_ATTR_VFLIP_MASK],%[color_aux]\n" // color_aux = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
+			"    neg.w   %[h2_aux]\n"
+			"    addi.w  %[_BOTTOM_COLUMN_BYTES],%[h2_aux]\n" // h2_aux = (VERTICAL_COLUMNS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))
+			"    move.w  %[color_aux],(%[tilemap],%[h2_aux])\n"
 
-			// jump into table using with _h2
-			"    jmp     .wvl_table_%=(%%pc,%[_h2].w)\n"
+			// jump into table using with h2
+			"    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
 			// color assignment table: 
 			//  from tile[1*PLANE_COLUMNS] up to [((VERTICAL_COLUMNS-2)/2)*PLANE_COLUMNS]
 			//  from tile[(VERTICAL_COLUMNS-2)*PLANE_COLUMNS] down to [(((VERTICAL_COLUMNS-2)/2)+1)*PLANE_COLUMNS]
@@ -106,15 +106,15 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 			".set offup,1 * %c[_PLANE_COLUMNS] * 2\n"
 			".set offdown,(%c[_VERTICAL_COLUMNS] - 2) * %c[_PLANE_COLUMNS]*2\n"
 			".rept (%c[_VERTICAL_COLUMNS] - 2) / 2\n"
-			"    move.w  %[_color],offup(%[_tilemap])\n"
-			"    move.w  %[_color],offdown(%[_tilemap])\n"
+			"    move.w  %[color],offup(%[tilemap])\n"
+			"    move.w  %[color],offdown(%[tilemap])\n"
 			"    .set offup,offup+%c[_PLANE_COLUMNS]*2\n"
 			"    .set offdown,offdown-%c[_PLANE_COLUMNS]*2\n"
 			".endr\n"
-			: [_tilemap] "+a" (tilemap), [_h2] "+d" (h2), [_color] "+d" (color), [_h2_aux] "+d" (h2_aux), [_color_aux] "+d" (color_aux)
-			: [_clearBitsOffset] "i" (~(8-1)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
-			[_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1),
-			[_BOTTOM_COLUMN_BYTES] "i" ((VERTICAL_COLUMNS-1)*PLANE_COLUMNS*2)
+			: [tilemap] "+a" (tilemap), [h2] "+d" (h2), [color] "+d" (color), [h2_aux] "+d" (h2_aux), [color_aux] "+d" (color_aux)
+			: [clearBitsOffset] "i" (~(8-1)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
+			  [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1),
+			  [_BOTTOM_COLUMN_BYTES] "i" ((VERTICAL_COLUMNS-1)*PLANE_COLUMNS*2)
 			:
 		);
 	}

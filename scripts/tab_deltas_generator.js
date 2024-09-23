@@ -46,7 +46,7 @@ for (let i = 0; i < AP; i++) {
 // Convert the Uint16Array to a string with the new format
 let content = '';
 for (let i = 0; i < tabDeltas.length; i += 4) {
-    content += `${tabDeltas[i]}, ${tabDeltas[i+1]}, ${tabDeltas[i+2]}, ${tabDeltas[i+3]},\n`;
+    content += `${tabDeltas[i+0]}, ${tabDeltas[i+1]}, ${tabDeltas[i+2]}, ${tabDeltas[i+3]},\n`;
 }
 
 // Write to file

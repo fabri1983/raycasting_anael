@@ -21,6 +21,7 @@ static void dda (u16 posX, u16 posY, u16 angle); // forward declaration
 static void process_column (u8 column, u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1); // forward declaration
 
 extern void gameLoop () {
+
     // Frame load is calculated after user's VBlank callback
 	//SYS_showFrameLoad(FALSE);
 
@@ -36,7 +37,11 @@ extern void gameLoop () {
 	for (;;)
 	{
 		// clear the frame buffer
-		clear_buffer((u8*)frame_buffer);
+        #if USE_CLEAR_FRAMEBUFFER_WITH_SP
+		clear_buffer_sp(frame_buffer);
+        #else
+        clear_buffer(frame_buffer);
+        #endif
 
 		// handle inputs
 		u16 joy = JOY_readJoypad(JOY_1);
@@ -185,7 +190,11 @@ extern void gameLoopAuto () {
             for (u16 angle = 0; angle < 1024; angle += (1024/AP)) {
 
                 // clear the frame buffer
-                clear_buffer((u8*)frame_buffer);
+                #if USE_CLEAR_FRAMEBUFFER_WITH_SP
+                clear_buffer_sp(frame_buffer);
+                #else
+                clear_buffer(frame_buffer);
+                #endif
                 
                 // DDA (Digital Differential Analyzer)
                 dda(posX, posY, angle);

@@ -16,7 +16,20 @@ FORCE_INLINE void turnOnVDP (u8 reg01) {
     *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
 }
 
-FORCE_INLINE void waitHCounter (u8 n) {
+FORCE_INLINE void waitHCounter_CPU (u8 n) {
+    u32 regA = VDP_HVCOUNTER_PORT + 1; // HCounter address is 0xC00009
+    __asm volatile (
+        "1:\n" 
+        "    cmp.b     (%0),%1\n"         // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
+        "    bhi.s     1b\n"              // loop back if n is higher than (0xC00009)
+            // bhi is for unsigned comparisons
+        :
+        : "a" (regA), "d" (n)
+        : "cc"
+    );
+}
+
+FORCE_INLINE void waitHCounter_DMA (u8 n) {
     u32* regA=0; // placeholder used to indicate the use of an An register
     __asm volatile (
         "    move.l    #0xC00009,%0\n"    // Load HCounter (VDP_HVCOUNTER_PORT + 1 = 0xC00009) into an An register
@@ -31,15 +44,14 @@ FORCE_INLINE void waitHCounter (u8 n) {
 }
 
 FORCE_INLINE void waitVCounterReg (u16 n) {
-    u32* regA=0; // placeholder used to indicate the use of an An register
+    u32 regA = VDP_HVCOUNTER_PORT; // VCounter address is 0xC00008
     __asm volatile (
-        "    move.l    #0xC00008,%0\n"    // Load V Counter address into an An register
         "1:\n"
         "    cmp.w     (%0),%1\n"         // cmp: n - (0xC00008)
         "    bhi.s     1b\n"              // loop back if n is higher than (0xC00008)
             // bhi is for unsigned comparisons
-        : "+a" (regA)
-        : "d" (n << 8) // (n << 8) | 0xFF
+        :
+        : "a" (regA), "d" (n << 8) // (n << 8) | 0xFF
         : "cc"
     );
 }
@@ -61,14 +73,14 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr) {
 }
 
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2) {
-   __asm volatile (
+    __asm volatile (
         "mulu.w  %1, %0\n\t"
         "lsr.l   %[_FS], %0\n\t"
         : "+d" (op1)
         : "d" (op2), [_FS] "i" (FS)
         : "cc"
     );
-   return op1;
+    return op1;
 }
 
 const unsigned char div_100[] = {
