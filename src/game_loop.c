@@ -10,15 +10,21 @@
 #include "tab_wall_div.h"
 #include "tab_color_d8.h"
 #include "tab_color_d8_with_pal.h"
-#include "tab_mulu_dist_div256.h"
-#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-#include "tab_deltas_3.h"
+
+#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+    #include "perf_hash_mulu_dist_256_shft_FS.h"
+    #include "tab_deltas_perf_hash.h"
 #else
-#include "tab_deltas.h"
+    #include "tab_deltas.h"
 #endif
 
-static void dda (u16 posX, u16 posY, u16 angle); // forward declaration
-static void process_column (u8 column, u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1); // forward declaration
+static void dda (u16 posX, u16 posY, u16 angle);
+#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1);
+#else
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
+#endif
+static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY);
 
 extern void gameLoop () {
 
@@ -129,6 +135,7 @@ extern void gameLoop () {
 }
 
 extern void gameLoopAuto () {
+
     const u16 posStepping = 1;
 
     // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
@@ -223,180 +230,94 @@ extern void gameLoopAuto () {
  */
 static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
 
+    #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+    // Value goes from 0...FP (including), multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2 for faster array acces in ASM
+    u32 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
+    sideDistX_l0 = posX & (FP-1); // (posX - (posX/FP)*FP);
+    sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
+    sideDistY_l0 = posY & (FP-1); // (posY - (posY/FP)*FP);
+    sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
+    sideDistX_l0 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
+    sideDistX_l1 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
+    sideDistY_l0 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
+    sideDistY_l1 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
+    #else
     // Value goes from 0...FP (including)
     u16 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
-    sideDistX_l0 = posX & (FP - 1); // (posX - (posX/FP)*FP);
+    sideDistX_l0 = posX & (FP-1); // (posX - (posX/FP)*FP);
     sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
-    sideDistY_l0 = posY & (FP - 1); // (posY - (posY/FP)*FP);
+    sideDistY_l0 = posY & (FP-1); // (posY - (posY/FP)*FP);
     sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
+    #endif
 
     u16 a = angle / (1024/AP); // a range is [0, 128)
-    #if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-    u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 3));
-    #else
-    u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * 4));
-    #endif
-    #if USE_TAB_MULU_DIST_DIV256
-    a *= PIXEL_COLUMNS; // offset into tab_mulu_dist_div256[...][a]
-    #endif
+    u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT));
+    // #if USE_TAB_MULU_DIST_256_SHFT_FS
+    // a *= PIXEL_COLUMNS; // offset to use as: tab_mulu_dist_div256[sideDistX|Y][a+column]
+    // #endif
 
-    #if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-    #define DELTA_PTR_OFFSET_AMNT 3
-    #else
-    #define DELTA_PTR_OFFSET_AMNT 4
-    #endif
+    // reset to the start of frame_buffer
+    column_ptr = frame_buffer;
 
-    // 256p or 320p width but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
+    // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
     for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
-        process_column(column+0, delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        process_column(column+1, delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        process_column(column+2, delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        process_column(column+3, delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        column_ptr += VERTICAL_COLUMNS*PLANE_COLUMNS;
+        process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        column_ptr += -VERTICAL_COLUMNS*PLANE_COLUMNS + 1;
+        process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        column_ptr += VERTICAL_COLUMNS*PLANE_COLUMNS;
+        process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        column_ptr += -VERTICAL_COLUMNS*PLANE_COLUMNS + 1;
         delta_a_ptr += 4 * DELTA_PTR_OFFSET_AMNT;
     }
 }
 
-static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1) {
-
-#if USE_TAB_DELTAS_3 & !SHOW_TEXCOORD
-	const u16 deltaDistX = *(delta_a_ptr + 0); // value up to 65536-1
-	const u16 deltaDistY = *(delta_a_ptr + 1); // value up to 65536-1
-	u16 rayDir = *(delta_a_ptr + 2); // jump block size multiple of 12
-
-	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 once in the stepping loop due to condition control
-	s16 stepX, stepY, stepYMS;
-
-	// rayDix < 0 and rayDirY < 0
-	if (rayDir == 0) {
-		stepX = -1;
-		stepY = -1;
-		stepYMS = -MAP_SIZE;
-		sideDistX = sideDistX_l0;
-		sideDistY = sideDistY_l0;
-	}
-	// rayDix < 0 and rayDirY > 0
-	else if (rayDir == 12) {
-		stepX = -1;
-		stepY = 1;
-		stepYMS = MAP_SIZE;
-		sideDistX = sideDistX_l0;
-		sideDistY = sideDistY_l1;
-	}
-	// rayDix > 0 and rayDirY < 0
-	else if (rayDir == 24) {
-		stepX = 1;
-		stepY = -1;
-		stepYMS = -MAP_SIZE;
-		sideDistX = sideDistX_l1;
-		sideDistY = sideDistY_l0;
-	}
-	// rayDix > 0 and rayDirY > 0
-	else {
-		stepX = 1;
-		stepY = 1;
-		stepYMS = MAP_SIZE;
-		sideDistX = sideDistX_l1;
-		sideDistY = sideDistY_l1;
-	}
-
-	#if USE_TAB_MULU_DIST_DIV256
-	sideDistX = tab_mulu_dist_div256[sideDistX][(a+column)];
-	sideDistY = tab_mulu_dist_div256[sideDistY][(a+column)];
-	#else
-	sideDistX = mulu_shft_FS(sideDistX, deltaDistX); //(u16)(mulu(sideDistX, deltaDistX) >> FS);
-	sideDistY = mulu_shft_FS(sideDistY, deltaDistY); //(u16)(mulu(sideDistY, deltaDistY) >> FS);
-	#endif
-
-	/*
-    __asm volatile (
-		"jmp     (%%pc,%[_rayDir].w)\n\t" // rayDir comes with the offset multiple of block size
-
-        "0:\n\t"  // rayDix < 0 and rayDirY < 0
-        "moveq   #-1, %[_sideDistX_l1]\n\t" // stepX
-        "moveq   #-1, %[_sideDistY_l1]\n\t" // stepY
-        "moveq   #-%c[_MAP_SIZE], %[_rayDir]\n\t" // stepYMS
-        "bra.s   4f\n\t"
-		"nop\n\t"
-		"nop\n\t"
-
-        "1:\n\t"  // rayDix < 0 and rayDirY > 0
-        "move.w  %[_sideDistY_l1], %[_sideDistY_l0]\n\t"
-		"moveq   #-1, %[_sideDistX_l1]\n\t" // stepX
-        "moveq   #1, %[_sideDistY_l1]\n\t" // stepY
-        "moveq   #%c[_MAP_SIZE], %[_rayDir]\n\t" // stepYMS
-        "bra.s   4f\n\t"
-		"nop\n\t"
-
-        "2:\n\t"  // rayDix > 0 and rayDirY < 0
-        "move.w  %[_sideDistX_l1], %[_sideDistX_l0]\n\t"
-		"moveq   #1, %[_sideDistX_l1]\n\t" // stepX
-        "moveq   #-1, %[_sideDistY_l1]\n\t" // stepY
-        "moveq   #-%c[_MAP_SIZE], %[_rayDir]\n\t" // stepYMS
-        "bra.s   4f\n\t"
-		"nop\n\t"
-
-        "3:\n\t"  // rayDix > 0 and rayDirY > 0
-        "move.w  %[_sideDistX_l1], %[_sideDistX_l0]\n\t" // sideDistX
-        "move.w  %[_sideDistY_l1], %[_sideDistY_l0]\n\t" // sideDisty
-		"moveq   #1, %[_sideDistX_l1]\n\t" // stepX
-        "moveq   #1, %[_sideDistY_l1]\n\t" // stepY
-		"moveq   #%c[_MAP_SIZE], %[_rayDir]\n\t" // stepYMS
-
-        "4:\n\t"
-		#if USE_TAB_MULU_DIST_DIV256
-		Need to complete this;
-		#else
-		"mulu.w  %[_deltaDistX], %[_sideDistX_l0]\n\t" // sideDistX
-        "mulu.w  %[_deltaDistY], %[_sideDistY_l0]\n\t" // sideDistY
-		"lsr.l   %[_FS], %[_sideDistX_l0]\n\t" // sideDistX >> FS
-        "lsr.l   %[_FS], %[_sideDistY_l0]\n\t" // sideDistY >> FS
-		#endif
-        : [_sideDistX_l0] "+d" (sideDistX_l0), [_sideDistY_l0] "+d" (sideDistY_l0),
-          [_sideDistX_l1] "+d" (sideDistX_l1), [_sideDistY_l1] "+d" (sideDistY_l1),
-		  [_rayDir] "+d" (rayDir)
-        : [_deltaDistX] "d" (deltaDistX), [_deltaDistY] "d" (deltaDistY),
-          [_MAP_SIZE] "i" (MAP_SIZE), [_FS] "i" (FS)
-        : "cc"
-    );
-
-	// Previous inlined asm block stored results in the variables used as input/output
-	sideDistX = sideDistX_l0;
-    sideDistY = sideDistY_l0;
-	stepX = sideDistX_l1;
-    stepY = sideDistY_l1;
-    stepYMS = rayDir;
-	*/
+#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1)
 #else
-	const u16 deltaDistX = *(delta_a_ptr + 0); // value up to 65536-1
-	const u16 deltaDistY = *(delta_a_ptr + 1); // value up to 65536-1
-	const s16 rayDirX = (s16) *(delta_a_ptr + 2);
-	const s16 rayDirY = (s16) *(delta_a_ptr + 3);
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1)
+#endif
+{
+	const u16 deltaDistX = *(delta_a_ptr + 0); // value from 182 up to 65535, but only 915 different values
+	const u16 deltaDistY = *(delta_a_ptr + 1); // value from 182 up to 65535, but only 915 different values
+	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2); // value from 0 up to 65535, but only 717 signed different values in [-360, 360] (due to precision lack)
+	const s16 rayDirAngleY = (s16) *(delta_a_ptr + 3); // value from 0 up to 65535, but only 717 signed different values in [-360, 360] (due to precision lack)
+    #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+    const u16 deltaDistX_perf_hash = *(delta_a_ptr + 4); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
+	const u16 deltaDistY_perf_hash = *(delta_a_ptr + 5); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
+    #endif
+
+// u16 expectedX, expectedY;
 
 	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 once in the stepping loop due to condition control
 	s16 stepX, stepY, stepYMS;
 
-	if (rayDirX < 0) {
+	if (rayDirAngleX < 0) {
 		stepX = -1;
-        #if USE_TAB_MULU_DIST_DIV256
-        sideDistX = tab_mulu_dist_div256[sideDistX][(a+column)];
+        #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+        expectedX = mulu_shft_FS(sideDistX_l0/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistX);
+        sideDistX = perf_hash_mulu_shft_FS(sideDistX_l0, deltaDistX_perf_hash);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
         #endif
 	}
 	else {
 		stepX = 1;
-        #if USE_TAB_MULU_DIST_DIV256
-        sideDistX = tab_mulu_dist_div256[sideDistX][(a+column)];
+        #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+        expectedX = mulu_shft_FS(sideDistX_l1/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistX);
+        sideDistX = perf_hash_mulu_shft_FS(sideDistX_l1, deltaDistX_perf_hash);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
         #endif
 	}
 
-	if (rayDirY < 0) {
+	if (rayDirAngleY < 0) {
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-        sideDistY = tab_mulu_dist_div256[sideDistY][(a+column)];
+		#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+        expectedY = mulu_shft_FS(sideDistY_l0/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistY);
+        sideDistY = perf_hash_mulu_shft_FS(sideDistY_l0, deltaDistY_perf_hash);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
         #endif
@@ -404,15 +325,22 @@ static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16
 	else {
 		stepY = 1;
 		stepYMS = MAP_SIZE;
-		#if USE_TAB_MULU_DIST_DIV256
-        sideDistY = tab_mulu_dist_div256[sideDistY][(a+column)];
+		#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+        expectedY = mulu_shft_FS(sideDistY_l1/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistY);
+        sideDistY = perf_hash_mulu_shft_FS(sideDistY_l1, deltaDistY_perf_hash);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
         #endif
 	}
-#endif
 
-	u16 mapX = posX / FP;
+// KLog_U4("", expectedX, " ", sideDistX, "   ", expectedY, " ", sideDistY);
+
+    do_stepping(posX, posY, deltaDistX, deltaDistY, sideDistX, sideDistY, stepX, stepY, stepYMS, rayDirAngleX, rayDirAngleY);
+}
+
+static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
+{
+    u16 mapX = posX / FP;
 	u16 mapY = posY / FP;
 	const u8 *map_ptr = &map[mapY][mapX];
 
@@ -431,8 +359,8 @@ static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16
 
 				#if SHOW_TEXCOORD
 				u16 d = (7 - min(7, sideDistX / FP));
-				u16 wallY = posY + (muls(sideDistX, rayDirY) >> FS);
-				//wallY = ((wallY * 8) >> FS) & 7; // faster
+				u16 wallY = posY + (muls(sideDistX, rayDirAngleY) >> FS);
+				//wallY = ((wallY * 8) >> FS) & 7; // faster? But is actually slower given the context
 				wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
 				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
 				#else
@@ -440,13 +368,13 @@ static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16
 				u16 color;
 				if (mapY&1) color = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
 				else color = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
-				// Next try out is indeed slower than all previous calculations
+				// Next try out is indeed slower than all previous calculations because of the implicit cIdx*2 to convert it into a byte offset.
+                // Try it out in ASM having somehow cIdx already multiplied by 2 and could be faster.
 				// u16 cIdx = (FP * (STEP_COUNT + 1)) * (mapY&1) + sideDistX;
 				// u16 color = tab_color_d8_x_with_pal[cIdx];
 				#endif
 
-				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
-				write_vline(column_ptr, h2, color);
+				write_vline(h2, color);
 				break;
 			}
 
@@ -465,8 +393,8 @@ static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16
 
 				#if SHOW_TEXCOORD
 				u16 d = (7 - min(7, sideDistY / FP));
-				u16 wallX = posX + (muls(sideDistY, rayDirX) >> FS);
-				//wallX = ((wallX * 8) >> FS) & 7; // faster
+				u16 wallX = posX + (muls(sideDistY, rayDirAngleX) >> FS);
+				//wallX = ((wallX * 8) >> FS) & 7; // faster? But is actually slower given the context
 				wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
 				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
 				#else
@@ -474,13 +402,13 @@ static FORCE_INLINE void process_column (u8 column, u16* delta_a_ptr, u16 a, u16
 				u16 color;
 				if (mapX&1) color = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
 				else color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
-				// Next try out is indeed slower than all previous calculations
+				// Next try out is indeed slower than all previous calculations because of the implicit cIdx*2 to convert it into a byte offset
+                // Try it out in ASM having somehow cIdx already multiplied by 2 and could be faster.
 				// u16 cIdx = (FP * (STEP_COUNT + 1)) * (mapX&1) + sideDistY;
 				// u16 color = tab_color_d8_y_with_pal[cIdx];
 				#endif
 
-				u16 *column_ptr = frame_buffer + frame_buffer_column[column];
-				write_vline(column_ptr, h2, color);
+				write_vline(h2, color);
 				break;
 			}
 

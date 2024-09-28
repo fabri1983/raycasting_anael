@@ -1,7 +1,6 @@
 const fs = require('fs');
 
 const outputFile = 'tab_wall_div_OUTPUT.txt';
-
 // Check correct values of constants before script execution. See consts.h.
 const { FP, STEP_COUNT, VERTICAL_COLUMNS, TILEMAP_COLUMNS, MAX_U8 } = require('./consts');
 

@@ -17,10 +17,15 @@
     "tab_wall_div.h": "c",
     "map_matrix.h": "c",
     "frame_buffer.h": "c",
-    "game_loop.h": "c"
+    "game_loop.h": "c",
+    "tab_mulu_dist_256_shft_fs.h": "c",
+    "write_vline.h": "c",
+    "perf_hash_mulu_dist_256_shft_fs.h": "c",
+    "xlocale": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {
     "editor.rulers": []
-}
+},
+"editor.detectIndentation": false
 }

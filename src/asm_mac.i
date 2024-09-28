@@ -5,5 +5,3 @@
     .align \_align
   \_name:
 .endm
-
-    move.w  d0,(a0,d1.w)

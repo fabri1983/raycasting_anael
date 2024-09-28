@@ -3,6 +3,8 @@
 
 #include <types.h>
 
-void write_vline (u16 *tilemap, u16 h2, u16 color);
+extern u16* column_ptr;
+
+void write_vline (u16 h2, u16 color);
 
 #endif // _WRITE_VLINE_H_

@@ -16,20 +16,17 @@ const utils = {
      */
     readTabDeltas (tabDeltasFile) {
         const content = fs.readFileSync(tabDeltasFile, 'utf8');
-        const lines = content.split('\n');
-        const tab_deltas = [];
+        const arrName = 'tab_deltas';
 
-        for (const line of lines) {
-            const numbers = line.trim().replace(/,\s*$/, '').split(/[,\s]+/)
-                .filter(n => !isNaN(n) && this.isInteger(n))
-                .map(n => parseInt(n));
-            if (numbers.length >= 4) {
-                tab_deltas.push(numbers[0]);
-                tab_deltas.push(numbers[1]);
-                tab_deltas.push(numbers[2]);
-                tab_deltas.push(numbers[3]);
-            }
+        const regex = new RegExp(`const\\s+u16\\s+${arrName}\\s*\\[.*?\\]\\s*=\\s*\\{([^}]+)\\}`, 's');
+        const match = content.match(regex);
+        if (!match) {
+            throw new Error(`Failed to find array ${arrName} in input file.`);
         }
+        const tab_deltas = match[1].split(',')
+            .map(x => x.trim())
+            .filter(x => x !== '' && !isNaN(x) && this.isInteger(x))
+            .map(x => parseInt(x, 10));
 
         if (tab_deltas.length !== AP * PIXEL_COLUMNS * 4) {
             throw new Error(`Invalid number of elements in tab_deltas (expected ${AP * PIXEL_COLUMNS * 4}): ${tab_deltas.length}`);

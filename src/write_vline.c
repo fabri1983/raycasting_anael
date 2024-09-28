@@ -3,7 +3,9 @@
 #include "utils.h"
 #include "consts.h"
 
-FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
+u16* column_ptr = NULL;
+
+FORCE_INLINE void write_vline (u16 h2, u16 color)
 {
 	// Tilemap width in tiles.
 
@@ -11,7 +13,7 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 	if (h2 == 0) {
 		// C version
 		//for (u16 y = 0; y < VERTICAL_COLUMNS*PLANE_COLUMNS; y+=PLANE_COLUMNS) {
-		// 	tilemap[y] = color;
+		// 	column_ptr[y] = color;
 		//}
 
 		// inline ASM version
@@ -21,8 +23,9 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 			"    move.w  %[color],off(%[tilemap])\n"
 			"    .set off,off+%c[_PLANE_COLUMNS]*2\n"
 			".endr\n"
-			: [tilemap] "+a" (tilemap), [color] "+d" (color)
-			: [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
+			: [color] "+d" (color)
+			: [tilemap] "a" (column_ptr), 
+              [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
 			:
 		);
 	}
@@ -111,9 +114,9 @@ FORCE_INLINE void write_vline (u16 *tilemap, u16 h2, u16 color)
 			"    .set offup,offup+%c[_PLANE_COLUMNS]*2\n"
 			"    .set offdown,offdown-%c[_PLANE_COLUMNS]*2\n"
 			".endr\n"
-			: [tilemap] "+a" (tilemap), [h2] "+d" (h2), [color] "+d" (color), [h2_aux] "+d" (h2_aux), [color_aux] "+d" (color_aux)
-			: [clearBitsOffset] "i" (~(8-1)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
-			  [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1),
+			: [h2] "+d" (h2), [color] "+d" (color), [h2_aux] "+d" (h2_aux), [color_aux] "+d" (color_aux)
+			: [tilemap] "a" (column_ptr), [clearBitsOffset] "i" (~(8-1)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
+			  [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1), /* +1 due to division by 2 */
 			  [_BOTTOM_COLUMN_BYTES] "i" ((VERTICAL_COLUMNS-1)*PLANE_COLUMNS*2)
 			:
 		);

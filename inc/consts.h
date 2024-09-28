@@ -2,12 +2,12 @@
 #define _CONSTS_H_
 
 #define SHOW_TEXCOORD FALSE // Show texture coords? This disabled the use of USE_TAB_DELTAS_3.
-#define USE_TAB_DELTAS_3 FALSE // Use smaller table with 3 columns where ray direction is encoded. Not suitable for texture coords calculation.
 #define USE_CLEAR_FRAMEBUFFER_WITH_SP TRUE
+#define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS FALSE
 
 // Use mega big table for pre calculated mulu results.
 // Not working due to table size incurring rom size > 4096 KB plus the table seems to only works for one of: (sideDistX_l0,sideDistX_l1) or (sideDistY_l0,sideDistY_l1).
-#define USE_TAB_MULU_DIST_DIV256 FALSE
+#define USE_TAB_MULU_DIST_256_SHFT_FS FALSE
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision

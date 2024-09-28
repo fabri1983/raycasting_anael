@@ -2,17 +2,16 @@ const fs = require('fs');
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const os = require('os');
 const utils = require('./utils');
-
-const tabDeltasFile = '../inc/tab_deltas.h';
-const mapMatrixFile = '../src/map_matrix.c';
-const outputFile = 'tab_map_hit_OUTPUT.txt';
-
 // Check correct values of constants before script execution. See consts.h.
 const {
     FS, FP, AP, STEP_COUNT, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
     MAP_HIT_MASK_MAPXY, MAP_HIT_MASK_SIDEDISTXY, MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDISTXY, 
     MAX_U32
 } = require('./consts');
+
+const tabDeltasFile = '../inc/tab_deltas.h';
+const mapMatrixFile = '../src/map_matrix.c';
+const outputFile = 'tab_map_hit_OUTPUT.txt';
 
 // Progress tracking
 const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024/(1024/AP));

@@ -4,10 +4,13 @@
 #include <types.h>
 #include "consts.h"
 
+#define DELTA_PTR_OFFSET_AMNT 4
+
 // Table body generated with script tab_deltas_generator.js. Check correct values of constants before script execution.
-// Two first columns are used as sideDistX and sideDistY.
-// Two last columns are used as ray direction (signed) and distance?
-const u16 tab_deltas[AP*PIXEL_COLUMNS*4] = {
+// First 2 columns are sideDistX and sideDistY: from 182 up to 65535, but only 915 different values.
+// Last 2 columns are ray direction angle (signed): from 0 up to 65535, which actually are 717 signed different 
+// values: [-360, 360] (except few values due to precision lack).
+const u16 tab_deltas[AP*PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT] = {
 259, 256, 253, 256,
 266, 256, 246, 256,
 273, 256, 240, 256,

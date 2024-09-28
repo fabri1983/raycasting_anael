@@ -1,9 +1,8 @@
 const fs = require('fs');
-
-const outputFile = 'tab_deltas_OUTPUT.txt';
-
 // Check correct values of constants before script execution. See consts.h.
 const { FP, AP, PIXEL_COLUMNS, M_PI, MAX_U16 } = require('./consts');
+
+const outputFile = 'tab_deltas_OUTPUT.txt';
 
 let tabDeltas = new Uint16Array(AP * PIXEL_COLUMNS * 4);
 let deltaPtr = 0;
@@ -23,21 +22,23 @@ for (let i = 0; i < AP; i++) {
 
     // interpolate rayDir and fill the delta table
     for (let x = 0; x < PIXEL_COLUMNS; x++) {
-        let rayDirX = rx1 + (rx2 - rx1) * (x + 0.5) / PIXEL_COLUMNS;
-        let rayDirY = ry1 + (ry2 - ry1) * (x + 0.5) / PIXEL_COLUMNS;
+        let rayDirAngleX = rx1 + (rx2 - rx1) * (x + 0.5) / PIXEL_COLUMNS;
+        let rayDirAngleY = ry1 + (ry2 - ry1) * (x + 0.5) / PIXEL_COLUMNS;
         let d, divisor;
 
-        divisor = Math.abs(rayDirX);
+        divisor = Math.abs(rayDirAngleX);
         d = (FP * FP) / Math.max(1, divisor);
+        // from 182 up to 65535, but only 915 different values
+        tabDeltas[deltaPtr] = Math.round(Math.min(d, MAX_U16)); 
 
-        tabDeltas[deltaPtr] = Math.round(Math.min(d, MAX_U16));
-
-        divisor = Math.abs(rayDirY);
+        divisor = Math.abs(rayDirAngleY);
         d = (FP * FP) / Math.max(1, divisor);
+        // from 182 up to 65535, but only 915 different values
         tabDeltas[deltaPtr + 1] = Math.round(Math.min(d, MAX_U16));
 
-        tabDeltas[deltaPtr + 2] = Math.round(rayDirX) & 0xFFFF;
-        tabDeltas[deltaPtr + 3] = Math.round(rayDirY) & 0xFFFF;
+        // from 0 up to 65535, which actually are 717 signed different values: [-360, 360] (except few values due to precision lack)
+        tabDeltas[deltaPtr + 2] = Math.round(rayDirAngleX) & 0xFFFF;
+        tabDeltas[deltaPtr + 3] = Math.round(rayDirAngleY) & 0xFFFF;
 
         deltaPtr += 4;
     }

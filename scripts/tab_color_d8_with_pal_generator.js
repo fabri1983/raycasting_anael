@@ -1,14 +1,13 @@
 const fs = require('fs');
 const utils = require('./utils');
-
-const inputFile = '../inc/tab_color_d8.h';
-const outputFileX = 'tab_color_d8_x_with_pal_OUTPUT.txt';
-const outputFileY = 'tab_color_d8_y_with_pal_OUTPUT.txt';
-
 // Check correct values of constants before script execution. See consts.h.
 const { PAL0, PAL1, PAL2, PAL3, TILE_ATTR_PALETTE_SFT } = require('./consts');
 
 const ELEMENTS_PER_LINE = 512;
+
+const inputFile = '../inc/tab_color_d8.h';
+const outputFileX = 'tab_color_d8_x_with_pal_OUTPUT.txt';
+const outputFileY = 'tab_color_d8_y_with_pal_OUTPUT.txt';
 
 // Create 2D matrix with palette
 function create2DMatrixWithPal (inputArray, palFunc) {

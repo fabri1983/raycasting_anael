@@ -8,10 +8,13 @@
 // -----------------
 // * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
 // * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
+// * clear_buffer() using SP (Stack Pointer) to point end of buffer => 60 cycles saved if PLANE_COLUMNS=32, 150 cycles saved if PLANE_COLUMNS=64.
 // * If clear_buffer() is moved into VBlank callback => %1 saved in cpu usage, but runs into next display period.
 // * Moved write_vline_full() into write_vline() and translated into inline ASM => ~1% saved in cpu usage.
 // * write_vline(): translated into inline ASM => 2% saved in cpu usage.
 // * write_vline(): access optimization for top and bottom tiles of current column in ASM => 4% saved in cpu usage.
+// * write_vline(): exposing globally the column pointer instead of sending it as an argument. This made the frame_buffer_pxcolumn[] useless
+//   so no need for loadPlaneDisplacements() neither offset before write_vline() => ~1% saved in cpu usage depending on the inline ASM setup.
 // * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
 //   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
@@ -36,6 +39,7 @@
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
 static u16 loadRenderingTiles () {
+
 	// Create a buffer tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4][8]
 	memset(tile, 0, 32); // clear the tile with color index 0
@@ -70,6 +74,7 @@ static u16 loadRenderingTiles () {
 }
 
 static void loadHUD (u16 currentTileIndex) {
+
 	const u16 baseTileAttrib = TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, currentTileIndex);
 	VDP_loadTileSet(img_hud.tileset, baseTileAttrib & TILE_INDEX_MASK, DMA);
 
@@ -80,6 +85,7 @@ static void loadHUD (u16 currentTileIndex) {
 #define HINT_SCANLINE_CHANGE_BG_COLOR 95
 
 HINTERRUPT_CALLBACK hIntCallback () {
+
 	if (GET_VCOUNTER <= HINT_SCANLINE_CHANGE_BG_COLOR) {
 		waitHCounter_DMA(156);
 		// set background color used for the floor
@@ -185,7 +191,7 @@ int main (bool hardReset)
 	VDP_setEnable(FALSE);
 
 	// Basic game setup
-	loadPlaneDisplacements();
+	//loadPlaneDisplacements();
 	u16 currentTileIndex = loadRenderingTiles();
 	loadHUD(currentTileIndex);
 

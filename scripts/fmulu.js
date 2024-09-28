@@ -1,4 +1,6 @@
 // https://github.com/Mega-Drive-Developers-Collective/MD-Platformer-Core/blob/main/tools/scripts/fmulu.js
+// Lists the equivalent instructions of mulu instruction for those cases when is faster than the actual mulu.
+// IMPORTANT: only if higher word of result is not important. Otherwise timings are not correct.
 
 const maxbytes = 16;
 const maxcycles = 50;

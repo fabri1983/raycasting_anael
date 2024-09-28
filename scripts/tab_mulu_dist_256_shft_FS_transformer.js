@@ -13,12 +13,11 @@ Expects a file named generated from tab_mulu_dist_div256_generator.js, with next
 
 const fs = require('fs');
 const readline = require('readline');
-
-const inputFile = 'tab_mulu_dist_div256_PARTIAL.txt';
-const outputFile = 'tab_mulu_dist_div256_OUTPUT.txt';
-
 // Check correct values of constants before script execution. See consts.h.
 const { AP, PIXEL_COLUMNS } = require('./consts');
+
+const inputFile = 'tab_mulu_dist_256_shft_FS_PARTIAL.txt';
+const outputFile = 'tab_mulu_dist_256_shft_FS_OUTPUT.txt';
 
 const expectedCountM = (1024/(1024/AP))*PIXEL_COLUMNS;
 const maxM = expectedCountM - 1;
