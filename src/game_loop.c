@@ -296,7 +296,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 
 	if (rayDirAngleX < 0) {
 		stepX = -1;
         #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-        expectedX = mulu_shft_FS(sideDistX_l0/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistX);
+        // expectedX = mulu_shft_FS(sideDistX_l0/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistX);
         sideDistX = perf_hash_mulu_shft_FS(sideDistX_l0, deltaDistX_perf_hash);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
@@ -305,7 +305,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 
 	else {
 		stepX = 1;
         #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-        expectedX = mulu_shft_FS(sideDistX_l1/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistX);
+        // expectedX = mulu_shft_FS(sideDistX_l1/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistX);
         sideDistX = perf_hash_mulu_shft_FS(sideDistX_l1, deltaDistX_perf_hash);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
@@ -316,7 +316,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
 		#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-        expectedY = mulu_shft_FS(sideDistY_l0/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistY);
+        // expectedY = mulu_shft_FS(sideDistY_l0/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistY);
         sideDistY = perf_hash_mulu_shft_FS(sideDistY_l0, deltaDistY_perf_hash);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
@@ -326,14 +326,16 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 
 		stepY = 1;
 		stepYMS = MAP_SIZE;
 		#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-        expectedY = mulu_shft_FS(sideDistY_l1/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistY);
+        // expectedY = mulu_shft_FS(sideDistY_l1/(MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES), deltaDistY);
         sideDistY = perf_hash_mulu_shft_FS(sideDistY_l1, deltaDistY_perf_hash);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
         #endif
 	}
 
-// KLog_U4("", expectedX, " ", sideDistX, "   ", expectedY, " ", sideDistY);
+// if (expectedX != sideDistX || expectedY != sideDistY) {
+//     KLog_U4("", expectedX, " ", sideDistX, "   ", expectedY, " ", sideDistY);
+// }
 
     do_stepping(posX, posY, deltaDistX, deltaDistY, sideDistX, sideDistY, stepX, stepY, stepYMS, rayDirAngleX, rayDirAngleY);
 }

@@ -276,6 +276,7 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     // High word of the mulu result is important for the >> FS instruction.
     // Where d6 = 0..256 and d7 = 182..65535, but d7 is only 915 different values
 
+    // This if op1_rowStride and op2_index were not adjusted
     // return *(tab_mulu_dist_256_shft_FS + MPH_VALUES_DELTADIST_NKEYS*op1_rowStride + op2_index);
 
     // Treat the table pointer as u32 so no issues when indexing with offset of 32 bits
@@ -285,29 +286,27 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     } conv = { .p = (u16*)tab_mulu_dist_256_shft_FS };
     // op1_rowStride is already multiplied by MPH_VALUES_DELTADIST_NKEYS and 2
     // op2_index is already multiplied by 2
-    u16* ptr = (u16*) (conv.i + (op1_rowStride + op2_index));
+    u16* ptr = (u16*) (conv.i + op1_rowStride + op2_index);
     return *ptr;
 
-    // 24 cycles
-    // u16 result;
+    // 24 cycles (+ the load of table into ax)
     // __asm volatile (
     //     "adda.l  %[rowStride],%[tab_mulu_dist_256_shft_FS]\t\n"
-    //     "adda.w  %[index],%[tab_mulu_dist_256_shft_FS]\t\n" // tab_mulu_dist_256_shft_FS += rowStride + index
-    //     "move.w  (%[tab_mulu_dist_256_shft_FS]),%[result]\t\n" // result = *(tab_mulu_dist_256_shft_FS)
-    //     : [result] "=d" (result), [rowStride] "+d" (op1_rowStride), [index] "+d" (op2_index)
+    //     "adda.w  %[index],%[tab_mulu_dist_256_shft_FS]\t\n"    // tab_mulu_dist_256_shft_FS += rowStride + index
+    //     "move.w  (%[tab_mulu_dist_256_shft_FS]),%[index]\t\n"  // result = *(tab_mulu_dist_256_shft_FS)
+    //     : [rowStride] "+d" (op1_rowStride), [index] "+d" (op2_index)
     //     : [tab_mulu_dist_256_shft_FS] "a" (tab_mulu_dist_256_shft_FS)
     //     :
     // );
-    // return result;
+    // return op2_index;
 
-    // 22 cycles
-    // u16 result;
+    // 22 cycles (+ the load of table into ax)
     // __asm volatile (
     //     "adda.l  %[rowStride],%[tab_mulu_dist_256_shft_FS]\t\n"
-    //     "move.w  (%[tab_mulu_dist_256_shft_FS],%[index].w),%[result]\t\n" // result = tab_mulu_dist_256_shft_FS[rowStride + index]
-    //     : [result] "=d" (result), [rowStride] "+d" (op1_rowStride), [index] "+d" (op2_index)
+    //     "move.w  (%[tab_mulu_dist_256_shft_FS],%[index].w),%[index]\t\n" // result = tab_mulu_dist_256_shft_FS[rowStride + index]
+    //     : [rowStride] "+d" (op1_rowStride), [index] "+d" (op2_index)
     //     : [tab_mulu_dist_256_shft_FS] "a" (tab_mulu_dist_256_shft_FS)
     //     :
     // );
-    // return result;
+    // return op2_index;
 }
