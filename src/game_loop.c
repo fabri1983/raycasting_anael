@@ -12,7 +12,7 @@
 #include "tab_color_d8_with_pal.h"
 
 #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-    #include "perf_hash_mulu_dist_256_shft_FS.h"
+    #include "perf_hash_mulu_256_shft_FS.h"
     #include "tab_deltas_perf_hash.h"
 #else
     #include "tab_deltas.h"
@@ -20,9 +20,9 @@
 
 static void dda (u16 posX, u16 posY, u16 angle);
 #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1);
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1);
 #else
-static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
 #endif
 static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY);
 
@@ -252,31 +252,28 @@ static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
 
     u16 a = angle / (1024/AP); // a range is [0, 128)
     u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT));
-    // #if USE_TAB_MULU_DIST_256_SHFT_FS
-    // a *= PIXEL_COLUMNS; // offset to use as: tab_mulu_dist_div256[sideDistX|Y][a+column]
-    // #endif
 
     // reset to the start of frame_buffer
     column_ptr = frame_buffer;
 
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
     for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
-        process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         column_ptr += VERTICAL_COLUMNS*PLANE_COLUMNS;
-        process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         column_ptr += -VERTICAL_COLUMNS*PLANE_COLUMNS + 1;
-        process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         column_ptr += VERTICAL_COLUMNS*PLANE_COLUMNS;
-        process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, a, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         column_ptr += -VERTICAL_COLUMNS*PLANE_COLUMNS + 1;
         delta_a_ptr += 4 * DELTA_PTR_OFFSET_AMNT;
     }
 }
 
 #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1)
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1)
 #else
-static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 a, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1)
+static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1)
 #endif
 {
 	const u16 deltaDistX = *(delta_a_ptr + 0); // value from 182 up to 65535, but only 915 different values

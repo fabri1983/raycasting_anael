@@ -1,5 +1,5 @@
 /*
-Expects a file named generated from tab_mulu_dist_div256_generator.js, with next format:
+Expects a file named generated from tab_mulu_256_generator.js, with next format:
 	[N][M]=x
 	Eg:
 	[0][32]=1265

@@ -8,8 +8,8 @@
  */
 
 /*
-// Table constent is generated with scripts tab_mulu_dist_256_shft_FS_generator.js and tab_mulu_dist_256_shft_FS_transformer.js.
-const u16 tab_mulu_dist_div256[256+1][(1024/(1024/AP))*PIXEL_COLUMNS] = {
+// Table constent is generated with scripts tab_mulu_256_shft_FS_generator.js and tab_mulu_256_shft_FS_transformer.js.
+const u16 tab_mulu_256_ahft_fs[256+1][(1024/(1024/AP))*PIXEL_COLUMNS] = {
 0
 };
 */

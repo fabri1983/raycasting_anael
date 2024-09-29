@@ -5,7 +5,8 @@
 #define USE_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 #define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS FALSE
 
-// Use mega big table for pre calculated mulu results.
+// Use mega big table with pre calculated results for: (op1*op2) >> FS.
+// It requires before the loop of pixel columns: a *= PIXEL_COLUMNS; // offset to use as: tab_mulu_dist_div256[sideDistX|Y][a+column]
 // Not working due to table size incurring rom size > 4096 KB plus the table seems to only works for one of: (sideDistX_l0,sideDistX_l1) or (sideDistY_l0,sideDistY_l1).
 #define USE_TAB_MULU_DIST_256_SHFT_FS FALSE
 

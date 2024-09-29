@@ -8,7 +8,7 @@ const MPH_VALUES_DELTADIST_NKEYS = 915;  // Number of keys (must be 915)
 const OP1_MAX_VALUE = 256;
 
 const tabDeltasFile = '../inc/tab_deltas.h';
-const outputFile = 'perf_hash_mulu_dist_256_shft_FS_OUTPUT.txt';
+const outputFile = 'perf_hash_mulu_256_shft_FS_OUTPUT.txt';
 
 // Export the constants, table, and function for use in other scripts
 module.exports = {
@@ -59,7 +59,7 @@ function generateProducts () {
         for (let i = 0; i < deltaDists.length; ++i) {
             let op2 = deltaDists[i];
             let product = op1 * op2;
-            let shiftedProduct = product >> FS;
+            let shiftedProduct = utils.toUnsigned16Bit(product >> FS);
             let op2_index = keyToIndex.get(op2); // this is indeed the minimal perfect hash function
             let prod_index = (op1 * MPH_VALUES_DELTADIST_NKEYS) + op2_index;
             products[prod_index] = shiftedProduct;
@@ -88,7 +88,7 @@ function checkCorrectness (products) {
         for (let i = 0; i < deltaDists.length; ++i) {
             let op2 = deltaDists[i];
             let product = op1 * op2;
-            let shiftedProduct = product >> FS;
+            let shiftedProduct = utils.toUnsigned16Bit(product >> FS);
             let op2_index = keyToIndex.get(op2); // this is indeed the minimal perfect hash function
             let prod_index = (op1 * MPH_VALUES_DELTADIST_NKEYS) + op2_index;
             if (products[prod_index] != shiftedProduct)
@@ -97,7 +97,7 @@ function checkCorrectness (products) {
     }
 }
 
-function saveProductsToFile (products, outputFile) {
+/*function saveProductsToFile (products, outputFile) {
     const filePath = path.resolve(outputFile);
     const fileStream = fs.createWriteStream(filePath);
 
@@ -123,9 +123,9 @@ function saveProductsToFile (products, outputFile) {
 
     fileStream.end();
     console.log(`products[] saved to file in 4 chunks: ${outputFile}`);
-}
+}*/
 
-/*function saveProductsToFile (products, outputFile) {
+function saveProductsToFile (products, outputFile) {
     const filePath = path.resolve(outputFile);
     const fileStream = fs.createWriteStream(filePath);
 
@@ -140,7 +140,7 @@ function saveProductsToFile (products, outputFile) {
 
     fileStream.end();
     console.log(`products[] saved to file: ${outputFile}`);
-}*/
+}
 
 async function calculateOutput () {
     try {

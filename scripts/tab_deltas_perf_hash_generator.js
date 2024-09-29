@@ -1,6 +1,6 @@
 const fs = require('fs');
 const utils = require('./utils');
-const { loadDeltaDists, generateKeyToIndexMap } = require('./perf_hash_mulu_dist_256_shft_FS_generator');
+const { loadDeltaDists, generateKeyToIndexMap } = require('./perf_hash_mulu_256_shft_FS_generator');
 
 const inputFile = '../inc/tab_deltas.h';
 const outputFile = 'tab_deltas_perf_hash_OUTPUT.txt';
