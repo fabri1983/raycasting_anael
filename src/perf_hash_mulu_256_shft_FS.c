@@ -2,7 +2,6 @@
 #include "perf_hash_mulu_256_shft_FS.h"
 #include "consts.h"
 #include "utils.h"
-#include <tools.h>
 
 // Table body generated with script perf_hash_mulu_256_shft_FS_generator.js. Check correct values of constants before script execution.
 // This is the result of (op1*op2) >> FS for each known value of op1 and op2, using perfect hash function over op2 to know its location in each row.

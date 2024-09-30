@@ -1,7 +1,6 @@
 #include "clear_buffer.h"
 #include "utils.h"
 #include "consts.h"
-#include <tools.h>
 
 #if USE_CLEAR_FRAMEBUFFER_WITH_SP == FALSE
 
@@ -65,16 +64,17 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		"    move.l  %%d0,%%a4\n"
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
+        // Iterate over all collumns - 1
 		".rept (%c[_VERTICAL_COLUMNS]*2 - 1)\n"
-		// Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
+		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
     	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
     	"    .endr\n"
-		// NOTE: if reminder from the division isn't 0 you need to add the missing operations.
+		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
 		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
 		"    move.l  %%d0,-(%%a0)\n"
 		"    .endr\n"
-		// Skip the non displayed data
+		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
 		// One iteration more without the last lea instruction
@@ -168,16 +168,17 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    move.l  %%d0,%%a4\n"
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
+        // Iterate over all collumns - 1
 		".rept (%c[_VERTICAL_COLUMNS]*2 - 1)\n"
-		// Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
+		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
     	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
     	"    .endr\n"
-		// NOTE: if reminder from the division isn't 0 you need to add the missing operations.
+		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
 		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
 		"    move.l  %%d0,-(%%sp)\n"
 		"    .endr\n"
-		// Skip the non displayed data
+		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%sp),%%sp\n"
 		".endr\n"
 		// One iteration more without the last lea instruction
