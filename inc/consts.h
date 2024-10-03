@@ -16,14 +16,9 @@
 #define STEP_COUNT 15 // View distance depth. (STEP_COUNT+1 should be a power of two)
 #define STEP_COUNT_LOOP STEP_COUNT // If lower than STEP_COUNT then far distant attempts are ignored => less cpu usage but less view depth
 
-#define PB_ADDR 0xC000 // default Plane B address set in VDP_setPlaneSize()
-#define PA_ADDR 0xE000 // default Plane A address set in VDP_setPlaneSize()
-#define HALF_PLANE_ADDR_OFFSET 0x0600 // In case we split in 2 the DMA of any plane and need to set the correct offset
-#define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 the DMA of any plane and need to set the correct offset
-
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24
-#define VERTICAL_COLUMNS 24
+#define VERTICAL_ROWS 24
 
 // 320/8=40. 256/8=32.
 #define TILEMAP_COLUMNS 40
@@ -33,6 +28,12 @@
 
 // 320/4=80. 256/4=64.
 #define PIXEL_COLUMNS 80
+
+#define PB_ADDR 0xC000 // Default Plane B address set in VDP_setPlaneSize(), and starting at 0,0
+#define PA_ADDR 0xE000 // Default Plane A address set in VDP_setPlaneSize(), and starting at 0,0
+#define PW_ADDR PLANE_COLUMNS == 64 ? 0xD000 + 0x0C00 : 0xC800 + 0x0E00 // As set in VDP_setPlaneSize() depending on the chosen plane size, plus HUD_BASE_XP and HUD_BASE_YP
+#define HALF_PLANE_ADDR_OFFSET 0x0600 // In case we split in 2 the DMA of any plane and need to set the correct offset
+#define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 the DMA of any plane and need to set the correct offset
 
 #define MAP_SIZE 16
 #define MAP_FRACTION 64

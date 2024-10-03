@@ -38,7 +38,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
 		: "a" (frame_buffer_ptr), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_COLUMNS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
 		:
 	);
 #elif PLANE_COLUMNS == 64
@@ -77,7 +77,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
-		// One iteration more without the last lea instruction
+		// One more iteration without the last lea instruction
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
     	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
     	"    .endr\n"
@@ -88,8 +88,8 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
 		: "a" (frame_buffer_ptr), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_COLUMNS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), 
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
 		:
 	);
@@ -141,7 +141,7 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    move.l  %[mem_spBackup],%%sp\n"
 		: [mem_spBackup] "+m" (spBackup)
 		: "a" (frame_buffer_ptr),
-		  [TOTAL_BYTES] "i" ((VERTICAL_COLUMNS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
 		:
 	);
 #elif PLANE_COLUMNS == 64
@@ -181,7 +181,7 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%sp),%%sp\n"
 		".endr\n"
-		// One iteration more without the last lea instruction
+		// One more iteration without the last lea instruction
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
     	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
     	"    .endr\n"
@@ -192,8 +192,8 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    move.l  %[mem_spBackup],%%sp\n"
 		: [mem_spBackup] "+m" (spBackup)
 		: "a" (frame_buffer_ptr), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_COLUMNS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), 
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
 		:
 	);

@@ -16,14 +16,14 @@ for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 /*
 fabri1983 changes
 -----------------
-* values >= (VERTICAL_COLUMNS*8)/2 were changed to 0 so the entire vertical line is written into framebuffer.
-* values < (VERTICAL_COLUMNS*8)/2 were changed to be (VERTICAL_COLUMNS*8)/2 - value, 
+* values >= (VERTICAL_ROWS*8)/2 were changed to 0 so the entire vertical line is written into framebuffer.
+* values < (VERTICAL_ROWS*8)/2 were changed to be (VERTICAL_ROWS*8)/2 - value, 
   this way the vertical pixel location is calculated ahead of time.
 
 // Vertical height calculation starts at the center.
-// If VERTICAL_COLUMNS=28 => (VERTICAL_COLUMNS*8)/2=112
-// If VERTICAL_COLUMNS=24 => (VERTICAL_COLUMNS*8)/2=96
-#define WALL_H2 (VERTICAL_COLUMNS*8)/2
+// If VERTICAL_ROWS=28 => (VERTICAL_ROWS*8)/2=112
+// If VERTICAL_ROWS=24 => (VERTICAL_ROWS*8)/2=96
+#define WALL_H2 (VERTICAL_ROWS*8)/2
 
 u8 tab_wall_div[FP * (STEP_COUNT + 1)];
 for (u16 i = 0; i < sizeof(tab_wall_div); i++) {

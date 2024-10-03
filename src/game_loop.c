@@ -6,6 +6,8 @@
 #include "frame_buffer.h"
 #include "write_vline.h"
 
+#include "hud_320.h"
+
 #include "tab_dir_xy.h"
 #include "tab_wall_div.h"
 #include "tab_color_d8.h"
@@ -49,7 +51,8 @@ extern void gameLoop () {
         clear_buffer(frame_buffer);
         #endif
 
-		// handle inputs
+        //updateHUD();
+
 		u16 joy = JOY_readJoypad(JOY_1);
 
         // movement and collisions
@@ -119,11 +122,11 @@ extern void gameLoop () {
 
         // Enqueue the frame buffer for DMA during VBlank period
         // Remaining 1/2 of PA
-        //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         // Remaining 3/4 of PA
-        //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_COLUMNS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
         SYS_doVBlankProcessEx(ON_VBLANK_START);
 
@@ -131,7 +134,7 @@ extern void gameLoop () {
         showCPULoad(0, 1);
 	}
 
-    SYS_hideFrameLoad();
+    SYS_hideFrameLoad(); // is independant from whether the load is displayed or not
 }
 
 extern void gameLoopAuto () {
@@ -208,11 +211,11 @@ extern void gameLoopAuto () {
 
                 // Enqueue the frame buffer for DMA during VBlank period
                 // Remaining 1/2 of PA
-                //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
                 // Remaining 3/4 of PA
-                //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_COLUMNS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_COLUMNS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_COLUMNS*PLANE_COLUMNS, PB_ADDR, VERTICAL_COLUMNS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
                 SYS_doVBlankProcessEx(ON_VBLANK_START);
 
@@ -259,13 +262,13 @@ static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
     for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        column_ptr += VERTICAL_COLUMNS*PLANE_COLUMNS;
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        column_ptr += -VERTICAL_COLUMNS*PLANE_COLUMNS + 1;
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
         process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        column_ptr += VERTICAL_COLUMNS*PLANE_COLUMNS;
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
         process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
-        column_ptr += -VERTICAL_COLUMNS*PLANE_COLUMNS + 1;
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
         delta_a_ptr += 4 * DELTA_PTR_OFFSET_AMNT;
     }
 }

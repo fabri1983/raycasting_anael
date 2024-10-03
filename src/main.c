@@ -24,20 +24,23 @@
 // * Replaced d for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
 // * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage.
 // * Manual unrolling of 4 iterations for column processing => 2% saved in cpu usage.
-
-// the code is optimised further using GCC's automatic unrolling
-//#pragma GCC push_options
-//#pragma GCC optimize ("unroll-loops")
+// * sega.s: use _VINT_lean instead of _VINT => some cycles saved.
 
 #include <genesis.h>
-#include "hud_res.h"
 #include "utils.h"
 #include "consts.h"
+#include "hud_320.h"
 #include "clear_buffer.h"
 #include "frame_buffer.h"
 
+// the code is optimised further using GCC's automatic unrolling
+#pragma GCC push_options
+//#pragma GCC optimize ("unroll-loops")
+#pragma GCC optimize ("no-unroll-loops")
+
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
+// IMPORTANT: if tiles num is changed then update resource file and the constants involved too.
 static u16 loadRenderingTiles () {
 
 	// Create a buffer tile
@@ -70,85 +73,7 @@ static u16 loadRenderingTiles () {
 	MEM_free(tile);
 
 	// Returns next available tile index in VRAM
-	return 9*8;
-}
-
-static void loadHUD (u16 currentTileIndex) {
-
-	const u16 baseTileAttrib = TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, currentTileIndex);
-	VDP_loadTileSet(img_hud.tileset, baseTileAttrib & TILE_INDEX_MASK, DMA);
-
-	const u16 yPos = PLANE_COLUMNS == 64 ? 24 : 12;
-    VDP_setTileMapEx(BG_A, img_hud.tilemap, baseTileAttrib, 0, yPos, 0, 0, TILEMAP_COLUMNS, 4, DMA);
-}
-
-#define HINT_SCANLINE_CHANGE_BG_COLOR 95
-
-HINTERRUPT_CALLBACK hIntCallback () {
-
-	if (GET_VCOUNTER <= HINT_SCANLINE_CHANGE_BG_COLOR) {
-		waitHCounter_DMA(156);
-		// set background color used for the floor
-		PAL_setColor(0, palette_grey[2]);
-		return;
-	}
-	
-	// We are one scanline earlier so wait until entering th HBlank region
-	waitHCounter_DMA(152);
-
-	// Prepare DMA cmd and source address for first palette
-    u32 palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
-    u32 fromAddrForDMA = (u32) (img_hud.palette->data + 1) >> 1; // TODO: this can be set outside the HInt
-
-    // This seems to take an entire scanline, if you turn off VDP then it will draw black scanline (or whatever the BG color is) as a way off measure.
-    setupDMAForPals(15, fromAddrForDMA);
-
-    // At this moment we are at the middle/end of the scanline due to the previous DMA setup.
-    // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter_DMA(152);
-
-    turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-    turnOnVDP(0x74);
-
-	// Prepare DMA cmd and source address for second palette
-    palCmd = VDP_DMA_CRAM_ADDR((PAL1 * 16 + 1) * 2); // target starting color index multiplied by 2
-    fromAddrForDMA = (u32) (img_hud.palette->data + 16 + 1) >> 1; // TODO: this can be set outside the HInt
-
-	// This seems to take an entire scanline, if you turn off VDP then it will draw black scanline (or whatever the BG color is) as a way off measure.
-    setupDMAForPals(15, fromAddrForDMA);
-
-	// At this moment we are at the middle/end of the scanline due to the previous DMA setup.
-    // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter_DMA(152);
-
-    turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-    turnOnVDP(0x74);
-
-	// set background color used for the roof
-	// THIS INTRODUCES A COLOR DOT GLITCH BARELY NOTICABLE. SOLUTION IS TO DO THIS IN VBLANK CALLBACK
-	//PAL_setColor(0, palette_grey[1]);
-
-	// Send 1/2 of the PA
-	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-	// Send 1/4 of the PA
-	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_COLUMNS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-
-	// Reload the first 2 palettes that were overriden by the HUD palettes
-	// waitVCounterReg(224);
-	// // grey palette
-	// palCmd = VDP_DMA_CRAM_ADDR((PAL0 * 16 + 1) * 2); // target starting color index multiplied by 2
-    // fromAddrForDMA = (u32) (palette_grey + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
-	// turnOffVDP(0x74);
-    // setupDMAForPals(8, fromAddrForDMA);
-    // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-	// // red palette
-	// palCmd = VDP_DMA_CRAM_ADDR((PAL1 * 16 + 1) * 2); // target starting color index multiplied by 2
-    // fromAddrForDMA = (u32) (palette_red + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
-    // setupDMAForPals(8, fromAddrForDMA);
-    // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-	// turnOnVDP(0x74);
+	return HUD_VRAM_START_INDEX; // 9*8
 }
 
 void vBlankCallback () {
@@ -193,9 +118,24 @@ int main (bool hardReset)
 	// Basic game setup
 	//loadPlaneDisplacements();
 	u16 currentTileIndex = loadRenderingTiles();
-	loadHUD(currentTileIndex);
+	currentTileIndex = loadInitialHUD(currentTileIndex);
+    prepareHUDPalAddresses();
 
 	MEM_pack();
+
+	// Setup VDP
+	VDP_setScreenWidth320();
+	VDP_setPlaneSize(PLANE_COLUMNS, 32, TRUE);
+	VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
+	VDP_setHorizontalScroll(BG_A, 0);
+	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
+    VDP_setWindowHPos(FALSE, HUD_BASE_XP);
+    VDP_setWindowVPos(TRUE, HUD_BASE_YP);
+	//VDP_setBackgroundColor(1); // this set grey as bg color so floor and roof are the same color
+	// set background color used for the roof
+	// PAL_setColor(0, palette_grey[1]);
+
+    VDP_setEnable(TRUE);
 
 	SYS_disableInts();
 	{
@@ -204,23 +144,12 @@ int main (bool hardReset)
 		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
 		// 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
 		VDP_setHIntCounter(HINT_SCANLINE_CHANGE_BG_COLOR-1); // -1 since hintcounter is 0 based
-    	SYS_setHIntCallback(hIntCallback);
+    	SYS_setHIntCallback(hIntCallbackHud);
     	VDP_setHInterrupt(TRUE);
 	}
 	SYS_enableInts();
 
-	// Setup VDP
-	VDP_setScreenWidth320();
-	VDP_setPlaneSize(PLANE_COLUMNS, 32, TRUE);
-	VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
-	VDP_setHorizontalScroll(BG_A, 0);
-	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
-	//VDP_setBackgroundColor(1); // this set grey as bg color so floor and roof are the same color
-	// set background color used for the roof
-	PAL_setColor(0, palette_grey[1]);
-
-	VDP_setEnable(TRUE);
-
+    // In case we enqueued some DMA ops
 	SYS_doVBlankProcess();
 
 	// For some unknown reason if we use a game_loop.h and declare gameLoop() function, later when defining 
@@ -242,8 +171,11 @@ int main (bool hardReset)
 	PAL_setColor(0, 0x000); // Black BG color
 	VDP_clearPlane(BG_B, TRUE);
 	VDP_clearPlane(BG_A, TRUE);
+    VDP_clearPlane(WINDOW, TRUE);
 	VDP_setHorizontalScroll(BG_A, 0);
 	VDP_setHorizontalScroll(BG_B, 0);
 
 	return 0;
 }
+
+#pragma GCC pop_options

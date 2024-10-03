@@ -12,7 +12,7 @@ FORCE_INLINE void write_vline (u16 h2, u16 color)
 	// draw a solid vertical line
 	if (h2 == 0) {
 		// C version
-		//for (u16 y = 0; y < VERTICAL_COLUMNS*PLANE_COLUMNS; y+=PLANE_COLUMNS) {
+		//for (u16 y = 0; y < VERTICAL_ROWS*PLANE_COLUMNS; y+=PLANE_COLUMNS) {
 		// 	column_ptr[y] = color;
 		//}
 
@@ -25,7 +25,7 @@ FORCE_INLINE void write_vline (u16 h2, u16 color)
 			".endr\n"
 			: [color] "+d" (color)
 			: [tilemap] "a" (column_ptr), 
-              [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
+              [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
 			:
 		);
 	}
@@ -34,15 +34,15 @@ FORCE_INLINE void write_vline (u16 h2, u16 color)
 		// top tilemap entry
 		//tilemap[ta*PLANE_COLUMNS] = color + (h2 & 7); // offsets the color by the halved pixel height modulo 8
 		// bottom tilemap entry (with flipped attribute)
-		//tilemap[((VERTICAL_COLUMNS-1)-ta)*PLANE_COLUMNS] = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
+		//tilemap[((VERTICAL_ROWS-1)-ta)*PLANE_COLUMNS] = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
 
 		// THIS is slightly faster in C, but super fast when implemented in the inline ASM block:
 		// top tilemap entry
 		//tilemap[(h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))] = color + (h2 & 7); // offsets the color by the halved pixel height modulo 8
 		// bottom tilemap entry (with flipped attribute)
-		//tilemap[(VERTICAL_COLUMNS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))] = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
+		//tilemap[(VERTICAL_ROWS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))] = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
 
-		// VERTICAL_COLUMNS-2 remaining vertical tilemap entries
+		// VERTICAL_ROWS-2 remaining vertical tilemap entries
 
 		// C version (for 28 vertical tiles)
 		/*switch (ta) {
@@ -93,17 +93,17 @@ FORCE_INLINE void write_vline (u16 h2, u16 color)
 			// bottom tilemap entry
 			"    or.w    %[_TILE_ATTR_VFLIP_MASK],%[color_aux]\n" // color_aux = (color + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
 			"    neg.w   %[h2_aux]\n"
-			"    addi.w  %[_BOTTOM_COLUMN_BYTES],%[h2_aux]\n" // h2_aux = (VERTICAL_COLUMNS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))
+			"    addi.w  %[_BOTTOM_COLUMN_BYTES],%[h2_aux]\n" // h2_aux = (VERTICAL_ROWS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))
 			"    move.w  %[color_aux],(%[tilemap],%[h2_aux])\n"
 
 			// jump into table using with h2
 			"    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
 			// color assignment table: 
-			//  from tile[1*PLANE_COLUMNS] up to [((VERTICAL_COLUMNS-2)/2)*PLANE_COLUMNS]
-			//  from tile[(VERTICAL_COLUMNS-2)*PLANE_COLUMNS] down to [(((VERTICAL_COLUMNS-2)/2)+1)*PLANE_COLUMNS]
-			// Eg for VERTICAL_COLUMNS=28: 
+			//  from tile[1*PLANE_COLUMNS] up to [((VERTICAL_ROWS-2)/2)*PLANE_COLUMNS]
+			//  from tile[(VERTICAL_ROWS-2)*PLANE_COLUMNS] down to [(((VERTICAL_ROWS-2)/2)+1)*PLANE_COLUMNS]
+			// Eg for VERTICAL_ROWS=28: 
 			//  from tile[1*PLANE_COLUMNS] up to [13*PLANE_COLUMNS] and from tile[26*PLANE_COLUMNS] down to [14*PLANE_COLUMNS]
-			// Eg for VERTICAL_COLUMNS=24: 
+			// Eg for VERTICAL_ROWS=24: 
 			//  from tile[1*PLANE_COLUMNS] up to [11*PLANE_COLUMNS] and from tile[22*PLANE_COLUMNS] down to [12*PLANE_COLUMNS]
 			".wvl_table_%=:\n"
 			".set offup,1 * %c[_PLANE_COLUMNS] * 2\n"
@@ -115,9 +115,9 @@ FORCE_INLINE void write_vline (u16 h2, u16 color)
 			"    .set offdown,offdown-%c[_PLANE_COLUMNS]*2\n"
 			".endr\n"
 			: [h2] "+d" (h2), [color] "+d" (color), [h2_aux] "+d" (h2_aux), [color_aux] "+d" (color_aux)
-			: [tilemap] "a" (column_ptr), [clearBitsOffset] "i" (~(8-1)), [_VERTICAL_COLUMNS] "i" (VERTICAL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
+			: [tilemap] "a" (column_ptr), [clearBitsOffset] "i" (~(8-1)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
 			  [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1), /* +1 due to division by 2 */
-			  [_BOTTOM_COLUMN_BYTES] "i" ((VERTICAL_COLUMNS-1)*PLANE_COLUMNS*2)
+			  [_BOTTOM_COLUMN_BYTES] "i" ((VERTICAL_ROWS-1)*PLANE_COLUMNS*2)
 			:
 		);
 	}

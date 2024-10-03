@@ -5,7 +5,7 @@ const STEP_COUNT = 15;  // View distance depth. (STEP_COUNT+1 should be a power 
 
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24
-const VERTICAL_COLUMNS = 24;
+const VERTICAL_ROWS = 24;
 
 // 320/8=40. 256/8=32.
 const TILEMAP_COLUMNS = 40;
@@ -42,7 +42,7 @@ exports.FS = FS
 exports.FP = FP
 exports.AP = AP
 exports.STEP_COUNT = STEP_COUNT
-exports.VERTICAL_COLUMNS = VERTICAL_COLUMNS
+exports.VERTICAL_ROWS = VERTICAL_ROWS
 exports.TILEMAP_COLUMNS = TILEMAP_COLUMNS
 exports.PIXEL_COLUMNS = PIXEL_COLUMNS
 exports.MAP_SIZE = MAP_SIZE

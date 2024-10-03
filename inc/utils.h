@@ -79,4 +79,6 @@ void showCPULoad (u16 xPos, u16 yPos);
 /// @param yPos screen Y position in tiles
 void showFPS (u16 xPos, u16 yPos);
 
+void unpackSelector (u16 compression, u8* src, u8* dest);
+
 #endif // _UTILS_H_
