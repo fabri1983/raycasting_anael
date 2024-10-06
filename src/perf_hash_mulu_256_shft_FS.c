@@ -279,12 +279,17 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     // return *(tab_mulu_256_shft_FS + MPH_VALUES_DELTADIST_NKEYS*op1_rowStride + op2_index);
 
     // Treat the table pointer as u32 so no issues when indexing with offset of 32 bits
+    // op1_rowStride is already multiplied by MPH_VALUES_DELTADIST_NKEYS and 2. op2_index is already multiplied by 2
+    // u32 i = (u32)(u16*)tab_mulu_256_shft_FS;
+    // u16* p = (u16*) (i + op1_rowStride + op2_index);
+    // return *p;
+
+    // Treat the table pointer as u32 so no issues when indexing with offset of 32 bits
+    // op1_rowStride is already multiplied by MPH_VALUES_DELTADIST_NKEYS and 2. op2_index is already multiplied by 2
     union {
         u16* p;
         u32  i;
     } conv = { .p = (u16*)tab_mulu_256_shft_FS };
-    // op1_rowStride is already multiplied by MPH_VALUES_DELTADIST_NKEYS and 2
-    // op2_index is already multiplied by 2
     u16* ptr = (u16*) (conv.i + op1_rowStride + op2_index);
     return *ptr;
 

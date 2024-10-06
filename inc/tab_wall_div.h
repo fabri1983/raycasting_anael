@@ -11,9 +11,8 @@ u8 tab_wall_div[FP * (STEP_COUNT + 1)];
 for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 	u32 v = (u32)TILEMAP_COLUMNS*FP / (i + 1);
 	tab_wall_div[i] = min(v, MAX_U8);
-}*/
+}
 
-/*
 fabri1983 changes
 -----------------
 * values >= (VERTICAL_ROWS*8)/2 were changed to 0 so the entire vertical line is written into framebuffer.

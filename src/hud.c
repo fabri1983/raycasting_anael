@@ -31,7 +31,7 @@ static Digits ammo_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 static Digits health_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 static Digits armor_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 
-static void setDigits (Digits* digits, u8 hundreds, u8 tens, u8 ones)
+static FORCE_INLINE void setDigits (Digits* digits, u8 hundreds, u8 tens, u8 ones)
 {
     digits->hundrs = hundreds;
     digits->tens = tens;
@@ -196,25 +196,25 @@ static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
     COPY_TILEMAP_DATA(from, to, HUD_NUMS_W, HUD_NUMS_H);
 }
 
-static void setHUDAmmo ()
+static FORCE_INLINE void setHUDAmmo ()
 {
     updateFlags &= ~(1 << UPDATE_FLAG_AMMO);
     setHUDDigitsCommon(HUD_AMMO_XP, HUD_AMMO_YP, &ammo_digits);
 }
 
-static void setHUDHealth ()
+static FORCE_INLINE void setHUDHealth ()
 {
     updateFlags &= ~(1 << UPDATE_FLAG_HEALTH);
     setHUDDigitsCommon(HUD_HEALTH_XP, HUD_HEALTH_YP, &health_digits);
 }
 
-static void setHUDArmor ()
+static FORCE_INLINE void setHUDArmor ()
 {
     updateFlags &= ~(1 << UPDATE_FLAG_ARMOR);
     setHUDDigitsCommon(HUD_ARMOR_XP, HUD_ARMOR_YP, &armor_digits);
 }
 
-static void setHUDWeapons ()
+static FORCE_INLINE void setHUDWeapons ()
 {
     updateFlags &= ~(1 << UPDATE_FLAG_WEAPON);
 
@@ -266,7 +266,7 @@ static void setHUDWeapons ()
     }
 }
 
-static void setHUDKeys ()
+static FORCE_INLINE void setHUDKeys ()
 {
     updateFlags &= ~(1 << UPDATE_FLAG_KEY);
 
@@ -331,7 +331,7 @@ static void setHUDKeys ()
     }
 }
 
-static void setHUDFace ()
+static FORCE_INLINE void setHUDFace ()
 {
     updateFlags &= ~(1 << UPDATE_FLAG_FACE);
 
@@ -405,7 +405,7 @@ static FORCE_INLINE void updateFaceExpressionTimer ()
     }
 }
 
-void updateHUD ()
+FORCE_INLINE void updateHUD ()
 {
     updateFaceExpressionTimer();
 

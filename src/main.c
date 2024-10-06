@@ -5,7 +5,8 @@
 // reference for raymarching: https://lodev.org/cgtutor/raycasting.html
 
 // fabri1983's notes (since Aug/18/2024)
-// -----------------
+// -----------------`
+// * Ray Casting: https://lodev.org/cgtutor/raycasting.html
 // * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
 // * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
 // * clear_buffer() using SP (Stack Pointer) to point end of buffer => 60 cycles saved if PLANE_COLUMNS=32, 150 cycles saved if PLANE_COLUMNS=64.
@@ -14,24 +15,27 @@
 // * write_vline(): translated into inline ASM => 2% saved in cpu usage.
 // * write_vline(): access optimization for top and bottom tiles of current column in ASM => 4% saved in cpu usage.
 // * write_vline(): exposing globally the column pointer instead of sending it as an argument. This made the frame_buffer_pxcolumn[] useless
-//   so no need for loadPlaneDisplacements() neither offset before write_vline() => ~1% saved in cpu usage depending on the inline ASM setup.
+//   so no need for loadPlaneDisplacements() neither offset before write_vline() => ~1% saved in cpu usage depending on the inline ASM constraints.
 // * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
 //   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
 // * Replaced dirX and dirY calculation in relation to the angle by two tables defined in tab_dir_xy.h => some cycles saved.
 // * Replaced DMA_doDmaFast() by DMA_queueDmaFast() => 1% saved in cpu usage.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
-// * Replaced d for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
-// * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage.
-// * Manual unrolling of 4 iterations for column processing => 2% saved in cpu usage.
+// * Replaced variable d used for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
+// * Replaced (mulu(sideDistX_l0, deltaDistX) >> FS) by a table => ~4% saved in cpu usage, though rom size increased 500 KB.
 // * sega.s: use _VINT_lean instead of _VINT => some cycles saved.
+// * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage. It may vary according the use of FORCE_INLINE.
+// * Manual unrolling of 2 (or 4) iterations for column processing => 2% saved in cpu usage. It may vary according the use of FORCE_INLINE.
 
 #include <genesis.h>
 #include "utils.h"
 #include "consts.h"
-#include "hud_320.h"
 #include "clear_buffer.h"
 #include "frame_buffer.h"
+
+#include "hud_320.h"
+#include "weapons_sprites.h"
 
 // the code is optimised further using GCC's automatic unrolling
 #pragma GCC push_options
@@ -120,6 +124,8 @@ int main (bool hardReset)
 	u16 currentTileIndex = loadRenderingTiles();
 	currentTileIndex = loadInitialHUD(currentTileIndex);
     prepareHUDPalAddresses();
+    SPR_initEx(84); // highest amount of tiles used by a sprite animation
+    currentTileIndex = weaponsCreateSprites(currentTileIndex);
 
 	MEM_pack();
 
@@ -167,6 +173,8 @@ int main (bool hardReset)
     	SYS_setHIntCallback(NULL);
 	}
 	SYS_enableInts();
+
+    SPR_reset();
 
 	PAL_setColor(0, 0x000); // Black BG color
 	VDP_clearPlane(BG_B, TRUE);

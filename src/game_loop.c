@@ -7,6 +7,7 @@
 #include "write_vline.h"
 
 #include "hud_320.h"
+#include "weapons_sprites.h"
 
 #include "tab_dir_xy.h"
 #include "tab_wall_div.h"
@@ -51,9 +52,16 @@ extern void gameLoop () {
         clear_buffer(frame_buffer);
         #endif
 
-        //updateHUD();
+        updateHUD();
 
 		u16 joy = JOY_readJoypad(JOY_1);
+
+        if (joy & BUTTON_X) {
+            weaponPistol_load();
+        }
+        if (joy & BUTTON_A) {
+            weapon_fire();
+        }
 
         // movement and collisions
         if (joy & (BUTTON_UP | BUTTON_DOWN)) {
@@ -127,6 +135,8 @@ extern void gameLoop () {
         //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+
+        SPR_update();
 
         SYS_doVBlankProcessEx(ON_VBLANK_START);
 
@@ -231,19 +241,15 @@ extern void gameLoopAuto () {
 /**
  * Digital Differential Analyzer
  */
-static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
+static void dda (u16 posX, u16 posY, u16 angle) {
 
     #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     // Value goes from 0...FP (including), multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2 for faster array acces in ASM
     u32 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
-    sideDistX_l0 = posX & (FP-1); // (posX - (posX/FP)*FP);
-    sideDistX_l1 = FP - sideDistX_l0; // (((posX/FP) + 1)*FP - posX);
-    sideDistY_l0 = posY & (FP-1); // (posY - (posY/FP)*FP);
-    sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
-    sideDistX_l0 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
-    sideDistX_l1 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
-    sideDistY_l0 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
-    sideDistY_l1 *= MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES;
+    sideDistX_l0 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * (posX & (FP-1));
+    sideDistX_l1 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * FP - sideDistX_l0;
+    sideDistY_l0 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * (posY & (FP-1));
+    sideDistY_l1 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * FP - sideDistY_l0;
     #else
     // Value goes from 0...FP (including)
     u16 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
@@ -260,7 +266,19 @@ static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
     column_ptr = frame_buffer;
 
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-    for (u8 column = 0; column < PIXEL_COLUMNS; column += 4) {
+    for (u8 column = 0; column < PIXEL_COLUMNS; column += COLUMNS_UNROLL) {
+        #if COLUMNS_UNROLL == 1
+        process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        if ((column & 1) == 0)
+            column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
+        else
+            column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
+        #elif COLUMNS_UNROLL == 2
+        process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
+        process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
+        #elif COLUMNS_UNROLL == 4
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
@@ -269,7 +287,8 @@ static FORCE_INLINE void dda (u16 posX, u16 posY, u16 angle) {
         column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
         process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
-        delta_a_ptr += 4 * DELTA_PTR_OFFSET_AMNT;
+        #endif
+        delta_a_ptr += COLUMNS_UNROLL * DELTA_PTR_OFFSET_AMNT;
     }
 }
 

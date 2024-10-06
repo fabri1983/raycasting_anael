@@ -23,7 +23,8 @@
     "perf_hash_mulu_dist_256_shft_fs.h": "c",
     "xlocale": "c",
     "hud_res.h": "c",
-    "dma.h": "c"
+    "dma.h": "c",
+    "sprite_eng.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

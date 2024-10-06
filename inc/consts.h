@@ -3,7 +3,8 @@
 
 #define SHOW_TEXCOORD FALSE // Show texture coords? This disabled the use of USE_TAB_DELTAS_3.
 #define USE_CLEAR_FRAMEBUFFER_WITH_SP TRUE
-#define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS FALSE
+#define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE // If set to TRUE then set COLUMNS_UNROLL 1 (until columns issue is fixed)
+#define COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4
 
 // Use mega big table with pre calculated results for: (op1*op2) >> FS.
 // It requires before the loop of pixel columns: a *= PIXEL_COLUMNS; // offset to use as: tab_mulu_dist_div256[sideDistX|Y][a+column]
