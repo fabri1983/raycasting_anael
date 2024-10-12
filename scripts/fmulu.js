@@ -1,9 +1,10 @@
-// https://github.com/Mega-Drive-Developers-Collective/MD-Platformer-Core/blob/main/tools/scripts/fmulu.js
+// Source: https://github.com/Mega-Drive-Developers-Collective/MD-Platformer-Core/blob/main/tools/scripts/fmulu.js
 // Lists the equivalent instructions of mulu instruction for those cases when is faster than the actual mulu.
-// IMPORTANT: only if higher word of result is not important. Otherwise timings are not correct.
+// IMPORTANT: Only if higher word of result is not important. Otherwise timings are not correct. 
+//            Check https://gist.github.com/flamewing/ad17bf22875be36ad4ae26f159a94f8b
 
-const maxbytes = 16;
-const maxcycles = 50;
+const maxbytes = 16; // up to how many bytes in total the instructions must hold
+const maxcycles = 50; // up to how many cycles in total the instructions must hold
 
 // helper function to generate move instructions
 function move() {
@@ -28,8 +29,10 @@ function lsl(ct, dst, tx) {
 }
 
 var cycles, bytes, ln;
+
+// First two cases
 let str = 
-"=0		clr.\\0	\\dst					; clear\n"+
+"=0		clr.\\0	\\dst					; clear (better use moveq)\n"+
 "=1								; no-op\n";
 
 // loop between 2 and FFFF

@@ -19,7 +19,7 @@
 #define WEAPON_FIST_ANIM_READY_TO_HIT_AGAIN_FRAME 1
 #define WEAPON_PISTOL_ANIM_READY_TO_HIT_AGAIN_FRAME 3
 
-#define WEAPON_CHANGE_EFFECT_COOLDOWN_TIMER 8 // This has to be bigger than the effect of scrolling down current weapon and scrolling up new weapon
+#define WEAPON_CHANGE_COOLDOWN_TIMER 8 // This has to be bigger than the effect of scrolling down current weapon and scrolling up new weapon
 #define WEAPON_RESET_TO_IDLE_TIMER 2*60 // Always >= than largest animation length multiplied by the frequency of animation frames
 #define WEAPON_FIST_FIRE_COOLDOWN_TIMER 28
 #define WEAPON_PISTOL_FIRE_COOLDOWN_TIMER 8

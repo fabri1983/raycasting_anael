@@ -63,7 +63,7 @@ void weapon_select (u8 weaponId)
 {
     // start weapon change effect for the current weapon
     changeWeaponEffect_direction = -1;
-    changeWeaponEffect_timer = WEAPON_CHANGE_EFFECT_COOLDOWN_TIMER;
+    changeWeaponEffect_timer = WEAPON_CHANGE_COOLDOWN_TIMER;
 
     currWeaponId = weaponId;
     switch (currWeaponId) {
@@ -111,7 +111,7 @@ FORCE_INLINE void weapon_next (u8 sign)
         nextWeaponId = modu((nextWeaponId + sign + WEAPON_MAX_COUNT), WEAPON_MAX_COUNT);
         if (hud_hasWeaponInInventory(nextWeaponId)) {
             weapon_select(nextWeaponId);
-            select_coolDown_timer = 2*WEAPON_CHANGE_EFFECT_COOLDOWN_TIMER;
+            select_coolDown_timer = 2*WEAPON_CHANGE_COOLDOWN_TIMER;
             return;
         }
     }
@@ -233,7 +233,7 @@ FORCE_INLINE void weapon_update ()
     else if (changeWeaponEffect_direction == -1) {
         // once scroll down effect finishes continue with scroll up effect
         changeWeaponEffect_direction = 1;
-        changeWeaponEffect_timer = WEAPON_CHANGE_EFFECT_COOLDOWN_TIMER;
+        changeWeaponEffect_timer = WEAPON_CHANGE_COOLDOWN_TIMER;
     }
 
     if (resetToIdle_timer != 0) {

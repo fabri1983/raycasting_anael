@@ -94,9 +94,9 @@ HINTERRUPT_CALLBACK hint_callback ()
         weaponPalA_addrForDMA = NULL;
     }
 
-	// Send 1/2 of the PA
+	// Send first 1/2 of frame_buffer Plane A
 	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-	// Send 1/4 of the PA
+	// Send first 1/4 of frame_buffer Plane A
 	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
 	// Reload the 2 palettes that were overriden by the HUD palettes

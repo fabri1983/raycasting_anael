@@ -39,11 +39,11 @@ extern void gameLoop () {
 	//SYS_showFrameLoad(FALSE);
 
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
-	// Smaller positions locate at top-left corner of the map[][] layout, bigger positions locate at bottom-right of the map[][] layout.
-	// But dx and dy, applied to posX and posY respectively, goes from 0 to (+/-)FP/ANGLE_DIR_NORMALIZATION depending on the angle (see tab_dir_xy.h).
+	// Smaller positions locate at top-left corner of the map[][] layout (as seen in the .h), bigger positions locate at bottom-right.
+	// But dx and dy, applied to posX and posY respectively, goes from 0 to (+/-)FP/ANGLE_DIR_NORMALIZATION (used in tab_dir_xy.h).
 	u16 posX = 2*FP, posY = 2*FP;
 
-	// angle max value is 1023 and is updated in +/- 8 units.
+	// angle max value is 1023 and is updated in (1024/AP) units.
 	// 0 points down in the map[], 256 points right, 512 points up, 768 points left.
 	u16 angle = 0; 
 
@@ -73,19 +73,38 @@ extern void gameLoop () {
         hud_update();
 
         // movement and collisions
-        if (joy & (BUTTON_UP | BUTTON_DOWN)) {
+        if (joy & (BUTTON_UP | BUTTON_DOWN | BUTTON_B | BUTTON_LEFT | BUTTON_RIGHT)) {
 
             // Direction amount and sign depending on angle
-            s16 dx = tab_dir_x_div24[angle];
-            s16 dy = tab_dir_y_div24[angle];
-            if (joy & BUTTON_DOWN) {
-                dx = -dx;
-                dy = -dy;
+            s16 dx=0, dy=0;
+
+            // Strafe movement is perpendicular to facing direction
+            if (joy & BUTTON_B) {
+                // Strafe left
+                if (joy & BUTTON_LEFT) {
+                    dx = tab_dir_y_div24[angle];
+                    dy = -tab_dir_x_div24[angle];
+                }
+                // Strafe Right
+                else if (joy & BUTTON_RIGHT) {
+                    dx = -tab_dir_y_div24[angle];
+                    dy = tab_dir_x_div24[angle];
+                }
+            }
+
+            // Simple forward/backward movement
+            if (joy & BUTTON_UP) {
+                dx += tab_dir_x_div24[angle];
+                dy += tab_dir_y_div24[angle];
+            }
+            else if (joy & BUTTON_DOWN) {
+                dx -= tab_dir_x_div24[angle];
+                dy -= tab_dir_y_div24[angle];
             }
 
             // Current location (normalized) before displacement
             u16 x = posX / FP; // x > 0 always because min pos x is bigger than FP
-            u16 y = posY / FP; // y > 0 always because min pos y is bigger than FP
+            u16 y = posY / FP; // y > 0 always because min pos x is bigger than FP
 
             // Limit y axis location (normalized)
             const u16 ytop = (posY - (MAP_FRACTION-1)) / FP;
@@ -96,14 +115,14 @@ extern void gameLoop () {
             posY += dy;
 
             // Check x axis collision
-            // Moving right as per map[][] layout?
+            // Moving right as per map[][] layout
             if (dx > 0) {
                 if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
                     posX = min(posX, (x+1)*FP - MAP_FRACTION);
                     x = posX / FP;
                 }
             }
-            // Moving left as per map[][] layout?
+            // Moving left as per map[][] layout
             else {
                 if (map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
                     posX = max(posX, x*FP + MAP_FRACTION);
@@ -116,35 +135,40 @@ extern void gameLoop () {
             const u16 xright = (posX + (MAP_FRACTION-1)) / FP;
 
             // Check y axis collision
-            // Moving down as per map[][] layout?
+            // Moving down as per map[][] layout
             if (dy > 0) {
                 if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
                     posY = min(posY, (y+1)*FP - MAP_FRACTION);
             }
-            // Moving up as per map[][] layout?
+            // Moving up as per map[][] layout
             else {
                 if (map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
                     posY = max(posY, y*FP + MAP_FRACTION);
             }
-        }
 
-        // rotation
-        if (joy & BUTTON_LEFT)
-            angle = (angle + (1024/AP)) & 1023;
-        if (joy & BUTTON_RIGHT)
-            angle = (angle - (1024/AP)) & 1023;
+            // Rotation (only when not strafing)
+            if (!(joy & BUTTON_B)) {
+                if (joy & BUTTON_LEFT)
+                    angle = (angle + (1024/AP)) & 1023;
+                else if (joy & BUTTON_RIGHT)
+                    angle = (angle - (1024/AP)) & 1023;
+            }
+        }
 
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, angle);
 
         SPR_update(); // must be called before the DMA enqueue of the framebuffer
 
-        // Enqueue the frame buffer for DMA during VBlank period
-        // Remaining 1/2 of PA
+        // DMA frame_buffer Plane A portion
+        // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
         //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        // Remaining 3/4 of PA
+        // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
         //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        // All the frame_buffer Plane A
         DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        
+        // DMA frame_buffer Plane B portion
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
         SYS_doVBlankProcessEx(ON_VBLANK_START);
