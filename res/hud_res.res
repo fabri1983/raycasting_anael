@@ -1,1 +1,1 @@
-IMAGE  img_hud_spritesheet  "hud/hud_spritesheet_320_images_RGB.png"  APLIB  ALL  72
+IMAGE  img_hud_spritesheet  "hud/hud_spritesheet_320_2pals_images_RGB.png"  APLIB  ALL  16456

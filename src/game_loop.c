@@ -6,13 +6,17 @@
 #include "frame_buffer.h"
 #include "write_vline.h"
 
-#include "hud_320.h"
-#include "weapons_sprites.h"
+#include "hud.h"
+#include "weapons.h"
 
 #include "tab_dir_xy.h"
 #include "tab_wall_div.h"
-#include "tab_color_d8.h"
-#include "tab_color_d8_with_pal.h"
+
+#if USE_TAB_COLOR_D8_PALS_SHIFTED && !SHOW_TEXCOORD
+    #include "tab_color_d8_pals_shft.h"
+#elif !USE_TAB_COLOR_D8_PALS_SHIFTED && !SHOW_TEXCOORD
+    #include "tab_color_d8.h"
+#endif
 
 #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     #include "perf_hash_mulu_256_shft_FS.h"
@@ -52,16 +56,21 @@ extern void gameLoop () {
         clear_buffer(frame_buffer);
         #endif
 
-        updateHUD();
-
 		u16 joy = JOY_readJoypad(JOY_1);
 
         if (joy & BUTTON_X) {
-            weaponPistol_load();
+            weapon_next(-1);
         }
-        if (joy & BUTTON_A) {
+        else if (joy & BUTTON_Y) {
+            weapon_next(1);
+        }
+        else if (joy & BUTTON_A) {
             weapon_fire();
         }
+
+        weapon_update();
+
+        hud_update();
 
         // movement and collisions
         if (joy & (BUTTON_UP | BUTTON_DOWN)) {
@@ -128,6 +137,8 @@ extern void gameLoop () {
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, angle);
 
+        SPR_update(); // must be called before the DMA enqueue of the framebuffer
+
         // Enqueue the frame buffer for DMA during VBlank period
         // Remaining 1/2 of PA
         //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -136,11 +147,9 @@ extern void gameLoop () {
         DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
-        SPR_update();
-
         SYS_doVBlankProcessEx(ON_VBLANK_START);
 
-        //showFPS(0, 1);
+        // showFPS(0, 1);
         showCPULoad(0, 1);
 	}
 
@@ -384,15 +393,13 @@ static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 de
 				//wallY = ((wallY * 8) >> FS) & 7; // faster? But is actually slower given the context
 				wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
 				u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
+                #elif USE_TAB_COLOR_D8_PALS_SHIFTED
+                u16 color = tab_color_d8_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
 				#else
-				u16 d8 = tab_color_d8_x[sideDistX];
+				u16 d8 = tab_color_d8[sideDistX]; // the bigger the distant the darker the color is
 				u16 color;
 				if (mapY&1) color = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
 				else color = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
-				// Next try out is indeed slower than all previous calculations because of the implicit cIdx*2 to convert it into a byte offset.
-                // Try it out in ASM having somehow cIdx already multiplied by 2 and could be faster.
-				// u16 cIdx = (FP * (STEP_COUNT + 1)) * (mapY&1) + sideDistX;
-				// u16 color = tab_color_d8_x_with_pal[cIdx];
 				#endif
 
 				write_vline(h2, color);
@@ -418,15 +425,13 @@ static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 de
 				//wallX = ((wallX * 8) >> FS) & 7; // faster? But is actually slower given the context
 				wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
 				u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
-				#else
-				u16 d8 = tab_color_d8_y[sideDistY];
+				#elif USE_TAB_COLOR_D8_PALS_SHIFTED
+				u16 color = tab_color_d8_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
+                #else
+				u16 d8 = tab_color_d8[sideDistY]; // the bigger the distant the darker the color is
 				u16 color;
 				if (mapX&1) color = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
 				else color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
-				// Next try out is indeed slower than all previous calculations because of the implicit cIdx*2 to convert it into a byte offset
-                // Try it out in ASM having somehow cIdx already multiplied by 2 and could be faster.
-				// u16 cIdx = (FP * (STEP_COUNT + 1)) * (mapX&1) + sideDistY;
-				// u16 color = tab_color_d8_y_with_pal[cIdx];
 				#endif
 
 				write_vline(h2, color);

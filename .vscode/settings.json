@@ -13,7 +13,6 @@
     "maths.h": "c",
     "types.h": "c",
     "consts.h": "c",
-    "tab_shift_for_mulu_dist_approx_div256.h": "c",
     "tab_wall_div.h": "c",
     "map_matrix.h": "c",
     "frame_buffer.h": "c",
@@ -24,7 +23,17 @@
     "xlocale": "c",
     "hud_res.h": "c",
     "dma.h": "c",
-    "sprite_eng.h": "c"
+    "sprite_eng.h": "c",
+    "limits": "c",
+    "perf_hash_mulu_256_shft_fs.h": "c",
+    "tab_deltas_perf_hash.h": "c",
+    "hud_320.h": "c",
+    "weapons.h": "c",
+    "utils.h": "c",
+    "vdp.h": "c",
+    "hud.h": "c",
+    "hint_callback.h": "c",
+    "xstring": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

@@ -182,23 +182,25 @@ static char str_cpu_load[] = "   %"; // \0 is implicitelly added
 
 void showCPULoad (u16 xPos, u16 yPos)
 {
-	int num = SYS_getCPULoad();
+	u16 num = SYS_getCPULoad();
 	str_cpu_load[0] = div_100[num];
     str_cpu_load[1] = div_10_mod_10[num];
     str_cpu_load[2] = mod_10[num];
-	VDP_clearText(xPos, yPos, 4);
+    str_cpu_load[3] = '%'; // leave it so it overrides garbage data from mod_10[num] when num > 255
+	VDP_clearText(xPos, yPos, 3);
 	VDP_drawTextBG(BG_A, str_cpu_load, xPos, yPos);
     //VDP_drawTextEx(BG_A, str_cpu_load, TILE_ATTR_FULL(0, 1, FALSE, FALSE, TILE_FONT_INDEX), xPos, yPos, DMA_QUEUE);
 }
 
-static char str_fps[] = "   "; // \0 is implicitelly added
+static char str_fps[] = "    "; // \0 is implicitelly added
 
 void showFPS (u16 xPos, u16 yPos)
 {
-    int num = SYS_getFPS();
+    u16 num = SYS_getFPS();
 	str_fps[0] = div_100[num];
     str_fps[1] = div_10_mod_10[num];
     str_fps[2] = mod_10[num];
+    str_fps[3] = ' '; // leave it so it overrides garbage data from mod_10[num] when num > 255
     VDP_clearText(xPos, yPos, 3);
 	VDP_drawTextBG(BG_A, str_fps, xPos, yPos);
 }

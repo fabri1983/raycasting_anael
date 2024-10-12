@@ -39,7 +39,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		:
 		: "a" (frame_buffer_ptr), 
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		:
+		: "cc"
 	);
 #elif PLANE_COLUMNS == 64
 	// We need to clear only first PIXEL_COLUMNS columns of each row from the tilemap
@@ -91,7 +91,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
-		:
+		: "cc"
 	);
 #endif
 }
@@ -109,6 +109,8 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 #if PLANE_COLUMNS == 32
 	// We need to clear all the tilemap
 	__asm volatile (
+        // Save all registers (except scratch pad)
+		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Save current SP value in a 4 bytes region dedicated for it
 		"    move.l  %%sp,%[mem_spBackup]\n"
 		// Makes SP points to the memory location of the framebuffer's end 
@@ -139,15 +141,19 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    .endr\n"
 		// Restore SP
 		"    move.l  %[mem_spBackup],%%sp\n"
+        // Restore all saved registers
+		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		: [mem_spBackup] "+m" (spBackup)
 		: "a" (frame_buffer_ptr),
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		:
+		: "cc"
 	);
 #elif PLANE_COLUMNS == 64
 	// We need to clear the tilemap following the addresses loaded into the SP
 	// 9693 cycles according Blastem cycle counter
 	__asm volatile (
+        // Save all registers (except scratch pad)
+		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Save current SP value in a 4 bytes region dedicated for it
 		"    move.l  %%sp,%[mem_spBackup]\n"
 		// Makes SP points to the memory location of the framebuffer's end 
@@ -190,12 +196,14 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    .endr\n"
 		// Restore SP
 		"    move.l  %[mem_spBackup],%%sp\n"
+		// Restore all saved registers
+		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		: [mem_spBackup] "+m" (spBackup)
 		: "a" (frame_buffer_ptr), 
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
-		:
+		: "cc"
 	);
 #endif
 }

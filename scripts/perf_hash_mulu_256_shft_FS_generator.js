@@ -97,6 +97,11 @@ function checkCorrectness (products) {
     }
 }
 
+/**
+ * Saves the products array into a file. Content split in 4 chunks.
+ * @param {*} products 
+ * @param {*} outputFile 
+ */
 /*function saveProductsToFile (products, outputFile) {
     const filePath = path.resolve(outputFile);
     const fileStream = fs.createWriteStream(filePath);
@@ -125,6 +130,9 @@ function checkCorrectness (products) {
     console.log(`products[] saved to file in 4 chunks: ${outputFile}`);
 }*/
 
+/**
+ * Save into a file
+ */
 function saveProductsToFile (products, outputFile) {
     const filePath = path.resolve(outputFile);
     const fileStream = fs.createWriteStream(filePath);

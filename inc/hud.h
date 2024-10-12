@@ -1,0 +1,83 @@
+#ifndef _HUD_H_
+#define _HUD_H_
+
+#include <types.h>
+
+#define USE_DIF_FLOOR_AND_ROOF_COLORS TRUE
+#define HUD_HINT_SCANLINE_CHANGE_BG_COLOR 95
+
+#define HUD_VRAM_START_INDEX 72 // Change this value you need to update resource file
+#define HUD_PAL PAL2 // Change this value you need to update resource file
+// This value is the one that has to go in the resources file if you modify one of the above
+#define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_PAL, 0, FALSE, FALSE, HUD_VRAM_START_INDEX)
+
+#define HUD_TILEMAP_COMPRESSED TRUE // If TRUE then we decompress it into a buffer. Otherwise we use the data from ROM which saves some RAM.
+
+#define HUD_XP 0
+#define HUD_YP (PLANE_COLUMNS == 64 ? 24 : 12)
+#define HUD_HEIGHT 4
+
+#define WEAPON_FIST 0
+#define WEAPON_PISTOL 1
+#define WEAPON_SHOTGUN 2
+#define WEAPON_MACHINE_GUN 3
+#define WEAPON_ROCKET 4
+#define WEAPON_PLASMA 5
+#define WEAPON_BFG 6
+#define WEAPON_MAX_COUNT 7
+
+#define KEY_NONE 0
+#define KEY_CARD_BLUE 1
+#define KEY_CARD_YELLOW 2
+#define KEY_CARD_RED 3
+#define KEY_SKULL_BLUE 4
+#define KEY_SKULL_YELLOW 5
+#define KEY_SKULL_RED 6
+
+#define FACE_EXPRESSION_LEFT 0
+#define FACE_EXPRESSION_CENTERED 1
+#define FACE_EXPRESSION_RIGHT 2
+#define FACE_EXPRESSION_SMILE 3
+#define FACE_EXPRESSION_HIT 4
+
+#define UPDATE_FLAG_AMMO 0
+#define UPDATE_FLAG_HEALTH 1
+#define UPDATE_FLAG_WEAPON 2
+#define UPDATE_FLAG_ARMOR 3
+#define UPDATE_FLAG_KEY 4
+#define UPDATE_FLAG_FACE 5
+
+typedef struct {
+    u8 hundrs;
+    u8 tens;
+    u8 ones;
+} Digits;
+
+int hud_loadInitialState (u16 currentTileIndex);
+
+void hud_resetAmmo ();
+void hud_setAmmo (u8 hundreds, u8 tens, u8 ones);
+void hud_addAmmoUnits (u16 amnt);
+void hud_subAmmoUnits (u16 amnt);
+void hud_resetHealth ();
+void hud_setHealth (u8 hundreds, u8 tens, u8 ones);
+void hud_addHealthUnits (u16 amnt);
+void hud_subHealthUnits (u16 amnt);
+void hud_resetArmor ();
+void hud_setArmor (u8 hundreds, u8 tens, u8 ones);
+void hud_addArmorUnits (u16 amnt);
+void hud_subArmorUnits (u16 amnt);
+void hud_resetWeapons ();
+void hud_addWeapon (u8 weapon);
+void hud_resetKeys ();
+void hud_addKey (u8 key);
+void hud_resetFaceExpression ();
+void hud_setFaceExpression (u8 expr, u8 timer);
+
+bool hud_hasWeaponInInventory (u8 weapon);
+bool hud_hasKeyInInventory (u8 key);
+bool hud_isDead ();
+
+void hud_update ();
+
+#endif // _HUD_H_

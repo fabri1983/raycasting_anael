@@ -1,15 +1,11 @@
 #ifndef _CONSTS_H_
 #define _CONSTS_H_
 
-#define SHOW_TEXCOORD FALSE // Show texture coords? This disabled the use of USE_TAB_DELTAS_3.
+#define SHOW_TEXCOORD FALSE // Show texture coords?
+#define USE_TAB_COLOR_D8_PALS_SHIFTED TRUE
 #define USE_CLEAR_FRAMEBUFFER_WITH_SP TRUE
-#define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE // If set to TRUE then set COLUMNS_UNROLL 1 (until columns issue is fixed)
-#define COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4
-
-// Use mega big table with pre calculated results for: (op1*op2) >> FS.
-// It requires before the loop of pixel columns: a *= PIXEL_COLUMNS; // offset to use as: tab_mulu_dist_div256[sideDistX|Y][a+column]
-// Not working due to table size incurring rom size > 4096 KB plus the table seems to only works for one of: (sideDistX_l0,sideDistX_l1) or (sideDistY_l0,sideDistY_l1).
-#define USE_TAB_MULU_DIST_256_SHFT_FS FALSE
+#define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
+#define COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches occur with 4.
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision
@@ -37,7 +33,7 @@
 #define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 the DMA of any plane and need to set the correct offset
 
 #define MAP_SIZE 16
-#define MAP_FRACTION 64
+#define MAP_FRACTION 24 // How much we allow the player to be close to any wall
 #define MIN_POS_XY (FP + MAP_FRACTION)
 #define MAX_POS_XY (FP*(MAP_SIZE-1) - MAP_FRACTION)
 #define MAP_HIT_MASK_MAPXY 16-1

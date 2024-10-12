@@ -295,9 +295,9 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
 
     // 24 cycles (+ the load of table into ax)
     // __asm volatile (
-    //     "adda.l  %[rowStride],%[tab_mulu_256_shft_FS]\t\n"
-    //     "adda.w  %[index],%[tab_mulu_256_shft_FS]\t\n"    // tab_mulu_256_shft_FS += rowStride + index
-    //     "move.w  (%[tab_mulu_256_shft_FS]),%[index]\t\n"  // result = *(tab_mulu_256_shft_FS)
+    //     "adda.l  %[rowStride],%[tab_mulu_256_shft_FS]\n\t"
+    //     "adda.w  %[index],%[tab_mulu_256_shft_FS]\n\t" // tab_mulu_256_shft_FS += rowStride + index
+    //     "move.w  (%[tab_mulu_256_shft_FS]),%[index]"   // result = *(tab_mulu_256_shft_FS)
     //     : [rowStride] "+d" (op1_rowStride), [index] "+d" (op2_index)
     //     : [tab_mulu_256_shft_FS] "a" (tab_mulu_256_shft_FS)
     //     :
@@ -306,8 +306,8 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
 
     // 22 cycles (+ the load of table into ax)
     // __asm volatile (
-    //     "adda.l  %[rowStride],%[tab_mulu_256_shft_FS]\t\n"
-    //     "move.w  (%[tab_mulu_256_shft_FS],%[index].w),%[index]\t\n" // result = tab_mulu_256_shft_FS[rowStride + index]
+    //     "adda.l  %[rowStride],%[tab_mulu_256_shft_FS]\n\t"
+    //     "move.w  (%[tab_mulu_256_shft_FS],%[index].w),%[index]" // result = tab_mulu_256_shft_FS[rowStride + index]
     //     : [rowStride] "+d" (op1_rowStride), [index] "+d" (op2_index)
     //     : [tab_mulu_256_shft_FS] "a" (tab_mulu_256_shft_FS)
     //     :

@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 // Check correct values of constants before script execution. See consts.h.
-const { AP, PIXEL_COLUMNS, MAP_SIZE } = require('./consts');
+const { FP, AP, PIXEL_COLUMNS, MAP_SIZE, STEP_COUNT } = require('./consts');
 
 const utils = {
 
@@ -78,30 +78,13 @@ const utils = {
         return map_matrix;
     },
 
-    /**
-     * Read and parse the tables tab_color_d8_x and tab_color_d8_y from a definition file.
-     * @param {*} tabColorD8File 
-     * @returns An object containing the 2 arrays: { tab_color_d8_x, tab_color_d8_y }
-     */
-    readTabColorD8Tables (tabColorD8File) {
-        const content = fs.readFileSync(tabColorD8File, 'utf8');
-        
-        function parseArray (name) {
-            const regex = new RegExp(`const\\s+u16\\s+${name}\\s*\\[.*?\\]\\s*=\\s*\\{([^}]+)\\}`, 's');
-            const match = content.match(regex);
-            if (!match) {
-                throw new Error(`Failed to find array ${name} in input file.`);
-            }
-            return match[1].split(',')
-                .map(x => x.trim())
-                .filter(x => x !== '')
-                .map(x => parseInt(x, 10));
+    generateTabColorD8 () {
+        const result = new Array(4096).fill(0);
+        for (let sideDist = 0; sideDist < (FP * (STEP_COUNT + 1)); ++sideDist) {
+            let d = 7 - Math.min(7, Math.floor(sideDist / FP)); // the bigger the distant the darker the color is
+            result[sideDist] = 1 + d*8;
         }
-
-        return {
-            tab_color_d8_x: parseArray('tab_color_d8_x'),
-            tab_color_d8_y: parseArray('tab_color_d8_y')
-        };
+        return result;
     },
 
     /**

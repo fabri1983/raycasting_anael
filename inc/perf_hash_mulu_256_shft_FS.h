@@ -3,7 +3,6 @@
 
 #include <types.h>
 
-#define MPH_VALUES_DELTADIST_LEN 0x100  /* length of hash mapping table */
 #define MPH_VALUES_DELTADIST_NKEYS 915  /* How many keys were hashed */
 
 /// @brief Using a perfect hash function over op2 to get an index between 0 and MPH_VALUES_DELTADIST_NKEYS-1 to get
