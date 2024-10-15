@@ -67,18 +67,18 @@ function main() {
     // Calculate and print compression ratio
     const originalSizeBytes = matrix.length * 2; // 2 bytes per 16-bit value
     const compressedMatrixSizeBytes = compressedMatrix.length * 2;
-    const compressionRatio = (1 - compressedMatrixSizeBytes / originalSizeBytes) * 100;
+    const compression = (1 - compressedMatrixSizeBytes / originalSizeBytes) * 100;
 
     // Calculate the maximum width needed for the integer part
     const maxIntegerWidth = Math.max(
         originalSizeBytes.toString().length,
         compressedMatrixSizeBytes.toString().length,
-        Math.floor(compressionRatio).toString().length
+        Math.floor(compression).toString().length
     );
 
     console.log(`${'Original size:'.padEnd(42)}${formatNumber(originalSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'CompressedMatrix size:'.padEnd(42)}${formatNumber(compressedMatrixSizeBytes, maxIntegerWidth)} bytes`);
-    console.log(`${'Compression ratio:'.padEnd(42)}${formatNumber(compressionRatio, maxIntegerWidth, 2)}%`);
+    console.log(`${'Compression:'.padEnd(42)}${formatNumber(compression, maxIntegerWidth, 2)}%`);
 
     let mismatchFound = false;
     for (let row = 0; row < Math.floor(matrix.length / PIXEL_COLUMNS) && !mismatchFound; row++) {

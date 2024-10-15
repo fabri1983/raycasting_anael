@@ -529,7 +529,7 @@ function main() {
     const compressedMatrixSizeBytes = compressedMatrix.length * 4; // 4 bytes
     const rowLookupTableSizeBytes = rowLookupTable.length * 2; // 2 bytes
     const offsetTableSizeBytes = offsetTable.length * 1; // 1 byte
-    const compressionRatio = (1 - (compressedMatrixSizeBytes + rowLookupTableSizeBytes + offsetTableSizeBytes) / originalSizeBytes) * 100;
+    const compression = (1 - (compressedMatrixSizeBytes + rowLookupTableSizeBytes + offsetTableSizeBytes) / originalSizeBytes) * 100;
 
     // Calculate the maximum width needed for the integer part
     const maxIntegerWidth = Math.max(
@@ -537,7 +537,7 @@ function main() {
         compressedMatrixSizeBytes.toString().length,
         rowLookupTableSizeBytes.toString().length,
         offsetTableSizeBytes.toString().length,
-        Math.floor(compressionRatio).toString().length
+        Math.floor(compression).toString().length
     );
 
     console.log(`${'Original size:'.padEnd(42)}${formatNumber(originalSizeBytes, maxIntegerWidth)} bytes`);
@@ -545,7 +545,7 @@ function main() {
     console.log(`${'RowLookupTable size:'.padEnd(42)}${formatNumber(rowLookupTableSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'OffsetTable size:'.padEnd(42)}${formatNumber(offsetTableSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'Compressed size:'.padEnd(42)}${formatNumber(compressedMatrixSizeBytes + rowLookupTableSizeBytes + offsetTableSizeBytes, maxIntegerWidth)} bytes`);
-    console.log(`${'Compression ratio:'.padEnd(42)}${formatNumber(compressionRatio, maxIntegerWidth, 2)}%`);
+    console.log(`${'Compression:'.padEnd(42)}${formatNumber(compression, maxIntegerWidth, 2)}%`);
 
     console.log("Checking for any mismatch between original matrix and decompressed matrix ...");
 
@@ -564,7 +564,7 @@ function main() {
         }
     }
 
-    if (mismatchFound)
+    if (!mismatchFound)
         console.log("Done.");
 
     console.log("Checking index by index for any mismatch between original matrix and decompressed matrix ...");
@@ -583,7 +583,7 @@ function main() {
         }
     }
 
-    if (mismatchFound)
+    if (!mismatchFound)
         console.log("Done.");
 }
 

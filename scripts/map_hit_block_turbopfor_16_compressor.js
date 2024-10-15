@@ -1,5 +1,17 @@
+/**
+ * TurboPFor block-based delta encoding with bit packing.
+ * 
+ * Data is divided into blocks of size PIXEL_COLUMNS * 4.
+ * For each block:
+ *  - A base value (minimum in the block) is stored.
+ *  - Differences from the base are calculated.
+ *  - The optimal number of bits to represent these differences is determined.
+ *  - Differences are bit-packed using this optimal bit width.
+ * Duplicate blocks are removed to save space.
+ */
+
 const fs = require('fs');
-const { MAX_U32, PIXEL_COLUMNS } = require('./consts');
+const { MAX_U16, PIXEL_COLUMNS } = require('./consts');
 
 const BLOCK_SIZE = PIXEL_COLUMNS*4;
 const MAX_BITS = 16; // Maximum bits for a 16-bit unsigned integer
@@ -96,9 +108,9 @@ function compressMatrix(matrix) {
     return { compressedMatrix: dedupMatrix, blockLookupIndex: dedupLookupIndex };
 }
 
-function decompressElement(compressedMatrix, blockLookupIndex, row, col) {
-    const blockIndex = row;
-    const elementIndex = col;
+function decompressElement(compressedMatrix, blockLookupIndex, index) {
+    const blockIndex = Math.floor(index / BLOCK_SIZE);
+    const elementIndex = index % BLOCK_SIZE;
 
     const blockStart = blockLookupIndex[blockIndex];
     const base = compressedMatrix[blockStart];
@@ -115,50 +127,6 @@ function decompressElement(compressedMatrix, blockLookupIndex, row, col) {
     value &= (1 << bits) - 1;
 
     return base + value;
-
-    /*
-    Pseudo-code for the 68000 assembly that demonstrates the core of the decompression:
-
-    ; Assume:
-    ; D0 = elementIndex
-    ; D1 = bits
-    ; A0 = pointer to start of block in compressedMatrix
-
-    ; Calculate total bits
-    MULU    D1, D0           ; D0 = elementIndex * bits
-
-    ; Calculate start word and bit offset
-    MOVE.L  D0, D2
-    LSR.L   #4, D2           ; D2 = totalBits / 16 (startWord)
-    AND.W   #$F, D0          ; D0 = totalBits % 16 (bitOffset)
-
-    ; Load the word(s)
-    MOVE.W  4(A0,D2.W), D3   ; Load first word
-    LSR.W   D0, D3           ; Shift right by bitOffset
-
-    ; Check if we need bits from the next word
-    MOVE.W  D0, D4
-    ADD.W   D1, D4           ; D4 = bitOffset + bits
-    CMP.W   #16, D4
-    BLE     .no_second_word
-
-    ; Load bits from second word
-    MOVE.W  6(A0,D2.W), D5   ; Load second word
-    NEG.W   D0
-    ADD.W   #16, D0
-    LSL.W   D0, D5
-    OR.W    D5, D3
-
-    .no_second_word:
-    ; Mask off extra bits
-    MOVE.W  #1, D5
-    LSL.W   D1, D5
-    SUBQ.W  #1, D5           ; D5 = (1 << bits) - 1
-    AND.W   D5, D3
-
-    ; Add base value
-    ADD.W   (A0), D3         ; Add base value
-    */
 }
 
 function loadMatrix(filename) {
@@ -179,6 +147,10 @@ function formatNumber(num, integerWidth, decimalPlaces = 0) {
 
 function saveArraysToFile(compressedMatrix, blockLookupIndex, lookupByteFactor, filename) {
     let fileContent = '';
+    fileContent += `#define MAP_HIT_COMPRESSED_BLOCK_SIZE ${BLOCK_SIZE}\n`;
+    fileContent += '\n';
+    fileContent += 'const u16 map_hit_compressed[] = {\n';
+    
     let nextBlockStart = 1;
     // Save compressedMatrix
     for (let i = 0; i < compressedMatrix.length; i++) {
@@ -191,26 +163,61 @@ function saveArraysToFile(compressedMatrix, blockLookupIndex, lookupByteFactor, 
         }
     }
 
-    fileContent += '\n\n';
+    fileContent += '}\n';
+    fileContent += '\n';
+
+    if (lookupByteFactor === 2) {
+        fileContent += 'const u16 map_hit_lookup[] = {\n';
+    } else if (lookupByteFactor === 4) {
+        fileContent += 'const u32 map_hit_lookup[] = {\n';
+    } else {
+        throw new Error('Invalid lookupByteFactor. Must be 2 or 4.');
+    }
 
     // Save blockLookupIndex
-    for (let i = 0; i < blockLookupIndex.length; i++) {
-        let value = blockLookupIndex[i];
+    let currentDelta = null;
+    let lineContent = '';
+
+    function appendValue(value) {
         if (lookupByteFactor === 2) {
             // Ensure 16-bit unsigned integer
-            value = value & 0xFFFF;
+            value &= 0xFFFF;
         } else if (lookupByteFactor === 4) {
             // Ensure 32-bit unsigned integer
-            value = value & 0xFFFFFFFF;
+            value &= 0xFFFFFFFF;
         } else {
             throw new Error('Invalid lookupByteFactor. Must be 2 or 4.');
         }
-        fileContent += value.toString() + ',\n';
+        return value.toString() + ', ';
     }
+
+    for (let i = 0; i < blockLookupIndex.length; i++) {
+        let value = blockLookupIndex[i];
+        
+        if (i > 0) {
+            let delta = value - blockLookupIndex[i - 1];
+            
+            if (delta !== currentDelta) {
+                if (lineContent) {
+                    fileContent += lineContent.trim() + '\n';
+                }
+                lineContent = '';
+                currentDelta = delta;
+            }
+        }
+        
+        lineContent += appendValue(value);
+    }
+
+    if (lineContent) {
+        fileContent += lineContent.trim() + '\n';
+    }
+
+    fileContent += '}';
 
     // Write to file
     fs.writeFileSync(filename, fileContent, 'utf8');
-    console.log(`Arrays saved to ${filename}`);
+    console.log(`Content saved to ${filename}`);
 }
 
 function main() {
@@ -222,36 +229,36 @@ function main() {
     const { compressedMatrix, blockLookupIndex } = compressMatrix(matrix);
 
     // Calculate and print compression ratio
-    const originalSizeBytes = matrix.length * 2; // 2 bytes per 16-bit value
+    const originalSizeBytes = matrix.length * 2; // 2 bytes
     const compressedMatrixSizeBytes = compressedMatrix.length * 2; // 2 bytes
     const biggerLookupValue = Math.max(...blockLookupIndex);
     console.log(`biggerLookupValue: ${biggerLookupValue}`)
     let lookupByteFactor = 2;
-    if (biggerLookupValue >= 65536)
+    if (biggerLookupValue > MAX_U16)
         lookupByteFactor = 4;
     const blockLookupIndexSizeBytes = blockLookupIndex.length * lookupByteFactor; // 2 or 4 bytes
-    const compressionRatio = (1 - (compressedMatrixSizeBytes + blockLookupIndexSizeBytes) / originalSizeBytes) * 100;
+    const compression = (1 - (compressedMatrixSizeBytes + blockLookupIndexSizeBytes) / originalSizeBytes) * 100;
 
     // Calculate the maximum width needed for the integer part
     const maxIntegerWidth = Math.max(
         originalSizeBytes.toString().length,
         compressedMatrixSizeBytes.toString().length,
         blockLookupIndexSizeBytes.toString().length,
-        Math.floor(compressionRatio).toString().length
+        Math.floor(compression).toString().length
     );
 
     console.log(`${'Original size:'.padEnd(42)}${formatNumber(originalSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'CompressedMatrix size:'.padEnd(42)}${formatNumber(compressedMatrixSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'Block Lookup Index size:'.padEnd(42)}${formatNumber(blockLookupIndexSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'Compressed size + Block Lookup Index:'.padEnd(42)}${formatNumber(compressedMatrixSizeBytes + blockLookupIndexSizeBytes, maxIntegerWidth)} bytes`);
-    console.log(`${'Compression ratio:'.padEnd(42)}${formatNumber(compressionRatio, maxIntegerWidth, 2)}%`);
+    console.log(`${'Compression:'.padEnd(42)}${formatNumber(compression, maxIntegerWidth, 2)}%`);
 
     let mismatchFound = false;
     for (let row = 0; row < Math.floor(matrix.length / BLOCK_SIZE) && !mismatchFound; row++) {
         for (let col = 0; col < BLOCK_SIZE && !mismatchFound; col++) {
             const index = row * BLOCK_SIZE + col;
             const originalValue = matrix[index];
-            const decompressedValue = decompressElement(compressedMatrix, blockLookupIndex, row, col);
+            const decompressedValue = decompressElement(compressedMatrix, blockLookupIndex, index);
 
             if (originalValue !== decompressedValue) {
                 console.error(`ERROR: Mismatch at row ${row}, column ${col} (index ${index}) -> Original: ${originalValue}, Decompressed: ${decompressedValue}`);

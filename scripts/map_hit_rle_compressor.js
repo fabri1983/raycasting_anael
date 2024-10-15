@@ -129,18 +129,18 @@ function main() {
     // Calculate sizes in bytes
     const originalSizeBytes = rows * cols * 2; // Assuming each element is 2 bytes (uint16_t)
     const compressedMatrixSizeBytes = compressedMatrix.totalEntries * 4 + (compressedMatrix.rowOffsets.length * 4);
-    const compressionRatio = (1 - (compressedMatrixSizeBytes / originalSizeBytes)) * 100;
+    const compression = (1 - (compressedMatrixSizeBytes / originalSizeBytes)) * 100;
 
     // Calculate the maximum width needed for the integer part
     const maxIntegerWidth = Math.max(
         originalSizeBytes.toString().length,
         compressedMatrixSizeBytes.toString().length,
-        Math.floor(compressionRatio).toString().length
+        Math.floor(compression).toString().length
     );
 
     console.log(`${'Original size:'.padEnd(42)}${formatNumber(originalSizeBytes, maxIntegerWidth)} bytes`);
     console.log(`${'Compressed size:'.padEnd(42)}${formatNumber(compressedMatrixSizeBytes, maxIntegerWidth)} bytes`);
-    console.log(`${'Compression ratio:'.padEnd(42)}${formatNumber(compressionRatio, maxIntegerWidth, 2)}%`);
+    console.log(`${'Compression:'.padEnd(42)}${formatNumber(compression, maxIntegerWidth, 2)}%`);
 
     // Print some additional information about the compressed matrix
     console.log(`Total entries in compressed matrix: ${compressedMatrix.totalEntries}`);
