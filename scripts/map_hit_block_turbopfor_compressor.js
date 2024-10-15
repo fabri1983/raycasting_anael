@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { MAX_U32, PIXEL_COLUMNS } = require('./consts');
 
-const BLOCK_SIZE = PIXEL_COLUMNS;
+const BLOCK_SIZE = PIXEL_COLUMNS*4;
 const MAX_BITS = 16; // Maximum bits for a 16-bit unsigned integer
 
 const inputFile = 'tab_map_hit_OUTPUT.txt';
@@ -59,14 +59,14 @@ function compressMatrix(matrix) {
         blockLookupIndex.push(compressedMatrix.length);
 
         // Gets the smaller value of the block
-        let base = MAX_U32;
+        let base = block[0];
         for (const val of block) {
             if (val < base) base = val;
         }
         const bits = determineOptimalBits(block.map(v => v - base));
 
-        compressedMatrix.push(base); // THIS IS 2 BYTES
-        compressedMatrix.push(bits); // THIS IS 1 BYTE (but we save it as 2 bytes)
+        compressedMatrix.push(base);
+        compressedMatrix.push(bits);
 
         let compressed = 0;
         let usedBits = 0;
@@ -247,9 +247,9 @@ function main() {
     console.log(`${'Compression ratio:'.padEnd(42)}${formatNumber(compressionRatio, maxIntegerWidth, 2)}%`);
 
     let mismatchFound = false;
-    for (let row = 0; row < Math.floor(matrix.length / PIXEL_COLUMNS) && !mismatchFound; row++) {
-        for (let col = 0; col < PIXEL_COLUMNS && !mismatchFound; col++) {
-            const index = row * PIXEL_COLUMNS + col;
+    for (let row = 0; row < Math.floor(matrix.length / BLOCK_SIZE) && !mismatchFound; row++) {
+        for (let col = 0; col < BLOCK_SIZE && !mismatchFound; col++) {
+            const index = row * BLOCK_SIZE + col;
             const originalValue = matrix[index];
             const decompressedValue = decompressElement(compressedMatrix, blockLookupIndex, row, col);
 
