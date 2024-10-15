@@ -33,7 +33,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 #endif
 static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY);
 
-extern void gameLoop () {
+extern void game_loop () {
 
     // Frame load is calculated after user's VBlank callback
 	//SYS_showFrameLoad(FALSE);
@@ -69,7 +69,6 @@ extern void gameLoop () {
         }
 
         weapon_update();
-
         hud_update();
 
         // movement and collisions
@@ -180,17 +179,21 @@ extern void gameLoop () {
     SYS_hideFrameLoad(); // is independant from whether the load is displayed or not
 }
 
-extern void gameLoopAuto () {
-
-    const u16 posStepping = 1;
+extern void game_loop_auto ()
+{
+    weapon_update();
+    hud_update();
+    SPR_update(); // must be called before the DMA enqueue of the framebuffer
 
     // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
     // stepping DOWN into Y Axis, and RIGHT into X Axis, where in each position we do a full rotation.
     // Therefore we only interesting in collisions with x+1 and y+1.
 
+    const u16 posStepping = 1;
+
     for (u16 posX = MIN_POS_XY; posX <= MAX_POS_XY; posX += posStepping) {
 
-        for (u16 posY = MIN_POS_XY; posY <= MIN_POS_XY; posY += posStepping) {
+        for (u16 posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += posStepping) {
 
             // Current location (normalized)
             u16 x = posX / FP; // x > 0 always because min pos x is bigger than FP
@@ -201,7 +204,7 @@ extern void gameLoopAuto () {
             const u16 ybottom = (posY + (MAP_FRACTION-1)) / FP;
 
             // Check x axis collision
-            // Moving right as per map[][] layout?
+            // Moving right as per map[][] layout
             if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
                 if (posX > ((x+1)*FP - MAP_FRACTION)) {
                     // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
@@ -209,7 +212,7 @@ extern void gameLoopAuto () {
                     break; // Stop current Y and continue with next X until it gets outside the collision
                 }
             }
-            // Moving left as per map[][] layout?
+            // Moving left as per map[][] layout
             // else if (map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
             //     if (posX < (x*FP + MAP_FRACTION)) {
             //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
@@ -223,7 +226,7 @@ extern void gameLoopAuto () {
             const u16 xright = (posX + (MAP_FRACTION-1)) / FP;
 
             // Check y axis collision
-            // Moving down as per map[][] layout?
+            // Moving down as per map[][] layout
             if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright]) {
                 if (posY > ((y+1)*FP - MAP_FRACTION)) {
                     // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
@@ -231,7 +234,7 @@ extern void gameLoopAuto () {
                     continue; // Continue with next Y until it gets outside the collision
                 }
             }
-            // Moving up as per map[][] layout?
+            // Moving up as per map[][] layout
             // else if (map[y-1][x] || map[y-1][xleft] || map[y-1][xright]) {
             //     if (posY < (y*FP + MAP_FRACTION)) {
             //         // Move one block of map: (FP + 2*MAP_FRACTION) = 384 units. The block sizes FP, but we account for a safe distant to avoid clipping.
@@ -252,12 +255,15 @@ extern void gameLoopAuto () {
                 // DDA (Digital Differential Analyzer)
                 dda(posX, posY, angle);
 
-                // Enqueue the frame buffer for DMA during VBlank period
-                // Remaining 1/2 of PA
+                // DMA frame_buffer Plane A portion
+                // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
                 //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                // Remaining 3/4 of PA
+                // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
                 //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                // All the frame_buffer Plane A
                 DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                
+                // DMA frame_buffer Plane B portion
                 DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
                 SYS_doVBlankProcessEx(ON_VBLANK_START);

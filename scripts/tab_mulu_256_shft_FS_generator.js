@@ -194,9 +194,6 @@ function runWorkers () {
     let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
     console.log(startTimeStr);
 
-    // Reset iterations counter
-    completedIterations = 0;
-
     for (let i=0, startPosX=MIN_POS_XY; i < numCores && startPosX < MAX_POS_XY; i++, startPosX+=chunkSize) {
         const endPosX = Math.min(startPosX + chunkSize - 1, MAX_POS_XY);
         const workerId = `[${startPosX}-${endPosX}]`;
@@ -218,6 +215,9 @@ function runWorkers () {
             })
         );
     }
+
+    // Reset iterations counter
+    completedIterations = 0;
 
     console.log('Main thread: Waiting for all workers to complete...');
 

@@ -30,12 +30,12 @@ FORCE_INLINE void hint_enqueueWeaponPal (u16* pal)
 HINTERRUPT_CALLBACK hint_callback ()
 {
     #if USE_DIF_FLOOR_AND_ROOF_COLORS
-	if (GET_VCOUNTER <= HUD_HINT_SCANLINE_CHANGE_BG_COLOR) {
-		waitHCounter_DMA(156);
+	if (GET_VCOUNTER <= HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
 		// set background color used for the floor
+		waitHCounter_DMA(156);
         const u16 addr = 0 * 2;
         *((vu32*) VDP_CTRL_PORT) = VDP_WRITE_CRAM_ADDR((u32)addr);
-        *((vu16*) VDP_DATA_PORT) = 0x0444; //palette_grey[2];
+        *((vu16*) VDP_DATA_PORT) = 0x0444; //palette_grey[2]; // floor color
 		return;
 	}
     #endif
@@ -45,19 +45,20 @@ HINTERRUPT_CALLBACK hint_callback ()
 
 	// Prepare DMA cmd and source address for first palette
     u32 palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    turnOffVDP(0x74);
+    //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalA_addrForDMA);
 
     // At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
     waitHCounter_DMA(152);
 
+    turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
     turnOnVDP(0x74);
 
 	// Prepare DMA cmd and source address for second palette
     palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-    turnOffVDP(0x74);
+    //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalB_addrForDMA);
 
 	// At this moment we are at the middle/end of the scanline due to the previous DMA setup.
@@ -70,10 +71,10 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     #if USE_DIF_FLOOR_AND_ROOF_COLORS
 	// set background color used for the roof
-	waitHCounter_DMA(152);
+	waitHCounter_DMA(156);
 	u32 addr = 0 * 2; // color index 0
     *((vu32*) VDP_CTRL_PORT) = VDP_WRITE_CRAM_ADDR(addr);
-    *((vu16*) VDP_DATA_PORT) = 0x0222; //palette_grey[1];
+    *((vu16*) VDP_DATA_PORT) = 0x0222; //palette_grey[1]; // roof color
     #endif
 
     // Have any weapon palette to DMA

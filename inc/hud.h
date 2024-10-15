@@ -4,7 +4,7 @@
 #include <types.h>
 
 #define USE_DIF_FLOOR_AND_ROOF_COLORS TRUE
-#define HUD_HINT_SCANLINE_CHANGE_BG_COLOR 95
+#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95
 
 #define HUD_VRAM_START_INDEX 72 // Change this value you need to update resource file
 #define HUD_PAL PAL2 // Change this value you need to update resource file

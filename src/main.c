@@ -15,7 +15,7 @@
 // * write_vline(): translated into inline ASM => 2% saved in cpu usage.
 // * write_vline(): access optimization for top and bottom tiles of current column in ASM => 4% saved in cpu usage.
 // * write_vline(): exposing globally the column pointer instead of sending it as an argument. This made the frame_buffer_pxcolumn[] useless,
-//   so no need for loadPlaneDisplacements() neither offset before write_vline() => ~1% saved in cpu usage depending on the inline ASM constraints.
+//   so no need for render_loadPlaneDisplacements() neither offset before write_vline() => ~1% saved in cpu usage depending on the inline ASM constraints.
 // * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
 //   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
@@ -48,7 +48,7 @@
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
 // Returns next available tile index in VRAM.
 // IMPORTANT: if tiles num is changed then update resource file and the constants involved too.
-static u16 loadRenderingTiles ()
+static u16 render_loadTiles ()
 {
 	// Create a buffer tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4][8]
@@ -56,24 +56,24 @@ static u16 loadRenderingTiles ()
 
 	// 9 possible tile heights
 
-	// Tile with height 0 is at index 0
+	// Tile with only color 0 (height 0) goes at index 0
 	VDP_loadTileData((u32*)tile, 0, 1, CPU);
 
 	// Remaining 8 possible tile heights, distributed in 8 sets
 
 	// 8 tiles per set
-	for (u16 i = 1; i <= 8; i++) {
+	for (u16 t = 1; t <= 8; t++) {
 		memset(tile, 0, 32); // clear the tile with color index 0
 		// 8 sets
 		for (u16 c = 0; c < 8; c++) {
 			// visit the rows of each tile in current set
-			for (u16 j = i-1; j < 8; j++) {
-				// visit the columns of current row. Tile width: 4 pixels = 2 bytes
+			for (u16 j = t-1; j < 8; j++) {
+				// visit the columns of current row. Tile width: 4 pixels (2 bytes) per plane
 				for (u16 b = 0; b < 2; b++) {
 					tile[4*j + b] = (c+0) | ((c+1) << 4);
 				}
 			}
-			VDP_loadTileData((u32*)tile, i + c*8, 1, CPU);
+			VDP_loadTileData((u32*)tile, c*8 + t, 1, CPU);
 		}
 	}
 
@@ -94,8 +94,8 @@ int main (bool hardReset)
 	VDP_setEnable(FALSE);
 
 	// Basic game setup
-	//loadPlaneDisplacements();
-	u16 currentTileIndex = loadRenderingTiles();
+	//render_loadPlaneDisplacements();
+	u16 currentTileIndex = render_loadTiles();
 	currentTileIndex = hud_loadInitialState(currentTileIndex);
     hint_setupPals();
     SPR_initEx(weapon_biggerSummationAnimTiles());
@@ -117,7 +117,7 @@ int main (bool hardReset)
     VDP_setWindowHPos(FALSE, HUD_XP);
     VDP_setWindowVPos(TRUE, HUD_YP);
 	//VDP_setBackgroundColor(1); // this set grey as bg color so floor and roof are the same color
-	PAL_setColor(0, 0x0222); //palette_grey[1]
+	PAL_setColor(0, 0x0222); //palette_grey[1] // roof color
 
     VDP_setEnable(TRUE);
 
@@ -128,9 +128,9 @@ int main (bool hardReset)
 		// Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
 		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
 		// 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-		VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_BG_COLOR-1); // -1 since hintcounter is 0 based
+		VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR-1); // -1 since hintcounter is 0 based
         #else
-        VDP_setHIntCounter((224-32)-2);
+        VDP_setHIntCounter((224-32)-2); // 2 scanlines earlier so we have enough time for the DMA of palettes
         #endif
     	SYS_setHIntCallback(hint_callback);
     	VDP_setHInterrupt(TRUE);
@@ -140,12 +140,12 @@ int main (bool hardReset)
     // In case we enqueued some DMA ops
 	SYS_doVBlankProcess();
 
-	// For some unknown reason if we use a game_loop.h and declare gameLoop() function, later when defining 
+	// For some unknown reason if we use a game_loop.h and declare game_loop() function, later when defining 
 	// the body of the function in its own game_loop.c unit it crashes the emulator/console with an illegal instruction.
-	// So solution is: remove game_loop.h, declare gameLoop() as extern in game_loop.c, and just call it here.
+	// So solution is: remove game_loop.h, declare game_loop() as extern in game_loop.c, and just call it here.
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
-	gameLoop();
+	game_loop();
 	#pragma GCC diagnostic pop
 
 	SYS_disableInts();

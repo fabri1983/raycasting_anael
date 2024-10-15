@@ -8,7 +8,7 @@
 #define WEAPON_BASE_PAL PAL0
 
 #define WEAPON_SPRITE_X_CENTERED (TILEMAP_COLUMNS/2)*8
-#define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 2 // -2 scanlines used for hint DMA hud palettes
+#define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 1 // -1 scanline used for hint DMA hud palettes
 
 #define WEAPON_FIST_ANIM_WIDTH 20
 #define WEAPON_FIST_ANIM_HEIGHT 10

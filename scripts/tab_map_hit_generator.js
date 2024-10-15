@@ -13,6 +13,8 @@ const tabDeltasFile = '../inc/tab_deltas.h';
 const mapMatrixFile = '../src/map_matrix.c';
 const outputFile = 'tab_map_hit_OUTPUT.txt';
 
+const MAX_JOBS = 256;
+
 // Progress tracking
 const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024/(1024/AP));
 let completedIterations = 0;
@@ -206,9 +208,9 @@ function toIndex (key) {
     const [, mapX, mapY, a, column] = match.map(Number);
 
     if (mapX < 0 || mapX >= MAP_SIZE ||
-        mapY < 0 || mapY >= MAP_SIZE ||
-        a < 0 || a >= (1024/(1024/AP)) ||
-        column < 0 || column >= PIXEL_COLUMNS) {
+            mapY < 0 || mapY >= MAP_SIZE ||
+            a < 0 || a >= (1024/(1024/AP)) ||
+            column < 0 || column >= PIXEL_COLUMNS) {
         throw new Error('Invalid key format or values out of range. key: ' + key);
     }
 
@@ -254,10 +256,11 @@ function convertToFullArray (map) {
 }
 
 function writeOutputToFile (arr, outputFile) {
-    // Take groups of 16 elems
     const lines = [];
-    for (let i = 0; i < arr.length; i += 32) {
-        const limit = Math.min(i + 32, arr.length);
+
+    // Take groups of PIXEL_COLUMNS elems
+    for (let i = 0; i < arr.length; i += PIXEL_COLUMNS) {
+        const limit = Math.min(i + PIXEL_COLUMNS, arr.length);
         const line = arr.slice(i, limit).join(',');
         lines.push(line);
     }
@@ -266,65 +269,111 @@ function writeOutputToFile (arr, outputFile) {
     const content = lines.join(',\n');
 
     fs.writeFileSync(outputFile, content);
-    console.log('Processing complete. Output saved to ' + outputFile);
 }
 
 // Function to run parallel workers
 function runWorkers () {
-    const numCores = Math.min(16, os.cpus().length);
-    const tab_deltas = utils.readTabDeltas(tabDeltasFile);
-    const map = utils.readMapMatrix(mapMatrixFile);
-    const workers = [];
-    const chunkSize = Math.ceil((MAX_POS_XY + 1) / numCores);
+    return new Promise((resolve, reject) => {
 
-    console.log('(Invoke with: node --max-old-space-size=2048 <script.js> to avoid running out of mem)');
-    console.log(`Utilizing ${numCores} cores for processing.`);
-    let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
-    console.log(startTimeStr);
+        const numCores = Math.min(16, os.cpus().length);
+        const tab_deltas = utils.readTabDeltas(tabDeltasFile);
+        const map = utils.readMapMatrix(mapMatrixFile);
+        const jobQueue = [];
+        const activeWorkers = new Set();
+        let completedJobs = 0;
+        const results = [];
 
-    // Reset iterations counter
-    completedIterations = 0;
+        console.log('(Invoke with: node --max-old-space-size=4092 <script.js> to avoid running out of mem)');
+        console.log(`Utilizing ${numCores} cores for processing multiple jobs.`);
+        let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
+        console.log(startTimeStr);
 
-    for (let i=0, startPosX=MIN_POS_XY; i < numCores && startPosX < MAX_POS_XY; i++, startPosX+=chunkSize) {
-        const endPosX = Math.min(startPosX + chunkSize - 1, MAX_POS_XY);
-        const workerId = `[${startPosX}-${endPosX}]`;
+        // Create job queue
+        const chunkSize = Math.ceil((MAX_POS_XY - MIN_POS_XY + 1) / MAX_JOBS);
+        for (let startPosX = MIN_POS_XY; startPosX <= MAX_POS_XY; startPosX += chunkSize) {
+            const endPosX = Math.min(startPosX + chunkSize - 1, MAX_POS_XY);
+            jobQueue.push({ startPosX, endPosX });
+        }
 
-        workers.push(
-            new Promise((resolve, reject) => {
-                const worker = new Worker(__filename, {
-                    workerData: { workerId, startPosX, endPosX, tab_deltas, map }
-                });
+        // Total jobs to complete
+        const totalJobs = jobQueue.length;
+        console.log(`Main thread: Total jobs to complete: ${totalJobs}`);
+        
+        console.log('Main thread: Waiting for all workers to complete their jobs...');
 
-                worker.on('message', (message) => {
-                    if (message.type === 'progress')
-                        completedIterations += message.value;
-                    else
-                        resolve(message);
-                });
+        // Reset iterations counter
+        completedIterations = 0;
 
-                worker.on('error', reject);
-            })
-        );
-    }
+        // Initial progress display
+        displayProgress();
+        // Set up progress display interval
+        const progressInterval = setInterval(displayProgress, 4000);
 
-    console.log('Main thread: Waiting for all workers to complete...');
+        function startWorker() {
+            if (jobQueue.length === 0 || activeWorkers.size >= numCores) return;
 
-    displayProgress(); // Initial progress display
-    // Set up progress display interval
-    const progressInterval = setInterval(displayProgress, 4000);
+            const job = jobQueue.shift();
+            const workerId = `[${job.startPosX}-${job.endPosX}]`;
 
-    // Join all workers and wait
-    Promise.all(workers)
-        .then(results => {
+            const worker = new Worker(__filename, {
+                workerData: { workerId, ...job, tab_deltas, map }
+            });
+
+            activeWorkers.add(worker);
+
+            worker.on('message', (message) => {
+                if (message.type === 'progress') {
+                    completedIterations += message.value;
+                } else {
+                    // Job completed
+                    activeWorkers.delete(worker);
+                    completedJobs++;
+
+                    results.push(message);
+                    
+                    if (completedJobs === totalJobs) {
+                        finishProcessing();
+                    } else {
+                        startWorker(); // Start a new job if available
+                    }
+                }
+            });
+
+            worker.on('error', (error) => {
+                process.stdout.write('\n'); // Move to the next line after progress bar
+                console.error(`Worker ${workerId} error:`, error);
+                activeWorkers.delete(worker);
+                reject(error);
+            });
+        }
+
+        function finishProcessing() {
             clearInterval(progressInterval); // Stop progress display
             displayProgress(); // Last update with updated counter
             process.stdout.write('\n'); // Move to the next line after progress bar
+            resolve(results);
+        }
 
+        // Start initial batch of workers
+        for (let i = 0; i < numCores; i++) {
+            startWorker();
+        }
+    });
+}
+
+// if (!global.gc) {
+//     console.log('Garbage collection unavailable. Pass --expose-gc when launching node to enable forced garbage collection.');
+//     return;
+// }
+
+if (isMainThread) {
+    runWorkers()
+        .then((results) => {
             const finalMap = new Map();
-            results.forEach(result => {
-                result.forEach(([key, value]) => {
+            results.forEach(resultMap => {
+                for (const [key, value] of resultMap) {
                     finalMap.set(key, value);
-                });
+                }
             });
 
             // Sanity check on size
@@ -335,28 +384,20 @@ function runWorkers () {
 
             // Write output to file
             writeOutputToFile(completeOutputArray, outputFile);
+            console.log('Processing complete. Output saved to ' + outputFile);
 
             let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
             console.log(endTimeStr);
         })
-        .catch(error => {
+        .catch((error) => {
             process.stdout.write('\n'); // Move to the next line after progress bar
             console.error('An error occurred:', error);
 
             let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
             console.log(endTimeStr);
         });
-}
-
-// if (!global.gc) {
-//     console.log('Garbage collection unavailable. Pass --expose-gc when launching node to enable forced garbage collection.');
-//     return;
-// }
-
-if (isMainThread) {
-    runWorkers();
 } else {
     const { workerId, startPosX, endPosX, tab_deltas, map } = workerData;
     const result = processGameChunk(workerId, startPosX, endPosX, tab_deltas, map);
-    parentPort.postMessage(Array.from(result.entries()));
+    parentPort.postMessage(result);
 }
