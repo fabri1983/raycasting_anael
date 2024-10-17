@@ -7,13 +7,15 @@
  *  - Differences from the base are calculated.
  *  - The optimal number of bits to represent these differences is determined.
  *  - Differences are bit-packed using this optimal bit width.
- * Duplicate blocks are removed to save space.
+ * Lookup table to access each compressed block into the compressed array.
+ * Duplicate blocks are removed to save space and lookup table updated accordingly.
  */
 
 const fs = require('fs');
+// Check correct values of constants before script execution. See consts.h.
 const { MAX_U16, PIXEL_COLUMNS } = require('./consts');
 
-const BLOCK_SIZE = PIXEL_COLUMNS*4;
+const BLOCK_SIZE = PIXEL_COLUMNS*4; // BLOCK_SIZE >= PIXEL_COLUMNS otherwise we need to adjust map_hit_compressed.c
 const MAX_BITS = 16; // Maximum bits for a 16-bit unsigned integer
 
 const inputFile = 'tab_map_hit_OUTPUT.txt';
@@ -121,12 +123,12 @@ function decompressElement(compressedMatrix, blockLookupIndex, index) {
     const bitOffset = totalBits % 16;
 
     let value = (compressedMatrix[startWord] >>> bitOffset);
-    if (bitOffset + bits > 16) {
-        value |= (compressedMatrix[startWord + 1] << (16 - bitOffset));
+    if ((bitOffset + bits) > 16) {
+        value |= compressedMatrix[startWord + 1] << (16 - bitOffset);
     }
     value &= (1 << bits) - 1;
 
-    return base + value;
+    return base + (value & 0xFFFF);
 }
 
 function loadMatrix(filename) {
@@ -147,7 +149,7 @@ function formatNumber(num, integerWidth, decimalPlaces = 0) {
 
 function saveArraysToFile(compressedMatrix, blockLookupIndex, lookupByteFactor, filename) {
     let fileContent = '';
-    fileContent += `#define MAP_HIT_COMPRESSED_BLOCK_SIZE ${BLOCK_SIZE}\n`;
+    fileContent += `#define MAP_HIT_COMPRESSED_BLOCK_SIZE (PIXEL_COLUMNS*${Math.floor(BLOCK_SIZE/PIXEL_COLUMNS)})\n`;
     fileContent += '\n';
     fileContent += 'const u16 map_hit_compressed[] = {\n';
     
@@ -163,9 +165,10 @@ function saveArraysToFile(compressedMatrix, blockLookupIndex, lookupByteFactor, 
         }
     }
 
-    fileContent += '}\n';
+    fileContent += '};\n';
     fileContent += '\n';
 
+    fileContent += '// values grouped by same delta (might be useful for further compression?)\n';
     if (lookupByteFactor === 2) {
         fileContent += 'const u16 map_hit_lookup[] = {\n';
     } else if (lookupByteFactor === 4) {
@@ -213,7 +216,7 @@ function saveArraysToFile(compressedMatrix, blockLookupIndex, lookupByteFactor, 
         fileContent += lineContent.trim() + '\n';
     }
 
-    fileContent += '}';
+    fileContent += '};';
 
     // Write to file
     fs.writeFileSync(filename, fileContent, 'utf8');
@@ -232,7 +235,7 @@ function main() {
     const originalSizeBytes = matrix.length * 2; // 2 bytes
     const compressedMatrixSizeBytes = compressedMatrix.length * 2; // 2 bytes
     const biggerLookupValue = Math.max(...blockLookupIndex);
-    console.log(`biggerLookupValue: ${biggerLookupValue}`)
+    console.log(`Bigger LookupIndex table value: ${biggerLookupValue}`)
     let lookupByteFactor = 2;
     if (biggerLookupValue > MAX_U16)
         lookupByteFactor = 4;

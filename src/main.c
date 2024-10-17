@@ -51,7 +51,7 @@
 static u16 render_loadTiles ()
 {
 	// Create a buffer tile
-	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4][8]
+	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4*8]
 	memset(tile, 0, 32); // clear the tile with color index 0
 
 	// 9 possible tile heights
@@ -64,13 +64,17 @@ static u16 render_loadTiles ()
 	// 8 tiles per set
 	for (u16 t = 1; t <= 8; t++) {
 		memset(tile, 0, 32); // clear the tile with color index 0
-		// 8 sets
+		// 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors
 		for (u16 c = 0; c < 8; c++) {
-			// visit the rows of each tile in current set
-			for (u16 j = t-1; j < 8; j++) {
+			// visit the heigh of each tile in current set
+			for (u16 h = t-1; h < 8; h++) {
 				// visit the columns of current row. Tile width: 4 pixels (2 bytes) per plane
 				for (u16 b = 0; b < 2; b++) {
-					tile[4*j + b] = (c+0) | ((c+1) << 4);
+                    u8 colorA = c+0; // or maybe is for plane B
+                    // here we try to clamp up to color 7 so we can save 1 palette color for other uses
+                    u8 colorB = (c+1) == 8 ? c : c+1; // or maybe is for plane A
+                    u8 color = colorA | (colorB << 4);
+					tile[4*h + b] = color;
 				}
 			}
 			VDP_loadTileData((u32*)tile, c*8 + t, 1, CPU);

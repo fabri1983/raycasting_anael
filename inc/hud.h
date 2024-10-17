@@ -6,8 +6,8 @@
 #define USE_DIF_FLOOR_AND_ROOF_COLORS TRUE
 #define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95
 
-#define HUD_VRAM_START_INDEX 72 // Change this value you need to update resource file
-#define HUD_PAL PAL2 // Change this value you need to update resource file
+#define HUD_VRAM_START_INDEX 72 // If change this value you'll have to update resource file
+#define HUD_PAL PAL2 // If change this value you'll have to update resource file
 // This value is the one that has to go in the resources file if you modify one of the above
 #define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_PAL, 0, FALSE, FALSE, HUD_VRAM_START_INDEX)
 

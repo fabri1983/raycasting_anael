@@ -33,7 +33,8 @@
     "vdp.h": "c",
     "hud.h": "c",
     "hint_callback.h": "c",
-    "xstring": "c"
+    "xstring": "c",
+    "map_hit_compressed.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

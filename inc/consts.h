@@ -2,10 +2,11 @@
 #define _CONSTS_H_
 
 #define SHOW_TEXCOORD FALSE // Show texture coords?
-#define USE_TAB_COLOR_D8_PALS_SHIFTED TRUE
 #define USE_CLEAR_FRAMEBUFFER_WITH_SP TRUE
+#define USE_TAB_COLOR_D8_PALS_SHIFTED TRUE
 #define USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
-#define COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches occur with 4.
+#define USE_MAP_HIT_COMPRESSED FALSE
+#define COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision
@@ -33,11 +34,11 @@
 #define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 the DMA of any plane and need to set the correct offset
 
 #define MAP_SIZE 16
-#define MAP_FRACTION 32 // How much we allow the player to be close to any wall
+#define MAP_FRACTION 64 // How much we allow the player to be close to any wall
 #define MIN_POS_XY (FP + MAP_FRACTION)
 #define MAX_POS_XY (FP*(MAP_SIZE-1) - MAP_FRACTION)
-#define MAP_HIT_MASK_MAPXY 16-1
-#define MAP_HIT_MASK_SIDEDISTXY 4096-1
+#define MAP_HIT_MASK_MAPXY (16-1)
+#define MAP_HIT_MASK_SIDEDISTXY (4096-1)
 #define MAP_HIT_OFFSET_MAPXY 0
 #define MAP_HIT_OFFSET_SIDEDISTXY 4
 #define MAP_HIT_MIN_CALCULATED_INDEX 174080

@@ -1,4 +1,5 @@
 const fs = require('fs');
+// Check correct values of constants before script execution. See consts.h.
 const { PIXEL_COLUMNS } = require('./consts');
 
 const inputFile = 'tab_map_hit_OUTPUT.txt';

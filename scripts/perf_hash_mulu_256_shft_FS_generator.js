@@ -14,7 +14,7 @@ const outputFile = 'perf_hash_mulu_256_shft_FS_OUTPUT.txt';
 module.exports = {
     MPH_VALUES_DELTADIST_NKEYS,
     loadDeltaDists,
-    generateKeyToIndexMap
+    generateMinPerHashMap: generateMinPerHashMap
 };
 
 function loadDeltaDists (filePath) {
@@ -41,17 +41,17 @@ function loadDeltaDists (filePath) {
  * @param {*} sortedKeys 
  * @returns a map that acts as a Minimal Perfect Hash function.
  */
-function generateKeyToIndexMap (sortedKeys) {
-    const keyToIndexMap = new Map();
+function generateMinPerHashMap (sortedKeys) {
+    const minPerfHashMap = new Map();
     for (let i = 0; i < sortedKeys.length; i++) {
-        keyToIndexMap.set(sortedKeys[i], i);
+        minPerfHashMap.set(sortedKeys[i], i);
     }
-    return keyToIndexMap;
+    return minPerfHashMap;
 }
 
 function generateProducts () {
     const deltaDists = loadDeltaDists(tabDeltasFile);
-    const keyToIndex = generateKeyToIndexMap(deltaDists);
+    const minPerfHashMap = generateMinPerHashMap(deltaDists);
     let expectedLength = (OP1_MAX_VALUE + 1) * MPH_VALUES_DELTADIST_NKEYS;
     const products = new Array(expectedLength);
 
@@ -60,7 +60,7 @@ function generateProducts () {
             let op2 = deltaDists[i];
             let product = op1 * op2;
             let shiftedProduct = utils.toUnsigned16Bit(product >> FS);
-            let op2_index = keyToIndex.get(op2); // this is indeed the minimal perfect hash function
+            let op2_index = minPerfHashMap.get(op2);
             let prod_index = (op1 * MPH_VALUES_DELTADIST_NKEYS) + op2_index;
             products[prod_index] = shiftedProduct;
         }
@@ -82,14 +82,14 @@ function generateProducts () {
 
 function checkCorrectness (products) {
     const deltaDists = loadDeltaDists(tabDeltasFile);
-    const keyToIndex = generateKeyToIndexMap(deltaDists);
+    const minPerfHashMap = generateMinPerHashMap(deltaDists);
 
     for (let op1 = 0; op1 <= OP1_MAX_VALUE; op1++) {
         for (let i = 0; i < deltaDists.length; ++i) {
             let op2 = deltaDists[i];
             let product = op1 * op2;
             let shiftedProduct = utils.toUnsigned16Bit(product >> FS);
-            let op2_index = keyToIndex.get(op2); // this is indeed the minimal perfect hash function
+            let op2_index = minPerfHashMap.get(op2);
             let prod_index = (op1 * MPH_VALUES_DELTADIST_NKEYS) + op2_index;
             if (products[prod_index] != shiftedProduct)
                 throw new Error(`products[]: incorrect value ${products[prod_index]} for (op1*op2) >> FS at location (${op1} * ${MPH_VALUES_DELTADIST_NKEYS}) + ${op2_index}, expected ${shiftedProduct}`);
@@ -98,11 +98,11 @@ function checkCorrectness (products) {
 }
 
 /**
- * Saves the products array into a file. Content split in 4 chunks.
+ * Saves the products array into a file. Content split in N chunks.
  * @param {*} products 
  * @param {*} outputFile 
  */
-/*function saveProductsToFile (products, outputFile) {
+function saveProductsInChunksToFile (products, outputFile) {
     const filePath = path.resolve(outputFile);
     const fileStream = fs.createWriteStream(filePath);
 
@@ -128,7 +128,7 @@ function checkCorrectness (products) {
 
     fileStream.end();
     console.log(`products[] saved to file in 4 chunks: ${outputFile}`);
-}*/
+}
 
 /**
  * Save into a file
@@ -140,6 +140,7 @@ function saveProductsToFile (products, outputFile) {
     let line = '';
     for (let i = 0; i < products.length; i++) {
         line += products[i].toString() + ',';
+        // lines of MPH_VALUES_DELTADIST_NKEYS elems
         if ((i + 1) % MPH_VALUES_DELTADIST_NKEYS === 0) {
             fileStream.write(line + '\n');
             line = '';
@@ -150,11 +151,50 @@ function saveProductsToFile (products, outputFile) {
     console.log(`products[] saved to file: ${outputFile}`);
 }
 
+function printMinMaxSequence (products) {
+    let minSequence = Number.MAX_SAFE_INTEGER;
+    let maxSequence = 0;
+    let currentSequence = 1;
+    let minNumber = products[0];
+    let maxNumber = products[0];
+    let currentNumber = products[0];
+
+    for (let i = 1; i < products.length; i++) {
+        if (products[i] === products[i - 1]) {
+            currentSequence++;
+        } else {
+            if (currentSequence < minSequence) {
+                minSequence = currentSequence;
+                minNumber = currentNumber;
+            }
+            if (currentSequence > maxSequence) {
+                maxSequence = currentSequence;
+                maxNumber = currentNumber;
+            }
+            currentSequence = 1;
+            currentNumber = products[i];
+        }
+    }
+
+    // Handle the last sequence
+    if (currentSequence < minSequence) {
+        minSequence = currentSequence;
+        minNumber = currentNumber;
+    }
+    if (currentSequence > maxSequence) {
+        maxSequence = currentSequence;
+        maxNumber = currentNumber;
+    }
+
+    console.log(`Min sequence: ${minSequence} (number: ${minNumber}), Max sequence: ${maxSequence} (number: ${maxNumber})`);
+}
+
 async function calculateOutput () {
     try {
         const products = generateProducts();
         checkCorrectness(products);
         saveProductsToFile(products, outputFile);
+        //printMinMaxSequence(products);
     } catch (err) {
         console.error('Error:', err.message);
     }

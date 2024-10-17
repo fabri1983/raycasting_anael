@@ -19,11 +19,11 @@
  *   u32 calculatedIndex = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS + column) - MAP_HIT_MIN_CALCULATED_INDEX;
  *   u16 value = tab_map_hit[calculatedIndex];
  * Then decompose the value:
- *   u16 mapXY = (value >> MAP_HIT_OFFSET_MAPXY) & MAP_HIT_MASK_MAPXY;
- *   u16 sideDistXY = (value >> MAP_HIT_OFFSET_SIDEDISTXY) & MAP_HIT_MASK_SIDEDISTXY;
+ *   u16 hit_mapXY = (value >> MAP_HIT_OFFSET_MAPXY) & MAP_HIT_MASK_MAPXY;
+ *   u16 hit_mapXY = (value >> MAP_HIT_OFFSET_SIDEDISTXY) & MAP_HIT_MASK_SIDEDISTXY;
  * 
- * How to tell which side X or Y does sideDistXY go?
- *   if (stored_sideDistX < sideDistY)
+ * How to tell which side X or Y does hit_mapXY go?
+ *   if (hit_mapXY < sideDistY)
  *       ...
  *   else
  *       ...
