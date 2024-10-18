@@ -21,10 +21,10 @@ void hint_setupPals ()
 
 FORCE_INLINE void hint_enqueueWeaponPal (u16* pal)
 {
-    // PAL_setColors(WEAPON_BASE_PAL*16 + 9, pal + 9, 7, DMA_QUEUE);
-    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 9, pal + 16 + 9, 7, DMA_QUEUE);
-    weaponPalA_addrForDMA = (u32) (pal +  0 + 9) >> 1;
-    weaponPalB_addrForDMA = (u32) (pal + 16 + 9) >> 1;
+    // PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal + 8, 8, DMA_QUEUE);
+    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 9, pal + 16 + 8, 8, DMA_QUEUE);
+    weaponPalA_addrForDMA = (u32) (pal +  0 + 8) >> 1;
+    //weaponPalB_addrForDMA = (u32) (pal + 16 + 8) >> 1;
 }
 
 HINTERRUPT_CALLBACK hint_callback ()
@@ -80,17 +80,17 @@ HINTERRUPT_CALLBACK hint_callback ()
     // Have any weapon palette to DMA
     if (weaponPalA_addrForDMA != NULL) {
 
-        palCmd = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 9) * 2); // target starting color index multiplied by 2
+        palCmd = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 8) * 2); // target starting color index multiplied by 2
         waitHCounter_DMA(152);
-        setupDMAForPals(7, weaponPalA_addrForDMA);
+        setupDMAForPals(8, weaponPalA_addrForDMA);
         waitHCounter_DMA(152);
         *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
 
-        palCmd = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 9) * 2); // target starting color index multiplied by 2
-        waitHCounter_DMA(152);
-        setupDMAForPals(7, weaponPalB_addrForDMA);
-        waitHCounter_DMA(152);
-        *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+        // palCmd = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 8) * 2); // target starting color index multiplied by 2
+        // waitHCounter_DMA(152);
+        // setupDMAForPals(8, weaponPalB_addrForDMA);
+        // waitHCounter_DMA(152);
+        // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
 
         weaponPalA_addrForDMA = NULL;
     }

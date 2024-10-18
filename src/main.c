@@ -46,8 +46,8 @@
 #pragma GCC optimize ("no-unroll-loops")
 
 // Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
-// Returns next available tile index in VRAM.
-// IMPORTANT: if tiles num is changed then update resource file and the constants involved too.
+// Starts locating tiles at index 0. Returns next available tile index in VRAM which must be HUD_VRAM_START_INDEX.
+// IMPORTANT: if amount of generated tiles is changed then update resource file and the constants involved too.
 static u16 render_loadTiles ()
 {
 	// Create a buffer tile
@@ -68,12 +68,12 @@ static u16 render_loadTiles ()
 		for (u16 c = 0; c < 8; c++) {
 			// visit the heigh of each tile in current set
 			for (u16 h = t-1; h < 8; h++) {
-				// visit the columns of current row. Tile width: 4 pixels (2 bytes) per plane
+				// visit the columns of current row. 1 byte holds 2 colors as per Tile definition.
 				for (u16 b = 0; b < 2; b++) {
-                    u8 colorA = c+0; // or maybe is for plane B
-                    // here we try to clamp up to color 7 so we can save 1 palette color for other uses
-                    u8 colorB = (c+1) == 8 ? c : c+1; // or maybe is for plane A
-                    u8 color = colorA | (colorB << 4);
+                    u8 colorX = c+0;
+                    // here we clamp to color 7 since from ramp palette's 8th color they're repeated, and thus we save 1 palette color for other uses
+                    u8 colorY = (c+1) == 8 ? c : c+1;
+                    u8 color = colorX | (colorY << 4);
 					tile[4*h + b] = color;
 				}
 			}
@@ -84,7 +84,7 @@ static u16 render_loadTiles ()
 	MEM_free(tile);
 
 	// Returns next available tile index in VRAM
-	return HUD_VRAM_START_INDEX; // 9*8
+	return HUD_VRAM_START_INDEX; // 8 + 8*8
 }
 
 int main (bool hardReset)

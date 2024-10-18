@@ -467,7 +467,7 @@ static FORCE_INLINE void do_stepping_hit_map (u16 posX, u16 posY, u16 sideDistX,
     //   16 bits:  dddddddddddd    mmmm
     //              sideDistXY     mapXY
     u16 hit_mapXY = (hit_value >> MAP_HIT_OFFSET_MAPXY) & MAP_HIT_MASK_MAPXY;
-    u16 hit_sideDistXY = (hit_value >> MAP_HIT_OFFSET_SIDEDISTXY);
+    u16 hit_sideDistXY = (hit_value >> MAP_HIT_OFFSET_SIDEDISTXY);// & MAP_HIT_MASK_SIDEDISTXY;
 
     // side X
     if (hit_sideDistXY < sideDistY) {

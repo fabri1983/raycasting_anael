@@ -34,8 +34,8 @@ void weapon_resetState ()
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
-    PAL_setColors(WEAPON_BASE_PAL*16 + 9, pal_weapon_fist_anim.data + 9, 7, DMA);
-    PAL_setColors((WEAPON_BASE_PAL+1)*16 + 9, pal_weapon_fist_anim.data + 16 + 9, 7, DMA);
+    PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal_weapon_fist_anim.data + 8, 8, DMA);
+    //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 8, pal_weapon_fist_anim.data + 16 + 8, 8, DMA);
 
     currWeaponId = 0;
     currWeaponAnimFireCooldownTimer = 0;
