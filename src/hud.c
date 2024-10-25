@@ -3,7 +3,6 @@
 #include <vdp_bg.h>
 #include <vdp_tile.h>
 #include <dma.h>
-#include <pal.h>
 #include <memory.h>
 #include <mapper.h>
 #include "hud.h"
@@ -11,12 +10,20 @@
 #include "hud_res.h"
 #include "consts.h"
 #include "utils.h"
+#include "hint_callback.h"
+
+static u16* hud_tilemap_src;
 
 #if HUD_TILEMAP_COMPRESSED
+static u16 tilemapUnpacked[HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H];
+u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
 
-static u16 unpacked[HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H];
-static u16* hud_tilemap_src;
-static u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
+static void decompressTilemap ()
+{
+    TileMap* src = img_hud_spritesheet.tilemap;
+    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, ((HUD_SOURCE_IMAGE_W) * (HUD_SOURCE_IMAGE_H)) * 2), (u8*) tilemapUnpacked);
+}
+#endif
 
 static u8 weaponInventoryBits;
 static u8 keyInventoryBits;
@@ -28,14 +35,6 @@ static Digits health_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 static Digits armor_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 
 static u16 updateFlags;
-
-static void decompressTilemap ()
-{
-    TileMap* src = img_hud_spritesheet.tilemap;
-    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, ((HUD_SOURCE_IMAGE_W) * (HUD_SOURCE_IMAGE_H)) * 2), (u8*) unpacked);
-}
-
-#endif
 
 static FORCE_INLINE void addHUDDigits (Digits* digits, u16 amnt)
 {
@@ -461,7 +460,7 @@ static FORCE_INLINE void setHUDFace ()
     COPY_TILEMAP_DATA(from, to, HUD_FACE_W, HUD_FACE_H);
 }
 
-int hud_loadInitialState (u16 currentTileIndex)
+u16 hud_loadInitialState (u16 currentTileIndex)
 {
     // We have already set in resource file the base tile index from which the tileset will be located in VRAM: HUD_VRAM_START_INDEX
     currentTileIndex += img_hud_spritesheet.tileset->numTile;
@@ -471,7 +470,7 @@ int hud_loadInitialState (u16 currentTileIndex)
 
     #if HUD_TILEMAP_COMPRESSED
     decompressTilemap();
-    hud_tilemap_src = unpacked;
+    hud_tilemap_src = tilemapUnpacked;
     #else
     hud_tilemap_src = img_hud_spritesheet.tilemap->tilemap;
     #endif
@@ -487,6 +486,18 @@ int hud_loadInitialState (u16 currentTileIndex)
     hud_resetFaceExpression(); // default face
 
     return currentTileIndex;
+}
+
+void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr)
+{
+    // NOTE: palettes in the resource image are located at the top
+    *palA_addr = (u32) (img_hud_spritesheet.palette->data + (0*16) + 1) >> 1;
+    *palB_addr = (u32) (img_hud_spritesheet.palette->data + (1*16) + 1) >> 1;
+}
+
+FORCE_INLINE u16* hud_getTilemap ()
+{
+    return hud_tilemap_dst;
 }
 
 static FORCE_INLINE void updateFaceExpressionTimer ()
@@ -520,5 +531,6 @@ FORCE_INLINE void hud_update ()
 
     // PW_ADDR comes with the correct base position in screen
     if (sendUpdate)
-        DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        //DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        hint_enqueueHudTilemap();
 }

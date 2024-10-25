@@ -1,4 +1,8 @@
-#include <genesis.h>
+#include "game_loop.h"
+#include <joy.h>
+#include <dma.h>
+#include <sys.h>
+#include <maths.h>
 #include "utils.h"
 #include "consts.h"
 #include "clear_buffer.h"
@@ -8,6 +12,8 @@
 
 #include "hud.h"
 #include "weapons.h"
+//#include <sprite_eng.h>
+#include "spr_eng_override.h"
 
 #include "tab_dir_xy.h"
 #include "tab_wall_div.h"
@@ -38,7 +44,7 @@ static void do_stepping_hit_map (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
-extern void game_loop () {
+void game_loop () {
 
     // Frame load is calculated after user's VBlank callback
 	//SYS_showFrameLoad(FALSE);
@@ -160,18 +166,19 @@ extern void game_loop () {
                     angle = (angle + (1024/AP)) & 1023;
                 else if (joy & BUTTON_RIGHT)
                     angle = (angle - (1024/AP)) & 1023;
-
-                u16 a = angle / (1024/AP); // a range is [0, 128)
-                delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
-
-                map_hit_setRow(posX, posY, a);
             }
+
+            u16 a = angle / (1024/AP); // a range is [0, 128)
+            delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
+
+            map_hit_setRow(posX, posY, a);
         }
 
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, delta_a_ptr);
 
-        SPR_update(); // must be called before the DMA enqueue of the framebuffer
+        //SPR_update(); // must be called before the DMA enqueue of the framebuffer
+        spr_eng_update();
 
         // DMA frame_buffer Plane A portion
         // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
@@ -193,11 +200,12 @@ extern void game_loop () {
     SYS_hideFrameLoad(); // is independant from whether the load is displayed or not
 }
 
-extern void game_loop_auto ()
+void game_loop_auto ()
 {
     weapon_update();
     hud_update();
-    SPR_update(); // must be called before the DMA enqueue of the framebuffer
+    //SPR_update(); // must be called before the DMA enqueue of the framebuffer
+    spr_eng_update();
 
     // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
     // stepping DOWN into Y Axis, and RIGHT into X Axis, where in each position we do a full rotation.

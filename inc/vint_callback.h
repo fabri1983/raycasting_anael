@@ -4,6 +4,10 @@
 #include <types.h>
 #include "consts.h"
 
+void vint_reset ();
+
+void vint_enqueueTiles (void *from, u16 toIndex, u16 lenInWord);
+
 void vint_callback ();
 
 #endif // _VINT_CALLBACK_H_

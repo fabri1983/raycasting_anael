@@ -11,7 +11,6 @@ static u8 select_coolDown_timer;
 static u8 changeWeaponEffect_timer;
 static s8 changeWeaponEffect_direction;
 
-static u16 baseTileAttribs;
 static Sprite* spr_currWeapon;
 static u8 currWeaponId;
 static u8 currWeaponAnimFireCooldownTimer;
@@ -20,22 +19,27 @@ static u16 ammoInventory[WEAPON_MAX_COUNT] = {0};
 
 u16 weapon_biggerSummationAnimTiles ()
 {
-    return 110;
+    return 107;
+}
+
+u16 weapon_getVRAMLocation ()
+{
+    // TILE_FONT_INDEX is the VRAM index location where the SGDK's Sprite Engine calculates the dedicated VRAM going backwards
+    return TILE_FONT_INDEX - weapon_biggerSummationAnimTiles();
 }
 
 void weapon_resetState ()
 {
-    // Sprites use tile attributes but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
-    // Otherwise use TILE_ATTR_FULL with tile index location.
-    baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, TILE_FONT_INDEX - weapon_biggerSummationAnimTiles());
+    // Sprites use tile attributes, but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
+    // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
+    u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
     // Loads fist sprite so we can avoid the check for NULL in other methods
-    spr_currWeapon = SPR_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, 
-        SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
+    spr_currWeapon = SPR_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
     PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal_weapon_fist_anim.data + 8, 8, DMA);
-    //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 8, pal_weapon_fist_anim.data + 16 + 8, 8, DMA);
+    //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 8, sprDef_weapon_fist_anim.palette->data + 16 + 8, 8, DMA);
 
     currWeaponId = 0;
     currWeaponAnimFireCooldownTimer = 0;
@@ -52,8 +56,11 @@ static FORCE_INLINE void weapon_load (const SpriteDefinition* sprDef, u16* pal, 
     fire_coolDown_timer = 0;
     SPR_releaseSprite(spr_currWeapon);
 
-    spr_currWeapon = SPR_addSpriteEx(sprDef, x, y, baseTileAttribs, 
-        SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
+    // Sprites use tile attributes, but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
+    // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
+    u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
+
+    spr_currWeapon = SPR_addSpriteEx(sprDef, x, y, baseTileAttribs, SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
 
     hint_enqueueWeaponPal(pal);
@@ -81,11 +88,11 @@ void weapon_select (u8 weaponId)
                 WEAPON_SPRITE_X_CENTERED - ((WEAPON_PISTOL_ANIM_WIDTH+1)/2)*8, 
                 WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_PISTOL_ANIM_HEIGHT*8);
             break;
-        // case WEAPON_SHOTGUN: weapon_load(); break;
-        // case WEAPON_MACHINE_GUN: weapon_load(); break;
-        // case WEAPON_ROCKET: weapon_load(); break;
-        // case WEAPON_PLASMA: weapon_load(); break;
-        // case WEAPON_BFG: weapon_load(); break;
+        case WEAPON_SHOTGUN: break;
+        case WEAPON_MACHINE_GUN: break;
+        case WEAPON_ROCKET: break;
+        case WEAPON_PLASMA: break;
+        case WEAPON_BFG: break;
         default: break;
     }
 }

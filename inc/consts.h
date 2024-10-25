@@ -34,7 +34,7 @@
 #define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 the DMA of any plane and need to set the correct offset
 
 #define MAP_SIZE 16
-#define MAP_FRACTION 64 // How much we allow the player to be close to any wall
+#define MAP_FRACTION 32 // How much we allow the player to be close to any wall
 #define MIN_POS_XY (FP + MAP_FRACTION)
 #define MAX_POS_XY (FP*(MAP_SIZE-1) - MAP_FRACTION)
 #define MAP_HIT_MASK_MAPXY (16-1)

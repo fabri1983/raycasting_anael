@@ -4,7 +4,7 @@ const os = require('os');
 const utils = require('./utils');
 // Check correct values of constants before script execution. See consts.h.
 const {
-    FS, FP, AP, STEP_COUNT, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
+    FS, FP, AP, STEP_COUNT_LOOP, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
     MAP_HIT_MASK_MAPXY, MAP_HIT_MASK_SIDEDISTXY, MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDISTXY, 
     MAX_U32, MAP_HIT_MIN_CALCULATED_INDEX
 } = require('./consts');
@@ -172,7 +172,7 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
                         loadedValue = loadedMatrix[matrixIndex];
                     }
 
-                    for (let n = 0; n < STEP_COUNT; ++n) {
+                    for (let n = 0; n < STEP_COUNT_LOOP; ++n) {
                         // side X
                         if (sideDistX < sideDistY) {
                             mapX += stepX;

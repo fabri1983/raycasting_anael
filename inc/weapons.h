@@ -5,10 +5,10 @@
 #include "consts.h"
 #include "hud.h"
 
-#define WEAPON_BASE_PAL PAL0
+#define WEAPON_BASE_PAL PAL0 // Use always PAL0 because the modified Sprite Engine now supports a palette per VDP Sprite.
 
 #define WEAPON_SPRITE_X_CENTERED (TILEMAP_COLUMNS/2)*8
-#define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 1 // -1 scanline used for hint DMA hud palettes
+#define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 0 // -1 scanline: used for hint DMA hud palettes when the VDP is turned off
 
 #define WEAPON_FIST_ANIM_WIDTH 20
 #define WEAPON_FIST_ANIM_HEIGHT 10
@@ -21,8 +21,8 @@
 
 #define WEAPON_CHANGE_COOLDOWN_TIMER 8 // This has to be bigger than the effect of scrolling down current weapon and scrolling up new weapon
 #define WEAPON_RESET_TO_IDLE_TIMER 2*60 // Always >= than largest animation length multiplied by the frequency of animation frames
-#define WEAPON_FIST_FIRE_COOLDOWN_TIMER 28
-#define WEAPON_PISTOL_FIRE_COOLDOWN_TIMER 8
+#define WEAPON_FIST_FIRE_COOLDOWN_TIMER 30
+#define WEAPON_PISTOL_FIRE_COOLDOWN_TIMER 24
 
 #define WEAPON_PISTOL_MAX_AMMO 400
 #define WEAPON_SHOTGUN_MAX_AMMO 100
@@ -32,6 +32,7 @@
 #define WEAPON_BFG_MAX_AMMO 600
 
 u16 weapon_biggerSummationAnimTiles ();
+u16 weapon_getVRAMLocation ();
 
 void weapon_resetState ();
 

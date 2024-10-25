@@ -2,13 +2,16 @@
 #define _HUD_H_
 
 #include <types.h>
+#include <vdp_bg.h>
 
-#define USE_DIF_FLOOR_AND_ROOF_COLORS TRUE
-#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95
+#define HUD_HINT_SCANLINE_START_PAL_SWAP (224-32)
+#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT TRUE // If TRUE then reload happens at HInt, otherwise at VInt.
+#define HUD_USE_DIF_FLOOR_AND_ROOF_COLORS FALSE
+#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95 // Only meaningful if HUD_USE_DIF_FLOOR_AND_ROOF_COLORS is set to TRUE
 
-#define HUD_VRAM_START_INDEX 72 // If change this value you'll have to update resource file
-#define HUD_PAL PAL2 // If change this value you'll have to update resource file
-// This value is the one that has to go in the resources file if you modify one of the above
+#define HUD_VRAM_START_INDEX 72 // If change this value you'll have to update map_base parameter in resource file
+#define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file
+// This value is the parameter map_base that has to go in the resource file if you modify one of the above. Currently is 16456.
 #define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_PAL, 0, FALSE, FALSE, HUD_VRAM_START_INDEX)
 
 #define HUD_TILEMAP_COMPRESSED TRUE // If TRUE then we decompress it into a buffer. Otherwise we use the data from ROM which saves some RAM.
@@ -53,7 +56,9 @@ typedef struct {
     u8 ones;
 } Digits;
 
-int hud_loadInitialState (u16 currentTileIndex);
+u16 hud_loadInitialState (u16 currentTileIndex);
+void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr);
+u16* hud_getTilemap ();
 
 void hud_resetAmmo ();
 void hud_setAmmo (u8 hundreds, u8 tens, u8 ones);

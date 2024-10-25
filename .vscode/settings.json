@@ -34,7 +34,14 @@
     "hud.h": "c",
     "hint_callback.h": "c",
     "xstring": "c",
-    "map_hit_compressed.h": "c"
+    "map_hit_compressed.h": "c",
+    "clear_buffer.h": "c",
+    "memory.h": "c",
+    "memory_base.h": "c",
+    "vint_callback.h": "c",
+    "segalogo.h": "c",
+    "teddybearlogo.h": "c",
+    "string.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

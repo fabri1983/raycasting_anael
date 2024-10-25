@@ -3,6 +3,7 @@
 #include <vdp_bg.h>
 #include <sys.h>
 #include <tools.h>
+#include <timer.h>
 #include "consts.h"
 
 FORCE_INLINE void turnOffVDP (u8 reg01)
@@ -186,7 +187,8 @@ void showCPULoad (u16 xPos, u16 yPos)
 	str_cpu_load[0] = div_100[num];
     str_cpu_load[1] = div_10_mod_10[num];
     str_cpu_load[2] = mod_10[num];
-    str_cpu_load[3] = '%'; // leave it so it overrides garbage data from mod_10[num] when num > 255
+    str_cpu_load[3] = '%'; // overrides garbage data from mod_10[num] when num > 255
+    str_cpu_load[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
 	VDP_clearText(xPos, yPos, 3);
 	VDP_drawTextBG(BG_A, str_cpu_load, xPos, yPos);
     //VDP_drawTextEx(BG_A, str_cpu_load, TILE_ATTR_FULL(0, 1, FALSE, FALSE, TILE_FONT_INDEX), xPos, yPos, DMA_QUEUE);
@@ -200,9 +202,27 @@ void showFPS (u16 xPos, u16 yPos)
 	str_fps[0] = div_100[num];
     str_fps[1] = div_10_mod_10[num];
     str_fps[2] = mod_10[num];
-    str_fps[3] = ' '; // leave it so it overrides garbage data from mod_10[num] when num > 255
+    str_fps[3] = ' '; // overrides garbage data from mod_10[num] when num > 255
+    str_fps[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
     VDP_clearText(xPos, yPos, 3);
 	VDP_drawTextBG(BG_A, str_fps, xPos, yPos);
+}
+
+void waitMs_ (u32 ms)
+{
+	u32 tick = (ms * TICKPERSECOND) / 1000;
+	const u32 start = getTick();
+    u32 max = start + tick;
+    u32 current;
+
+    // need to check for overflow
+    if (max < start) max = 0xFFFFFFFF;
+
+    // wait until we reached subtick
+    do {
+        current = getTick();
+    }
+    while (current < max);
 }
 
 void unpackSelector (u16 compression, u8* src, u8* dest)

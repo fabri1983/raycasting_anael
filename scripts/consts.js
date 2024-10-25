@@ -2,6 +2,7 @@ const FS = 8;  // fixed point size in bits
 const FP = (1 << FS);  // fixed precision
 const AP = 128;  // angle precision (optimal for a rotation step of 8 : 1024/8 = 128)
 const STEP_COUNT = 15;  // View distance depth. (STEP_COUNT+1 should be a power of two)
+const STEP_COUNT_LOOP = STEP_COUNT;
 
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24
@@ -14,7 +15,7 @@ const TILEMAP_COLUMNS = 40;
 const PIXEL_COLUMNS = 80;
 
 const MAP_SIZE = 16;
-const MAP_FRACTION = 64;
+const MAP_FRACTION = 32;
 const MIN_POS_XY = (FP + MAP_FRACTION);
 const MAX_POS_XY = (FP*(MAP_SIZE-1) - MAP_FRACTION);
 const MAP_HIT_MASK_MAPXY = (16-1);
@@ -43,6 +44,7 @@ exports.FS = FS
 exports.FP = FP
 exports.AP = AP
 exports.STEP_COUNT = STEP_COUNT
+exports.STEP_COUNT_LOOP = STEP_COUNT_LOOP
 exports.VERTICAL_ROWS = VERTICAL_ROWS
 exports.TILEMAP_COLUMNS = TILEMAP_COLUMNS
 exports.PIXEL_COLUMNS = PIXEL_COLUMNS

@@ -22,6 +22,10 @@
 #define NO_INLINE               __declspec(noinline)
 #endif
 
+#define CLAMP(x, minimum, maximum) ( min(max((x),(minimum)),(maximum)) )
+
+#define SIGN(x) ( (x > 0) - (x < 0) )
+
 // Calculates the position/index of the highest bit of n which corresponds to the power of 2 that 
 // is the closest integer logarithm base 2 of n. The result is thus FLOOR(LOG2(n))
 #define LOG2(n) (((sizeof(u32) * 8) - 1) - (__builtin_clz((n))))
@@ -59,7 +63,7 @@ void waitVCounterReg (u16 n);
  * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
  * Optimizations may apply manually if you know before hand the source address is only 8 bits or 12 bits, and same for the length parameter.
  * \param len How many colors to move.
- * \param fromAddr Must be >> 1 (shifted to right).
+ * \param fromAddr Must come >> 1 (shifted to right) already.
 */
 void setupDMAForPals (u16 len, u32 fromAddr);
 
@@ -78,6 +82,12 @@ void showCPULoad (u16 xPos, u16 yPos);
 /// @param xPos screen X position in tiles
 /// @param yPos screen Y position in tiles
 void showFPS (u16 xPos, u16 yPos);
+
+/// @brief Waits for a certain amount of millisecond (~3.33 ms based timer when wait is >= 100ms). 
+/// Lightweight implementation without calling SYS_doVBlankProcess().
+/// This method CAN NOT be called from V-Int callback or when V-Int is disabled.
+/// @param ms >= 100ms, otherwise use waitMs() from timer.h
+void waitMs_ (u32 ms);
 
 void unpackSelector (u16 compression, u8* src, u8* dest);
 
