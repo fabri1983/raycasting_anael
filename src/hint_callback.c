@@ -106,7 +106,7 @@ void hint_enqueueVdpSpriteCache (u16 lenInWord)
 
 HINTERRUPT_CALLBACK hint_callback ()
 {
-    #if HUD_USE_DIF_FLOOR_AND_ROOF_COLORS
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	if (GET_VCOUNTER <= HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
 		// set background color used for the floor
 		waitHCounter_DMA(156);
@@ -149,7 +149,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
     //turnOnVDP(0x74);
 
-    #if HUD_USE_DIF_FLOOR_AND_ROOF_COLORS
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	// set background color used for the roof
 	waitHCounter_DMA(156);
 	u32 addr = 0 * 2; // color index 0

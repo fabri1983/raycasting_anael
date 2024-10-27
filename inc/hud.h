@@ -6,8 +6,9 @@
 
 #define HUD_HINT_SCANLINE_START_PAL_SWAP (224-32)
 #define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT TRUE // If TRUE then reload happens at HInt, otherwise at VInt.
-#define HUD_USE_DIF_FLOOR_AND_ROOF_COLORS FALSE
-#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95 // Only meaningful if HUD_USE_DIF_FLOOR_AND_ROOF_COLORS is set to TRUE
+#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT FALSE
+#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95 // Only meaningful if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT is set to TRUE
+#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE FALSE // This is not implemented yet!
 
 #define HUD_VRAM_START_INDEX 72 // If change this value you'll have to update map_base parameter in resource file
 #define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file

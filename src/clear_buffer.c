@@ -64,8 +64,8 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		"    move.l  %%d0,%%a4\n"
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
-        // Iterate over all collumns - 1
-		".rept (%c[_VERTICAL_COLUMNS]*2 - 1)\n"
+        // Iterate over all rows - 1
+		".rept (%c[_VERTICAL_ROWS]*2 - 1)\n"
 		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
     	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
@@ -89,7 +89,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		:
 		: "a" (frame_buffer_ptr), 
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
 		: "cc"
 	);
@@ -174,8 +174,8 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    move.l  %%d0,%%a4\n"
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
-        // Iterate over all collumns - 1
-		".rept (%c[_VERTICAL_COLUMNS]*2 - 1)\n"
+        // Iterate over all rows - 1
+		".rept (%c[_VERTICAL_ROWS]*2 - 1)\n"
 		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
     	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
@@ -201,7 +201,7 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		: [mem_spBackup] "+m" (spBackup)
 		: "a" (frame_buffer_ptr), 
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_COLUMNS] "i" (VERTICAL_ROWS), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
 		: "cc"
 	);

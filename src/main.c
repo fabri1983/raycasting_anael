@@ -119,8 +119,8 @@ int main (bool hardReset)
 	// On soft reset do like a hard reset
 	if (!hardReset) {
 		VDP_waitDMACompletion(); // avoids some glitches as per Genesis Manual's Addendum section
+        SPR_end();
 		SYS_hardReset();
-        //SPR_end();
 	}
 
     // displaySegaLogo();
@@ -128,7 +128,8 @@ int main (bool hardReset)
     // displayTeddyBearLogo();
     // waitMs_(200);
 
-    //DMA_initEx(20, 8192, 8192);
+    // Restart DMA with this settings
+    DMA_initEx(20, 8192, 8192);
 
 	VDP_setEnable(FALSE);
 
@@ -160,7 +161,7 @@ int main (bool hardReset)
     VDP_setWindowHPos(FALSE, HUD_XP);
     VDP_setWindowVPos(TRUE, HUD_YP);
 	//VDP_setBackgroundColor(1); // this set grey as bg color so floor and roof are the same color
-    #if HUD_USE_DIF_FLOOR_AND_ROOF_COLORS
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	PAL_setColor(0, 0x0222); //palette_grey[1] // roof color
     #else
     PAL_setColor(0, 0x0444); //palette_grey[2] // roof color
@@ -171,7 +172,7 @@ int main (bool hardReset)
 	SYS_disableInts();
 	{
 		SYS_setVBlankCallback(vint_callback);
-        #if HUD_USE_DIF_FLOOR_AND_ROOF_COLORS
+        #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 		// Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
 		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
 		// 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
