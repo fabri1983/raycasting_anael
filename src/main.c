@@ -7,6 +7,7 @@
 // fabri1983's notes (since Aug/18/2024)
 // -------------------------------------
 // * Ray Casting: https://lodev.org/cgtutor/raycasting.html
+// * DDA = Digital Differential Analysis.
 // * Modified to display full screen in mode 320x224.
 // * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
 // * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
@@ -42,7 +43,7 @@
 // * HUD: the hud is treated as an image. The resource definition in .res file expects a map base attribute which is 
 //   calculated before hand. See HUD_BASE_TILE_ATTRIB in hud.h.
 // * HUD: if resource is compressed then also set const HUD_TILEMAP_COMPRESSED in hud.h.
-// * WEAPONS: the calculation of max tiles used is method weapon_biggerSummationAnimTiles(). Once the value is known, 
+// * WEAPONS: the calculation of max tiles used is method weapon_biggerAnimTileNum(). Once the value is known, 
 //   comment the calculation instructions and return the fixed value.
 // * WEAPONS: the location of sprite tiles is given by methods like weapon_getVRAMLocation(). Required for SPR_addSpriteEx().
 
@@ -58,61 +59,19 @@
 #include "consts.h"
 #include "clear_buffer.h"
 #include "frame_buffer.h"
-
-#include "segaLogo.h"
-#include "teddyBearLogo.h"
+#include "render.h"
 #include "game_loop.h"
 #include "vint_callback.h"
 #include "hint_callback.h"
 #include "hud.h"
 #include "weapons.h"
+#include "segaLogo.h"
+#include "teddyBearLogo.h"
 
 // the code is optimised further using GCC's automatic unrolling, but might not be true if too much inlining is used (or whatever reason).
 #pragma GCC push_options
 //#pragma GCC optimize ("unroll-loops")
 #pragma GCC optimize ("no-unroll-loops")
-
-// Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
-// Starts locating tiles at index 0. Returns next available tile index in VRAM which must be HUD_VRAM_START_INDEX.
-// IMPORTANT: if amount of generated tiles is changed then update resource file and the constants involved too.
-static u16 render_loadTiles ()
-{
-	// Create a buffer tile
-	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4*8]
-	memset(tile, 0, 32); // clear the tile with color index 0
-
-	// 9 possible tile heights
-
-	// Tile with only color 0 (height 0) goes at index 0
-	VDP_loadTileData((u32*)tile, 0, 1, CPU);
-
-	// Remaining 8 possible tile heights, distributed in 8 sets
-
-	// 8 tiles per set
-	for (u16 t = 1; t <= 8; t++) {
-		memset(tile, 0, 32); // clear the tile with color index 0
-		// 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors
-		for (u16 c = 0; c < 8; c++) {
-			// visit the heigh of each tile in current set
-			for (u16 h = t-1; h < 8; h++) {
-				// visit the columns of current row. 1 byte holds 2 colors as per Tile definition.
-				for (u16 b = 0; b < 2; b++) {
-                    u8 colorX = c+0;
-                    // here we clamp to color 7 since from ramp palette's 8th color they're repeated, and thus we save 1 palette color for other uses
-                    u8 colorY = (c+1) == 8 ? c : c+1;
-                    u8 color = colorX | (colorY << 4);
-					tile[4*h + b] = color;
-				}
-			}
-			VDP_loadTileData((u32*)tile, c*8 + t, 1, CPU);
-		}
-	}
-
-	MEM_free(tile);
-
-	// Returns next available tile index in VRAM
-	return HUD_VRAM_START_INDEX; // 8 + 8*8
-}
 
 int main (bool hardReset)
 {
@@ -141,13 +100,16 @@ int main (bool hardReset)
     hint_setupPals();
 	u16 currentTileIndex = render_loadTiles();
 	currentTileIndex = hud_loadInitialState(currentTileIndex);
-    SPR_initEx(weapon_biggerSummationAnimTiles()); // add + others XXX_biggerSummationAnimTiles()
+    SPR_initEx(weapon_biggerAnimTileNum()); // + others xxx_biggerAnimTileNum()
     weapon_resetState();
+
     hud_addWeapon(WEAPON_FIST);
     hud_addWeapon(WEAPON_PISTOL);
+    hud_addWeapon(WEAPON_SHOTGUN);
     hud_addHealthUnits(100); // replace by health_add(100), from which it will call hud_addHealthUnits(100)
     weapon_select(WEAPON_PISTOL);
     weapon_addAmmo(WEAPON_PISTOL, 50);
+    weapon_addAmmo(WEAPON_SHOTGUN, 50);
 
 	MEM_pack();
 

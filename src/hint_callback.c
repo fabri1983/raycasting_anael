@@ -7,6 +7,7 @@
 #include "hud.h"
 #include "hud_320.h"
 #include "weapons.h"
+#include "frame_buffer.h"
 
 u32 hudPalA_addrForDMA;
 u32 hudPalB_addrForDMA;
@@ -21,16 +22,20 @@ u8 hud_tilemaps;
 u16 tilesLenInWordTotalToDMA;
 
 u8 tiles_elems;
-void* tiles_from[DMA_MAX_WORDS_QUEUE] = {0};
-u16 tiles_toIndex[DMA_MAX_WORDS_QUEUE] = {0};
-u16 tiles_lenInWord[DMA_MAX_WORDS_QUEUE] = {0};
+void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
+u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
+u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
+#if DMA_ALLOW_BUFFERED_TILES
 u8 tiles_buf_elems;
-u16 tiles_buf_toIndex[DMA_MAX_WORDS_QUEUE] = {0};
-u16 tiles_buf_lenInWord[DMA_MAX_WORDS_QUEUE] = {0};
+u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
+u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 u16* tiles_buf_dmaBufPtr;
+#endif
 
+#if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
 static u16 vdpSpriteCache_lenInWord;
+#endif
 
 void hint_reset ()
 {
@@ -41,17 +46,21 @@ void hint_reset ()
 
     tilesLenInWordTotalToDMA = 0;
 
-    memset(tiles_from, 0, DMA_MAX_WORDS_QUEUE);
-    memsetU16(tiles_toIndex, 0, DMA_MAX_WORDS_QUEUE);
-    memsetU16(tiles_lenInWord, 0, DMA_MAX_WORDS_QUEUE);
+    memset(tiles_from, 0, DMA_MAX_QUEUE_CAPACITY);
+    memsetU16(tiles_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
+    memsetU16(tiles_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_elems = 0;
 
-    memsetU16(tiles_buf_toIndex, 0, DMA_MAX_WORDS_QUEUE);
-    memsetU16(tiles_buf_lenInWord, 0, DMA_MAX_WORDS_QUEUE);
+    #if DMA_ALLOW_BUFFERED_TILES
+    memsetU16(tiles_buf_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
+    memsetU16(tiles_buf_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_buf_elems = 0;
     tiles_buf_dmaBufPtr = dmaDataBuffer;
+    #endif
 
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
     vdpSpriteCache_lenInWord = 0;
+    #endif
 }
 
 FORCE_INLINE void hint_setupPals ()
@@ -63,7 +72,7 @@ FORCE_INLINE void hint_setupPals ()
 
 FORCE_INLINE bool canDMAinHint (u16 lenInWord)
 {
-    return tilesLenInWordTotalToDMA + lenInWord <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
+    return (tilesLenInWordTotalToDMA + lenInWord) <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
 }
 
 void hint_enqueueWeaponPal (u16* pal)
@@ -92,16 +101,20 @@ void hint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 
 void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
+    #if DMA_ALLOW_BUFFERED_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
     tiles_buf_lenInWord[tiles_buf_elems] = lenInWord;
     ++tiles_buf_elems;
     tiles_buf_dmaBufPtr += lenInWord;
     tilesLenInWordTotalToDMA += lenInWord;
+    #endif
 }
 
 void hint_enqueueVdpSpriteCache (u16 lenInWord)
 {
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
     vdpSpriteCache_lenInWord = lenInWord;
+    #endif
 }
 
 HINTERRUPT_CALLBACK hint_callback ()
@@ -166,12 +179,21 @@ HINTERRUPT_CALLBACK hint_callback ()
     // Have any tiles to DMA?
     while (tiles_elems) {
         --tiles_elems;
-        u16 lenInWord = tiles_lenInWord[tiles_buf_elems];
+        u16 lenInWord = tiles_lenInWord[tiles_elems];
         tilesLenInWordTotalToDMA -= lenInWord;
         DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, 2);
     }
 
-    // Havy any buffered tiles to DMA?
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+    // Have any update for vdp sprite cache?
+    if (vdpSpriteCache_lenInWord) {
+        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, 2);
+        vdpSpriteCache_lenInWord = 0;
+    }
+    #endif
+
+    #if DMA_ALLOW_BUFFERED_TILES
+    // Have any buffered tiles to DMA?
     while (tiles_buf_elems) {
         --tiles_buf_elems;
         u16 lenInWord = tiles_buf_lenInWord[tiles_buf_elems];
@@ -181,12 +203,7 @@ HINTERRUPT_CALLBACK hint_callback ()
         DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, 2);
         DMA_releaseTemp(lenInWord);
     }
-
-    // Have any update for vdp sprite cache?
-    if (vdpSpriteCache_lenInWord) {
-        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, 2);
-        vdpSpriteCache_lenInWord = 0;
-    }
+    #endif
 
     // Have any weapon palette to DMA?
     if (weaponPalA_addrForDMA) {
@@ -210,26 +227,27 @@ HINTERRUPT_CALLBACK hint_callback ()
         weaponPalA_addrForDMA = NULL;
     }
 
-    // USE THIS TO SEE HOW MUCH DEEP IN THE HUD IMAGE ALL THE TILES DMA GO
+    #if DMA_FRAMEBUFFER_FIRST_QUARTER
+	// Send first 1/4 of frame_buffer Plane A
+	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #elif DMA_FRAMEBUFFER_FIRST_HALF
+	// Send first 1/2 of frame_buffer Plane A
+	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #else
+    #endif
+
+    // USE THIS TO SEE HOW MUCH DEEP IN THE HUD IMAGE ALL THE DMA GOES
     // turnOffVDP(0x74);
     // waitHCounter_DMA(160);
     // turnOnVDP(0x74);
 
-	// Send first 1/2 of frame_buffer Plane A
-	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-	// Send first 1/4 of frame_buffer Plane A
-	//DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
 	// Reload the 2 palettes that were overriden by the HUD palettes
 	palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-
-	waitVCounterReg(224);
-	
-    turnOffVDP(0x74);
     setupDMAForPals(7, restorePalA_addrForDMA);
+	waitVCounterReg(224);
+    turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-    
 	palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     setupDMAForPals(7, restorePalB_addrForDMA);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer

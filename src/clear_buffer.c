@@ -2,7 +2,7 @@
 #include "utils.h"
 #include "consts.h"
 
-#if USE_CLEAR_FRAMEBUFFER_WITH_SP == FALSE
+#if RENDER_CLEAR_FRAMEBUFFER_WITH_SP == FALSE
 
 FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 #if PLANE_COLUMNS == 32
@@ -98,7 +98,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 
 #endif
 
-#if USE_CLEAR_FRAMEBUFFER_WITH_SP
+#if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
 
 // *2 because we have 2 planes. /2 because every time we read from the inverted buffer we do it by long word (twice u16).
 #define INVERTED_BUFFER_SIZE ((VERTICAL_COLUMNS*TILEMAP_COLUMNS*2)/2)

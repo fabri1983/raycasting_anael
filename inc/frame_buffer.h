@@ -14,7 +14,4 @@ extern u16 frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_C
 // the pixel column currently being rendered.
 extern u16 frame_buffer_pxcolumn[PIXEL_COLUMNS];
 
-// Calculate the offset to access the column for both planes defined in the framebuffer.
-void render_loadPlaneDisplacements ();
-
 #endif // _FRAME_BUFFER_H_

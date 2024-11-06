@@ -15,7 +15,7 @@ const ROMHeader rom_header = {
 #else
     "SEGA MEGA DRIVE ",
 #endif
-    "(C)SGDK 2024 SEP",
+    "(C)SGDK 2024 NOV",
     "Anael's Ray Casting - by fabri1983              ",
     "Anael's Ray Casting - by fabri1983              ",
     "GM 00000000-00",

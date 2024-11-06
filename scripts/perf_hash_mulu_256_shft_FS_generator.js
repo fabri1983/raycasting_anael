@@ -4,7 +4,7 @@ const utils = require('./utils');
 // Check correct values of constants before script execution. See consts.h.
 const { FS } = require('./consts');
 
-const MPH_VALUES_DELTADIST_NKEYS = 915;  // Number of keys (must be 915)
+const MPH_VALUES_DELTADIST_NKEYS = 915; // How many keys were hashed
 const OP1_MAX_VALUE = 256;
 
 const tabDeltasFile = '../inc/tab_deltas.h';
@@ -14,7 +14,7 @@ const outputFile = 'perf_hash_mulu_256_shft_FS_OUTPUT.txt';
 module.exports = {
     MPH_VALUES_DELTADIST_NKEYS,
     loadDeltaDists,
-    generateMinPerHashMap: generateMinPerHashMap
+    generateMinPerHashMap
 };
 
 function loadDeltaDists (filePath) {

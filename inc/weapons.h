@@ -14,15 +14,19 @@
 #define WEAPON_FIST_ANIM_HEIGHT 10
 #define WEAPON_PISTOL_ANIM_WIDTH 11
 #define WEAPON_PISTOL_ANIM_HEIGHT 13
+#define WEAPON_SHOTGUN_ANIM_WIDTH 15
+#define WEAPON_SHOTGUN_ANIM_HEIGHT 17
 
 #define WEAPON_START_HIT_FRAME 1 // All sprites fire animations start at the same frame
 #define WEAPON_FIST_ANIM_READY_TO_HIT_AGAIN_FRAME 1
 #define WEAPON_PISTOL_ANIM_READY_TO_HIT_AGAIN_FRAME 3
+#define WEAPON_SHOTGUN_ANIM_READY_TO_HIT_AGAIN_FRAME 0
 
 #define WEAPON_CHANGE_COOLDOWN_TIMER 8 // This has to be bigger than the effect of scrolling down current weapon and scrolling up new weapon
 #define WEAPON_RESET_TO_IDLE_TIMER 2*60 // Always >= than largest animation length multiplied by the frequency of animation frames
-#define WEAPON_FIST_FIRE_COOLDOWN_TIMER 30
+#define WEAPON_FIST_FIRE_COOLDOWN_TIMER 28
 #define WEAPON_PISTOL_FIRE_COOLDOWN_TIMER 24
+#define WEAPON_SHOTGUN_FIRE_COOLDOWN_TIMER 42
 
 #define WEAPON_PISTOL_MAX_AMMO 400
 #define WEAPON_SHOTGUN_MAX_AMMO 100
@@ -31,7 +35,7 @@
 #define WEAPON_PLASMA_MAX_AMMO 600
 #define WEAPON_BFG_MAX_AMMO 600
 
-u16 weapon_biggerSummationAnimTiles ();
+u16 weapon_biggerAnimTileNum ();
 u16 weapon_getVRAMLocation ();
 
 void weapon_resetState ();

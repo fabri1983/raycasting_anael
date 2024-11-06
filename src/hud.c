@@ -238,12 +238,18 @@ FORCE_INLINE bool hud_isDead ()
         "  .rept (%c[WIDTH]/2)\n" /* divided by 2 because we move long words */ \
         "    move.l   (%0)+,(%1)+\n" \
         "  .endr\n" \
+        "  .if (%c[WIDTH] & 1)\n" /* handle odd WIDTH */ \
+        "    move.w   (%0)+,(%1)+\n" \
+        "  .endif\n" \
         "    lea     2*%c[FROM_NEXT_ROW](%0),%0\n" \
         "    lea     2*%c[TO_NEXT_ROW](%1),%1\n" \
         ".endr\n" \
         "  .rept (%c[WIDTH]/2)\n" /* divided by 2 because we move long words */ \
         "    move.l   (%0)+,(%1)+\n" \
         "  .endr\n" \
+        "  .if (%c[WIDTH] & 1)\n" /* handle odd WIDTH */ \
+        "    move.w   (%0)+,(%1)+\n" \
+        "  .endif\n" \
         : "+a" (from), "+a" (to) \
         : [HEIGHT] "i" (TARGET_H), [WIDTH] "i" (TARGET_W), \
           [FROM_NEXT_ROW] "i" (HUD_SOURCE_IMAGE_W - TARGET_W), [TO_NEXT_ROW] "i" (PLANE_COLUMNS - TARGET_W) \
@@ -295,26 +301,21 @@ static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
 
 static FORCE_INLINE void setHUDAmmo ()
 {
-    updateFlags &= ~(1 << UPDATE_FLAG_AMMO); // clear the flag
     setHUDDigitsCommon(HUD_AMMO_XP, HUD_AMMO_YP, &ammo_digits);
 }
 
 static FORCE_INLINE void setHUDHealth ()
 {
-    updateFlags &= ~(1 << UPDATE_FLAG_HEALTH); // clear the flag
     setHUDDigitsCommon(HUD_HEALTH_XP, HUD_HEALTH_YP, &health_digits);
 }
 
 static FORCE_INLINE void setHUDArmor ()
 {
-    updateFlags &= ~(1 << UPDATE_FLAG_ARMOR); // clear the flag
     setHUDDigitsCommon(HUD_ARMOR_XP, HUD_ARMOR_YP, &armor_digits);
 }
 
 static FORCE_INLINE void setHUDWeapons ()
 {
-    updateFlags &= ~(1 << UPDATE_FLAG_WEAPON); // clear the flag
-
     // UPPER WEAPONS
 
     // has shotgun?
@@ -365,8 +366,6 @@ static FORCE_INLINE void setHUDWeapons ()
 
 static FORCE_INLINE void setHUDKeys ()
 {
-    updateFlags &= ~(1 << UPDATE_FLAG_KEY); // clear the flag
-
     // CARDS
 
     // has blue card?
@@ -430,8 +429,6 @@ static FORCE_INLINE void setHUDKeys ()
 
 static FORCE_INLINE void setHUDFace ()
 {
-    updateFlags &= ~(1 << UPDATE_FLAG_FACE); // clear the flag
-
     u16 face_Y;
     u16 face_X;
 
@@ -514,8 +511,6 @@ FORCE_INLINE void hud_update ()
 {
     updateFaceExpressionTimer();
 
-    bool sendUpdate = updateFlags != 0;
-
     if (updateFlags & (1 << UPDATE_FLAG_AMMO))
         setHUDAmmo();
     if (updateFlags & (1 << UPDATE_FLAG_HEALTH))
@@ -530,7 +525,9 @@ FORCE_INLINE void hud_update ()
         setHUDFace();
 
     // PW_ADDR comes with the correct base position in screen
-    if (sendUpdate)
+    if (updateFlags) {
         //DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         hint_enqueueHudTilemap();
+        updateFlags = 0;
+    }
 }

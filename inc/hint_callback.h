@@ -5,10 +5,6 @@
 #include "consts.h"
 #include "utils.h"
 
-#define DMA_MAX_WORDS_QUEUE 8
-#define DMA_TILES_DMA_THRESHOLD_FOR_HINT 384
-#define DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT ((DMA_TILES_DMA_THRESHOLD_FOR_HINT * 32) / 2)
-
 void hint_reset ();
 
 void hint_setupPals ();

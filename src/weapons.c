@@ -17,15 +17,19 @@ static u8 currWeaponAnimFireCooldownTimer;
 static u8 currWeaponAnimReadyToHitAgainFrame;
 static u16 ammoInventory[WEAPON_MAX_COUNT] = {0};
 
-u16 weapon_biggerSummationAnimTiles ()
+u16 weapon_biggerAnimTileNum ()
 {
-    return 107;
+    // u16 maxTileNum = sprDef_weapon_fist_anim.maxNumTile;
+    // maxTileNum = max(maxTileNum, sprDef_weapon_pistol_anim.maxNumTile);
+    // maxTileNum = max(maxTileNum, sprDef_weapon_shotgun_anim.maxNumTile);
+    // return maxTileNum;
+    return 144;
 }
 
 u16 weapon_getVRAMLocation ()
 {
     // TILE_FONT_INDEX is the VRAM index location where the SGDK's Sprite Engine calculates the dedicated VRAM going backwards
-    return TILE_FONT_INDEX - weapon_biggerSummationAnimTiles();
+    return TILE_FONT_INDEX - weapon_biggerAnimTileNum();
 }
 
 void weapon_resetState ()
@@ -41,7 +45,7 @@ void weapon_resetState ()
     PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal_weapon_fist_anim.data + 8, 8, DMA);
     //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 8, sprDef_weapon_fist_anim.palette->data + 16 + 8, 8, DMA);
 
-    currWeaponId = 0;
+    currWeaponId = 0; // Fist
     currWeaponAnimFireCooldownTimer = 0;
     currWeaponAnimReadyToHitAgainFrame = 0;
     resetToIdle_timer = 0;
@@ -71,6 +75,8 @@ void weapon_select (u8 weaponId)
     // start weapon change effect for the current weapon
     changeWeaponEffect_direction = -1;
     changeWeaponEffect_timer = WEAPON_CHANGE_COOLDOWN_TIMER;
+    hud_setAmmo(0, 0, 0);
+    hud_addAmmoUnits(ammoInventory[weaponId]);
 
     currWeaponId = weaponId;
     switch (currWeaponId) {
@@ -78,17 +84,23 @@ void weapon_select (u8 weaponId)
             currWeaponAnimFireCooldownTimer = WEAPON_FIST_FIRE_COOLDOWN_TIMER;
             currWeaponAnimReadyToHitAgainFrame = WEAPON_FIST_ANIM_READY_TO_HIT_AGAIN_FRAME;
             weapon_load(&sprDef_weapon_fist_anim, pal_weapon_fist_anim.data, 
-                WEAPON_SPRITE_X_CENTERED - ((WEAPON_FIST_ANIM_WIDTH+1)/2)*8 - 2*8, 
+                WEAPON_SPRITE_X_CENTERED - ((WEAPON_FIST_ANIM_WIDTH+1)/2)*8 - 3*8, 
                 WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_FIST_ANIM_HEIGHT*8);
             break;
         case WEAPON_PISTOL:
             currWeaponAnimFireCooldownTimer = WEAPON_PISTOL_FIRE_COOLDOWN_TIMER;
             currWeaponAnimReadyToHitAgainFrame = WEAPON_PISTOL_ANIM_READY_TO_HIT_AGAIN_FRAME;
             weapon_load(&sprDef_weapon_pistol_anim, pal_weapon_pistol_anim.data, 
-                WEAPON_SPRITE_X_CENTERED - ((WEAPON_PISTOL_ANIM_WIDTH+1)/2)*8, 
+                WEAPON_SPRITE_X_CENTERED - ((WEAPON_PISTOL_ANIM_WIDTH+1)/2)*8 - 8, 
                 WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_PISTOL_ANIM_HEIGHT*8);
             break;
-        case WEAPON_SHOTGUN: break;
+        case WEAPON_SHOTGUN: 
+            currWeaponAnimFireCooldownTimer = WEAPON_SHOTGUN_FIRE_COOLDOWN_TIMER;
+            currWeaponAnimReadyToHitAgainFrame = WEAPON_SHOTGUN_ANIM_READY_TO_HIT_AGAIN_FRAME;
+            weapon_load(&sprDef_weapon_shotgun_anim, pal_weapon_shotgun_anim.data, 
+                WEAPON_SPRITE_X_CENTERED - ((WEAPON_SHOTGUN_ANIM_WIDTH+1)/2)*8 - 2*8, 
+                WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_SHOTGUN_ANIM_HEIGHT*8);
+            break;
         case WEAPON_MACHINE_GUN: break;
         case WEAPON_ROCKET: break;
         case WEAPON_PLASMA: break;
@@ -118,7 +130,7 @@ FORCE_INLINE void weapon_next (u8 sign)
         nextWeaponId = modu((nextWeaponId + sign + WEAPON_MAX_COUNT), WEAPON_MAX_COUNT);
         if (hud_hasWeaponInInventory(nextWeaponId)) {
             weapon_select(nextWeaponId);
-            select_coolDown_timer = 2*WEAPON_CHANGE_COOLDOWN_TIMER;
+            select_coolDown_timer = 2 * WEAPON_CHANGE_COOLDOWN_TIMER; // *2 due to scroll down and up effect
             return;
         }
     }
@@ -156,8 +168,9 @@ void weapon_addAmmo (u8 weaponId, u16 amnt)
         default: return;
     }
 
-    ammoInventory[weaponId] += amnt;
-    hud_addAmmoUnits(amnt);
+    ammoInventory[weaponId] = currAmmo + amnt;
+    hud_setAmmo(0, 0, 0);
+    hud_addAmmoUnits(currAmmo + amnt);
 }
 
 static FORCE_INLINE bool useAmmo ()
@@ -197,7 +210,7 @@ static FORCE_INLINE bool useAmmo ()
             if (ammoInventory[WEAPON_BFG] < 50)
                 ammoInventory[WEAPON_BFG] = 0;
             else
-                ammoInventory[WEAPON_BFG] = ammoInventory[WEAPON_BFG] - 0;
+                ammoInventory[WEAPON_BFG] -= 50;
             hud_subAmmoUnits(50);
             return TRUE;
         default: return FALSE;

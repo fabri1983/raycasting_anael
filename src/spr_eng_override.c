@@ -203,26 +203,28 @@ static u16 updateFrame(Sprite* sprite, u16 status)
     return status;
 }
 
-static void loadTiles(Sprite* sprite)
+static FORCE_INLINE void loadTiles (Sprite* sprite)
 {
     TileSet* tileset = sprite->frame->tileset;
 
     // need to test for empty tileset (blank frame)
-    if (tileset->numTile)
+    //if (tileset->numTile)
     {
         u16 lenInWord = (tileset->numTile * 32) / 2;
-        u16 compression = tileset->compression;
 
         // TODO: separate tileset per VDP sprite and only unpack/upload visible VDP sprite (using visibility) to VRAM
 
         // need unpacking ?
+        #if DMA_ALLOW_BUFFERED_TILES
+        u16 compression = tileset->compression;
         if (compression != COMPRESSION_NONE)
         {
             // get buffer
             u8* buf = DMA_allocateTemp(lenInWord);
 
             // unpack in temp buffer obtained from DMA queue
-            if (buf) {
+            //if (buf)
+            {
                 unpackSelector(compression, (u8*) FAR_SAFE(tileset->tiles, lenInWord * 2), buf);
                 //DMA_queueDmaFast(DMA_VRAM, buf, (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord, 2);
                 //DMA_releaseTemp(lenInWord);
@@ -233,12 +235,12 @@ static void loadTiles(Sprite* sprite)
                 }
                 else {
                     hint_enqueueTilesBuffered(baseIndex * 32, DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
-                    // vint_enqueueTiles_buffered(baseIndex * 32 + DMA_TILES_DMA_THRESHOLD_FOR_HINT * 32, 
-                    //   lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
+                    vint_enqueueTilesBuffered(baseIndex * 32 + DMA_TILES_THRESHOLD_FOR_HINT * 32, lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
                 }
             }
         }
         else
+        #endif
         {
             // just DMA operation to transfer tileset data to VRAM
             //DMA_queueDma(DMA_VRAM, FAR_SAFE(tileset->tiles, lenInWord * 2), (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord, 2);
@@ -250,8 +252,8 @@ static void loadTiles(Sprite* sprite)
             else {
                 hint_enqueueTiles(FAR_SAFE(tileset->tiles, DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT * 2), 
                     baseIndex * 32, DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
-                vint_enqueueTiles(FAR_SAFE(tileset->tiles + DMA_TILES_DMA_THRESHOLD_FOR_HINT*8, (lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT) * 2), 
-                    baseIndex * 32 + DMA_TILES_DMA_THRESHOLD_FOR_HINT * 32, lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
+                vint_enqueueTiles(FAR_SAFE(tileset->tiles + DMA_TILES_THRESHOLD_FOR_HINT*8, (lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT) * 2), 
+                    baseIndex * 32 + DMA_TILES_THRESHOLD_FOR_HINT * 32, lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
             }
         }
     }
@@ -471,8 +473,13 @@ void NO_INLINE spr_eng_update()
         // mark as end
         vdpSprite->link = 0;
         // send sprites to VRAM
-        //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), 2);
+        #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
         hint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+        vint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
+        #else
+        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), 2);
+        #endif
     }
     // no sprite to display
     else
@@ -481,7 +488,12 @@ void NO_INLINE spr_eng_update()
         vdpSprite->y = 0;
         vdpSprite->link = 0;
         // send sprites to VRAM
-        //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
         hint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+        vint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
+        #else
+        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        #endif
     }
 }

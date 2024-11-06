@@ -3,7 +3,7 @@
 
 #include <types.h>
 
-#define SPR_ENG_ALLOW_MULTI_PALS TRUE // Remember to update your res files accordingly
+#define SPR_ENG_ALLOW_MULTI_PALS FALSE // Remember to update your res files accordingly
 
 /**
  *  \brief

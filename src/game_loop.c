@@ -9,6 +9,7 @@
 #include "map_matrix.h"
 #include "frame_buffer.h"
 #include "write_vline.h"
+#include "render.h"
 
 #include "hud.h"
 #include "weapons.h"
@@ -18,13 +19,13 @@
 #include "tab_dir_xy.h"
 #include "tab_wall_div.h"
 
-#if USE_TAB_COLOR_D8_PALS_SHIFTED && !SHOW_TEXCOORD
+#if RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
     #include "tab_color_d8_pals_shft.h"
-#elif !USE_TAB_COLOR_D8_PALS_SHIFTED && !SHOW_TEXCOORD
+#elif !RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
     #include "tab_color_d8.h"
 #endif
 
-#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     #include "perf_hash_mulu_256_shft_FS.h"
     #include "tab_deltas_perf_hash.h"
 #else
@@ -34,7 +35,7 @@
 #include "map_hit_compressed.h"
 
 static void dda (u16 posX, u16 posY, u16* delta_a_ptr);
-#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
 static void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1);
 #else
 static void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
@@ -45,9 +46,6 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
 void game_loop () {
-
-    // Frame load is calculated after user's VBlank callback
-	//SYS_showFrameLoad(FALSE);
 
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
 	// Smaller positions locate at top-left corner of the map[][] layout (as seen in the .h), bigger positions locate at bottom-right.
@@ -65,7 +63,7 @@ void game_loop () {
 	for (;;)
 	{
 		// clear the frame buffer
-        #if USE_CLEAR_FRAMEBUFFER_WITH_SP
+        #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
 		clear_buffer_sp(frame_buffer);
         #else
         clear_buffer(frame_buffer);
@@ -181,23 +179,28 @@ void game_loop () {
         spr_eng_update();
 
         // DMA frame_buffer Plane A portion
-        // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
-        //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        #if DMA_FRAMEBUFFER_FIRST_QUARTER
         // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
-        //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        #elif DMA_FRAMEBUFFER_FIRST_HALF
+        // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        #else
         // All the frame_buffer Plane A
         DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        
+        #endif
+
         // DMA frame_buffer Plane B portion
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
-        SYS_doVBlankProcessEx(ON_VBLANK_START);
+        //SYS_doVBlankProcessEx(ON_VBLANK);
+        render_SYS_doVBlankProcessEx_ON_VBLANK();
 
+        #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
         // showFPS(0, 1);
         showCPULoad(0, 1);
+        #endif
 	}
-
-    SYS_hideFrameLoad(); // is independant from whether the load is displayed or not
 }
 
 void game_loop_auto ()
@@ -268,7 +271,7 @@ void game_loop_auto ()
             for (u16 angle = 0; angle < 1024; angle += (1024/AP)) {
 
                 // clear the frame buffer
-                #if USE_CLEAR_FRAMEBUFFER_WITH_SP
+                #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
                 clear_buffer_sp(frame_buffer);
                 #else
                 clear_buffer(frame_buffer);
@@ -281,17 +284,22 @@ void game_loop_auto ()
                 dda(posX, posY, delta_a_ptr);
 
                 // DMA frame_buffer Plane A portion
-                // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
-                //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                #if DMA_FRAMEBUFFER_FIRST_QUARTER
                 // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
-                //DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                #elif DMA_FRAMEBUFFER_FIRST_HALF
+                // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                #else
                 // All the frame_buffer Plane A
                 DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                
+                #endif
+
                 // DMA frame_buffer Plane B portion
                 DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
-                SYS_doVBlankProcessEx(ON_VBLANK_START);
+                //SYS_doVBlankProcessEx(ON_VBLANK);
+                render_SYS_doVBlankProcessEx_ON_VBLANK();
 
                 // handle inputs
                 // u16 joy = JOY_readJoypad(JOY_1);
@@ -307,7 +315,7 @@ void game_loop_auto ()
  */
 static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
 
-    #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+    #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     // Value goes from 0...FP (including), multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2 for faster array acces in ASM
     u32 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
     sideDistX_l0 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * (posX & (FP-1));
@@ -332,8 +340,8 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
     column_ptr = frame_buffer;
 
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-    for (u8 column = 0; column < PIXEL_COLUMNS; column += COLUMNS_UNROLL) {
-        #if COLUMNS_UNROLL == 1
+    for (u8 column = 0; column < PIXEL_COLUMNS; column += RENDER_COLUMNS_UNROLL) {
+        #if RENDER_COLUMNS_UNROLL == 1
 
         process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
@@ -342,7 +350,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         else
             column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
 
-        #elif COLUMNS_UNROLL == 2
+        #elif RENDER_COLUMNS_UNROLL == 2
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
@@ -351,7 +359,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         map_hit_incrementColumn();
         column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
 
-        #elif COLUMNS_UNROLL == 4
+        #elif RENDER_COLUMNS_UNROLL == 4
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
@@ -367,11 +375,11 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
         #endif
 
-        delta_a_ptr += COLUMNS_UNROLL * DELTA_PTR_OFFSET_AMNT;
+        delta_a_ptr += RENDER_COLUMNS_UNROLL * DELTA_PTR_OFFSET_AMNT;
     }
 }
 
-#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
 static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1)
 #else
 static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1)
@@ -379,9 +387,9 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 {
 	const u16 deltaDistX = *(delta_a_ptr + 0); // value from 182 up to 65535, but only 915 different values
 	const u16 deltaDistY = *(delta_a_ptr + 1); // value from 182 up to 65535, but only 915 different values
-	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2); // value from 0 up to 65535, but only 717 signed different values in [-360, 360] (due to precision lack)
-	const s16 rayDirAngleY = (s16) *(delta_a_ptr + 3); // value from 0 up to 65535, but only 717 signed different values in [-360, 360] (due to precision lack)
-    #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2); // value from 0 up to 65535, but only 717 signed different values in [-360, 360]
+	const s16 rayDirAngleY = (s16) *(delta_a_ptr + 3); // value from 0 up to 65535, but only 717 signed different values in [-360, 360]
+    #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     const u16 deltaDistX_perf_hash = *(delta_a_ptr + 4); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
 	const u16 deltaDistY_perf_hash = *(delta_a_ptr + 5); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
     #endif
@@ -391,7 +399,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 
 	if (rayDirAngleX < 0) {
 		stepX = -1;
-        #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+        #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistX = perf_hash_mulu_shft_FS(sideDistX_l0, deltaDistX_perf_hash);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
@@ -399,7 +407,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 	}
 	else {
 		stepX = 1;
-        #if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+        #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistX = perf_hash_mulu_shft_FS(sideDistX_l1, deltaDistX_perf_hash);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
@@ -409,7 +417,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 	if (rayDirAngleY < 0) {
 		stepY = -1;
 		stepYMS = -MAP_SIZE;
-		#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+		#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistY = perf_hash_mulu_shft_FS(sideDistY_l0, deltaDistY_perf_hash);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
@@ -418,14 +426,14 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 	else {
 		stepY = 1;
 		stepYMS = MAP_SIZE;
-		#if USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
+		#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistY = perf_hash_mulu_shft_FS(sideDistY_l1, deltaDistY_perf_hash);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
         #endif
 	}
 
-    #if USE_MAP_HIT_COMPRESSED
+    #if RENDER_USE_MAP_HIT_COMPRESSED
     do_stepping_hit_map(posX, posY, sideDistX, sideDistY, rayDirAngleX, rayDirAngleY);
     #else
     do_stepping(posX, posY, deltaDistX, deltaDistY, sideDistX, sideDistY, stepX, stepY, stepYMS, rayDirAngleX, rayDirAngleY);
@@ -491,42 +499,42 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
 {
     u16 h2 = tab_wall_div[sideDistX];
 
-    #if SHOW_TEXCOORD
+    #if RENDER_SHOW_TEXCOORD
     u16 d = (7 - min(7, sideDistX / FP));
     u16 wallY = posY + (muls(sideDistX, rayDirAngleY) >> FS);
     //wallY = ((wallY * 8) >> FS) & 7; // faster? But is actually slower given the context
     wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
-    u16 color = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
-    #elif USE_TAB_COLOR_D8_PALS_SHIFTED
-    u16 color = tab_color_d8_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
+    u16 tileAttrib = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
+    #elif RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
+    u16 tileAttrib = tab_color_d8_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
     #else
     u16 d8 = tab_color_d8[sideDistX]; // the bigger the distant the darker the color is
-    u16 color;
-    if (mapY&1) color = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
-    else color = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
+    u16 tileAttrib;
+    if (mapY&1) tileAttrib = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
+    else tileAttrib = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
     #endif
 
-    write_vline(h2, color);
+    write_vline(h2, tileAttrib);
 }
 
 static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
     u16 h2 = tab_wall_div[sideDistY];
 
-    #if SHOW_TEXCOORD
+    #if RENDER_SHOW_TEXCOORD
     u16 d = (7 - min(7, sideDistY / FP));
     u16 wallX = posX + (muls(sideDistY, rayDirAngleX) >> FS);
     //wallX = ((wallX * 8) >> FS) & 7; // faster? But is actually slower given the context
     wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
-    u16 color = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
-    #elif USE_TAB_COLOR_D8_PALS_SHIFTED
-    u16 color = tab_color_d8_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
+    u16 tileAttrib = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
+    #elif RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
+    u16 tileAttrib = tab_color_d8_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
     #else
     u16 d8 = tab_color_d8[sideDistY]; // the bigger the distant the darker the color is
-    u16 color;
-    if (mapX&1) color = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
-    else color = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
+    u16 tileAttrib;
+    if (mapX&1) tileAttrib = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
+    else tileAttrib = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
     #endif
 
-    write_vline(h2, color);
+    write_vline(h2, tileAttrib);
 }

@@ -2,7 +2,7 @@
 #include <vdp_tile.h>
 #include "utils.h"
 #include "consts.h"
-#include <tools.h>
+
 // Points to the start of the column in first row for each cycle of the for-loop of columns
 u16* column_ptr = NULL;
 

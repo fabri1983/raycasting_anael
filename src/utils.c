@@ -55,8 +55,9 @@ FORCE_INLINE void waitVCounterReg (u16 n)
     __asm volatile (
         "1:\n"
         "    cmp.w     (%0),%1\n"         // cmp: n - (0xC00008)
-        "    bhi.s     1b\n"              // loop back if n is higher than (0xC00008)
-            // bhi is for unsigned comparisons
+        "    bgt.s     1b\n"              // loop back if n is higher than (0xC00008)
+            // bhi is for unsigned comparisons, 
+            // bge/bgt are for signed comparisons in case n comes already smaller than value in VDP_HVCOUNTER_PORT memory
         :
         : "a" (regA), "d" (n << 8) // (n << 8) | 0xFF
         : "cc"
@@ -225,7 +226,7 @@ void waitMs_ (u32 ms)
     while (current < max);
 }
 
-void unpackSelector (u16 compression, u8* src, u8* dest)
+FORCE_INLINE void unpackSelector (u16 compression, u8* src, u8* dest)
 {
     switch (compression) {
         case COMPRESSION_APLIB:

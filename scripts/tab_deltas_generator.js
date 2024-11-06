@@ -7,6 +7,73 @@ const outputFile = 'tab_deltas_OUTPUT.txt';
 let tabDeltas = new Uint16Array(AP * PIXEL_COLUMNS * 4);
 let deltaPtr = 0;
 
+function isSubsetOf (setA, setB) {
+    for (let elem of setA) {
+        if (!setB.has(elem)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Function to find elements in setA that are not in setB using filter
+function setDifference (setA, setB) {
+    const difference =  new Set([...setA].filter(item => !setB.has(item)));
+    // Convert to array, sort, and create a new sorted Set
+    return new Set([...difference].sort((a, b) => a - b));
+}
+
+function checkColumnLayoutsEqual () {
+    if (tabDeltas.length % 4 !== 0) {
+        return false;
+    }
+
+    const columnSets = [new Set(), new Set(), new Set(), new Set()];
+
+    for (let i = 0; i < tabDeltas.length; i++) {
+        columnSets[i % 4].add(tabDeltas[i]);
+    }
+
+    // Check columns for deltaDistX and deltaDistY have same size and values
+    let sameSize = true;
+    if (columnSets[0].size != columnSets[0].size) {
+        console.log("deltaDistX and deltaDistY sets have different size!");
+        sameSize = false;
+    }
+    let sameContent = true;
+    if (!isSubsetOf(columnSets[0], columnSets[1]) && !isSubsetOf(columnSets[1], columnSets[2])) {
+        console.log("deltaDistX and deltaDistY sets don't match!");
+        sameContent = false;
+    }
+    // Print successful message if so it does
+    if (sameSize === true && sameContent === true)
+        console.log("deltaDistX and deltaDistY columns have same size and values.");
+
+    // Check columns for rayDirAngleX and rayDirAngleY have same size and values
+    sameSize = true;
+    if (columnSets[2].size != columnSets[3].size) {
+        console.log("rayDirAngleX and rayDirAngleY sets have different size!");
+        sameSize = false;
+    }
+    sameContent = true;
+    if (!isSubsetOf(columnSets[2], columnSets[3]) && !isSubsetOf(columnSets[3], columnSets[2])) {
+        console.log("rayDirAngleX and rayDirAngleY sets don't match!");
+        sameContent = false;
+    }
+    // Print successful message if so it does
+    if (sameSize === true && sameContent === true)
+        console.log("rayDirAngleX and rayDirAngleY columns have same size and values.");
+
+    // Now checks if rayDirAngleX is contained in deltaDistX
+    if (!isSubsetOf(columnSets[2], columnSets[0])) {
+        const missing = setDifference(columnSets[2], columnSets[0]);
+        console.log("Elements in rayDirAngleX/Y not contained by deltaDistX/Y: " + missing.size);
+        console.log(...missing);
+    }
+    else
+        console.log("rayDirAngleX/Y is contained by deltaDistX/Y!");
+}
+
 // precompute ray deltas for all angles, one axis is enough because of symmetry
 for (let i = 0; i < AP; i++) {
     let a = (i * M_PI * 2) / AP;
@@ -36,7 +103,7 @@ for (let i = 0; i < AP; i++) {
         // from 182 up to 65535, but only 915 different values
         tabDeltas[deltaPtr + 1] = Math.round(Math.min(d, MAX_U16));
 
-        // from 0 up to 65535, which actually are 717 signed different values: [-360, 360] (except few values due to precision lack)
+        // from 0 up to 65535, which actually are 717 signed different values in [-360, 360]
         tabDeltas[deltaPtr + 2] = Math.round(rayDirAngleX) & 0xFFFF;
         tabDeltas[deltaPtr + 3] = Math.round(rayDirAngleY) & 0xFFFF;
 
@@ -49,6 +116,9 @@ let content = '';
 for (let i = 0; i < tabDeltas.length; i += 4) {
     content += `${tabDeltas[i+0]}, ${tabDeltas[i+1]}, ${tabDeltas[i+2]}, ${tabDeltas[i+3]},\n`;
 }
+
+// Let's check that every column data as a whole have the same content
+checkColumnLayoutsEqual();
 
 // Write to file
 fs.writeFileSync(outputFile, content);
