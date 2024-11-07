@@ -5,10 +5,8 @@
 #include <maths.h>
 #include "utils.h"
 #include "consts.h"
-#include "clear_buffer.h"
 #include "map_matrix.h"
 #include "frame_buffer.h"
-#include "write_vline.h"
 #include "render.h"
 
 #include "hud.h"

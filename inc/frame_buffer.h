@@ -14,4 +14,13 @@ extern u16 frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_C
 // the pixel column currently being rendered.
 extern u16 frame_buffer_pxcolumn[PIXEL_COLUMNS];
 
+void clear_buffer (u16* frame_buffer_ptr);
+
+void clear_buffer_sp (u16* frame_buffer_ptr);
+
+// Points to the start of the column in first display row for each cycle of the for-loop of columns
+extern u16* column_ptr;
+
+void write_vline (u16 h2, u16 tileAttrib);
+
 #endif // _FRAME_BUFFER_H_

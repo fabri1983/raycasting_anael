@@ -6,6 +6,8 @@
 
 void vint_reset ();
 
+void vint_enqueueHudTilemap ();
+
 void vint_enqueueTiles (void *from, u16 toIndex, u16 lenInWord);
 
 void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord);

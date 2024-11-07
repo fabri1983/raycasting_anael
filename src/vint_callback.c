@@ -5,7 +5,12 @@
 #include <pal.h>
 #include <memory.h>
 #include "hud.h"
+#include "hud_320.h"
 #include "utils.h"
+
+#if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+static u8 hud_tilemaps;
+#endif
 
 static void* tiles_data;
 static u16 tiles_toIndex;
@@ -24,6 +29,10 @@ static u16 vdpSpriteCache_lenInWord;
 
 void vint_reset ()
 {
+    #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+    hud_tilemaps = 0;
+    #endif
+
     tiles_data = NULL;
     tiles_toIndex = 0;
     tiles_lenInWord = 0;
@@ -37,6 +46,13 @@ void vint_reset ()
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
     vdpSpriteCache_lenInWord = 0;
+    #endif
+}
+
+void vint_enqueueHudTilemap ()
+{
+    #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+    hud_tilemaps = 1;
     #endif
 }
 
@@ -88,6 +104,14 @@ void vint_callback ()
 	#else
 	//clear_buffer(frame_buffer);
 	#endif
+
+    #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+    // Have any hud tilemaps to DMA?
+    if (hud_tilemaps) {
+        DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        hud_tilemaps = 0;
+    }
+    #endif
 
     // Have any tiles to DMA?
     if (tiles_data) {

@@ -53,7 +53,7 @@ void displayTeddyBearLogo ()
     //
 
     // Draw SGDK version number
-    const char* sgdk_version = "v2.0 (Oct 2024)";
+    const char* sgdk_version = "v2.0 (Nov 2024)";
     VDP_drawText(sgdk_version, screenWidth/8 - (strlen(sgdk_version) + 1), screenHeight/8 - 1);
 
     //
@@ -77,7 +77,7 @@ void displayTeddyBearLogo ()
 
         if (SPR_isAnimationDone(teddyBearAnimSpr)) {
             // Leave some time the last animation frame in the screen
-            waitMs_(500);
+            waitMs_(250);
             break;
         }
 
@@ -93,10 +93,13 @@ void displayTeddyBearLogo ()
     SPR_end();
     SYS_doVBlankProcess();
 
-    // restore SGDK's default palettes
-    PAL_setPalette(PAL0, palette_grey, DMA);
-    PAL_setPalette(PAL3, palette_blue, DMA);
+    // restore planes
     VDP_clearPlane(BG_A, TRUE);
+    // restore SGDK's default palettes
+    PAL_setPalette(PAL0, palette_grey, CPU);
+    PAL_setPalette(PAL1, palette_red, CPU);
+    PAL_setPalette(PAL2, palette_green, CPU);
+    PAL_setPalette(PAL3, palette_blue, CPU);
 
     SYS_doVBlankProcess();
 }

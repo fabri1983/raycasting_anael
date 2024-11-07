@@ -36,15 +36,16 @@
 //   use/abuse of FORCE_INLINE.
 // * Manual unrolling of 2 (or 4) iterations for column processing => 2% saved in cpu usage. It may vary according the 
 //   use/abuse of FORCE_INLINE.
-// * SGDK's Sprite Engine SPR_update() function was overriden (see spr_eng_override.c) to handle DMA for specific cases.
+// * SGDK's SPR_update() function was modified to handle DMA for specific cases. See comments with tag fabri1983 at spr_eng_override.c.
+// * SGDK's SYS_doVBlankProcessEx() function was modified to cut off unwanted logic. See render.c.
 
 // fabri1983's resources notes:
 // ----------------------------
-// * HUD: the hud is treated as an image. The resource definition in .res file expects a map base attribute which is 
+// * HUD: the hud is treated as an image. The resource definition in .res file expects a map base attribute value which is 
 //   calculated before hand. See HUD_BASE_TILE_ATTRIB in hud.h.
 // * HUD: if resource is compressed then also set const HUD_TILEMAP_COMPRESSED in hud.h.
-// * WEAPONS: the calculation of max tiles used is method weapon_biggerAnimTileNum(). Once the value is known, 
-//   comment the calculation instructions and return the fixed value.
+// * WEAPONS: the calculation of max tiles used is method weapon_biggerAnimTileNum(). Once the value is known, you can 
+//   replace the calculation instructions by just a fixed value.
 // * WEAPONS: the location of sprite tiles is given by methods like weapon_getVRAMLocation(). Required for SPR_addSpriteEx().
 
 #include <types.h>
@@ -57,7 +58,6 @@
 #include <sprite_eng.h>
 #include "utils.h"
 #include "consts.h"
-#include "clear_buffer.h"
 #include "frame_buffer.h"
 #include "render.h"
 #include "game_loop.h"
@@ -65,8 +65,10 @@
 #include "hint_callback.h"
 #include "hud.h"
 #include "weapons.h"
+#if DISPLAY_LOGOS_AT_START
 #include "segaLogo.h"
 #include "teddyBearLogo.h"
+#endif
 
 // the code is optimised further using GCC's automatic unrolling, but might not be true if too much inlining is used (or whatever reason).
 #pragma GCC push_options
@@ -82,10 +84,12 @@ int main (bool hardReset)
 		SYS_hardReset();
 	}
 
-    // displaySegaLogo();
-    // waitMs_(200);
-    // displayTeddyBearLogo();
-    // waitMs_(200);
+    #if DISPLAY_LOGOS_AT_START
+    displaySegaLogo();
+    waitMs_(200);
+    displayTeddyBearLogo();
+    waitMs_(200);
+    #endif
 
     // Restart DMA with this settings
     DMA_initEx(20, 8192, 8192);

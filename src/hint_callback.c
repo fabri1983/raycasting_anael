@@ -14,23 +14,25 @@ u32 hudPalB_addrForDMA;
 u32 restorePalA_addrForDMA;
 u32 restorePalB_addrForDMA;
 
-u32 weaponPalA_addrForDMA;
-u32 weaponPalB_addrForDMA;
+static u32 weaponPalA_addrForDMA;
+static u32 weaponPalB_addrForDMA;
 
-u8 hud_tilemaps;
+#if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
+static u8 hud_tilemaps;
+#endif
 
 u16 tilesLenInWordTotalToDMA;
 
-u8 tiles_elems;
-void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
-u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
-u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u8 tiles_elems;
+static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
 #if DMA_ALLOW_BUFFERED_TILES
-u8 tiles_buf_elems;
-u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
-u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
-u16* tiles_buf_dmaBufPtr;
+static u8 tiles_buf_elems;
+static u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u16* tiles_buf_dmaBufPtr;
 #endif
 
 #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
@@ -42,7 +44,9 @@ void hint_reset ()
     weaponPalA_addrForDMA = NULL;
     weaponPalB_addrForDMA = NULL;
 
+    #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
     hud_tilemaps = 0;
+    #endif
 
     tilesLenInWordTotalToDMA = 0;
 
@@ -87,7 +91,9 @@ void hint_enqueueWeaponPal (u16* pal)
 
 void hint_enqueueHudTilemap ()
 {
+    #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
     hud_tilemaps = 1;
+    #endif
 }
 
 void hint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
@@ -170,11 +176,13 @@ HINTERRUPT_CALLBACK hint_callback ()
     *((vu16*) VDP_DATA_PORT) = 0x0222; //palette_grey[1]; // roof color
     #endif
 
+    #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
     // Have any hud tilemaps to DMA?
     if (hud_tilemaps) {
         DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         hud_tilemaps = 0;
     }
+    #endif
 
     // Have any tiles to DMA?
     while (tiles_elems) {

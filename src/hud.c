@@ -11,19 +11,21 @@
 #include "consts.h"
 #include "utils.h"
 #include "hint_callback.h"
-
-static u16* hud_tilemap_src;
+#include "vint_callback.h"
 
 #if HUD_TILEMAP_COMPRESSED
-static u16 tilemapUnpacked[HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H];
-u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
+static u16 hud_tilemap_src[HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H];
 
 static void decompressTilemap ()
 {
     TileMap* src = img_hud_spritesheet.tilemap;
-    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, ((HUD_SOURCE_IMAGE_W) * (HUD_SOURCE_IMAGE_H)) * 2), (u8*) tilemapUnpacked);
+    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, ((HUD_SOURCE_IMAGE_W) * (HUD_SOURCE_IMAGE_H)) * 2), (u8*) hud_tilemap_src);
 }
+#else
+static u16* hud_tilemap_src;
 #endif
+
+u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
 
 static u8 weaponInventoryBits;
 static u8 keyInventoryBits;
@@ -466,8 +468,7 @@ u16 hud_loadInitialState (u16 currentTileIndex)
 	VDP_loadTileSet(img_hud_spritesheet.tileset, HUD_VRAM_START_INDEX, DMA);
 
     #if HUD_TILEMAP_COMPRESSED
-    decompressTilemap();
-    hud_tilemap_src = tilemapUnpacked;
+    decompressTilemap(); // decompress it into hud_tilemap_src
     #else
     hud_tilemap_src = img_hud_spritesheet.tilemap->tilemap;
     #endif
@@ -526,8 +527,13 @@ FORCE_INLINE void hud_update ()
 
     // PW_ADDR comes with the correct base position in screen
     if (updateFlags) {
-        //DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        hint_enqueueHudTilemap();
         updateFlags = 0;
+        #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
+        vint_enqueueHudTilemap();
+        #elif DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+        vint_enqueueHudTilemap();
+        #else
+        DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        #endif
     }
 }

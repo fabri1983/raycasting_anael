@@ -39,7 +39,8 @@ void weapon_resetState ()
     u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
     // Loads fist sprite so we can avoid the check for NULL in other methods
-    spr_currWeapon = SPR_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
+    spr_currWeapon = SPR_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, 
+        SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
     PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal_weapon_fist_anim.data + 8, 8, DMA);
@@ -64,7 +65,8 @@ static FORCE_INLINE void weapon_load (const SpriteDefinition* sprDef, u16* pal, 
     // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
     u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
-    spr_currWeapon = SPR_addSpriteEx(sprDef, x, y, baseTileAttribs, SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP);
+    spr_currWeapon = SPR_addSpriteEx(sprDef, x, y, baseTileAttribs, 
+        SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
 
     hint_enqueueWeaponPal(pal);

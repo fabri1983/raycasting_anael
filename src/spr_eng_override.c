@@ -27,15 +27,18 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
     u16 visibility;
     const SpriteDefinition* sprDef = sprite->definition;
 
-    const u16 sw = screenWidth;
-    const u16 sh = screenHeight;
+    // fabri1983: we know the screenWidth at compilation time
+    const u16 sw = PLANE_COLUMNS == 64 ? 320 : 256; // screenWidth;
+    // fabri1983: we know the screenHeight at compilation time
+    const u16 sh = 224; // screenHeight;
     const u16 w = sprDef->w - 1;
     const u16 h = sprDef->h - 1;
     const u16 x = sprite->x - 0x80;
     const u16 y = sprite->y - 0x80;
 
+    // fabri1983: we don't use flag SPR_FLAG_FAST_AUTO_VISIBILITY
     // fast visibility computation ?
-    if (status & SPR_FLAG_FAST_AUTO_VISIBILITY)
+    /*if (status & SPR_FLAG_FAST_AUTO_VISIBILITY)
     {
         // compute global visibility for sprite (use unsigned for merged <0 test)
         if (((u16)(x + w) < (u16)(sw + w)) && ((u16)(y + h) < (u16)(sh + h)))
@@ -43,7 +46,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
         else
             visibility = VISIBILITY_OFF;
     }
-    else
+    else*/
     {
         // sprite is fully visible ? --> set all sprite visible (use unsigned for merged <0 test)
         if ((x < (u16)(sw - w)) && (y < (u16)(sh - h)))
@@ -157,8 +160,9 @@ static u16 updateFrame(Sprite* sprite, u16 status)
 {
     AnimationFrame* frame = sprite->animation->frames[sprite->frameInd];
 
+    // fabri1983: we don't delay frame update, plus we handle DMA in hint and vint
     // we need to transfert tiles data for this sprite and frame delay is not disabled ?
-    if ((status & (SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE)) == SPR_FLAG_AUTO_TILE_UPLOAD)
+    /*if ((status & (SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE)) == SPR_FLAG_AUTO_TILE_UPLOAD)
     {
         // not enough DMA capacity to transfer sprite tile data ?
         const u16 dmaCapacity = DMA_getMaxTransferSize();
@@ -172,19 +176,20 @@ static u16 updateFrame(Sprite* sprite, u16 status)
             // delay frame update (when we will have enough DMA capacity to do it)
             return status;
         }
-    }
+    }*/
 
     // set frame
     sprite->frame = frame;
 
+    // fabri1983: we don't need it
     // frame change event handler defined ? --> call it
-    if (sprite->onFrameChange)
+    /*if (sprite->onFrameChange)
     {
         // important to preserve status value which may be modified externally here
         sprite->status = status;
         sprite->onFrameChange(sprite);
         status = sprite->status;
-    }
+    }*/
 
     // init timer for this frame *after* calling callback (this allows SPR_isAnimationDone(..) to correctly report TRUE when animation is done)
     if (SPR_getAutoAnimation(sprite))
@@ -193,9 +198,10 @@ static u16 updateFrame(Sprite* sprite, u16 status)
     // require tile data upload
     if (status & SPR_FLAG_AUTO_TILE_UPLOAD)
         status |= NEED_TILES_UPLOAD;
+    // fabri1983: we don't use flag SPR_FLAG_AUTO_VISIBILITY
     // require visibility update
-    if (status & SPR_FLAG_AUTO_VISIBILITY)
-        status |= NEED_VISIBILITY_UPDATE;
+    /*if (status & SPR_FLAG_AUTO_VISIBILITY)
+        status |= NEED_VISIBILITY_UPDATE;*/
 
     // frame update done
     status &= ~NEED_FRAME_UPDATE;
@@ -208,6 +214,7 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
     TileSet* tileset = sprite->frame->tileset;
 
     // need to test for empty tileset (blank frame)
+    // fabri1983: we know our sprites have no empty frames
     //if (tileset->numTile)
     {
         u16 lenInWord = (tileset->numTile * 32) / 2;
@@ -267,13 +274,14 @@ void NO_INLINE spr_eng_update()
     // VDP sprite index (for link field)
     u8 vdpSpriteInd = 1;
 
+    // fabri1983: we don't use this method for showing frame load
     // first sprite used by CPU load monitor
-    if (SYS_getShowFrameLoad())
+    /*if (SYS_getShowFrameLoad())
     {
         // goes to next VDP sprite then
         vdpSprite->link = vdpSpriteInd++;
         vdpSprite++;
-    }
+    }*/
 
     // iterate over all sprites
     while(sprite)
