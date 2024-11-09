@@ -8,21 +8,22 @@
 u16 d = 7 - min(7, sideDistX / FP); // the bigger the distant the darker the color is
 u16 color;
 if (mapY&1)
-    color = (PAL2 << TILE_ATTR_PALETTE_SFT) + 1 + d*8;
+    color = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + d*8 + (8*8); // use the tiles that point to second half of wall's palette
 else
     color = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + d*8;
 
 u16 d = 7 - min(7, sideDistY / FP); // the bigger the distant the darker the color is
 u16 color;
 if (mapY&1)
-    color = (PAL3 << TILE_ATTR_PALETTE_SFT) + 1 + d*8;
+    color = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + d*8 + (8*8); // use the tiles that point to second half of wall's palette
 else
     color = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + d*8;
 
-Only the value 1 + d*8 is stored in this array: tab_color_d8[]
+ONLY the value 1 + d*8 is stored in tab_color_d8_1[].
 */
 
-const u16 tab_color_d8[FP * (STEP_COUNT + 1)] = {
+// Table body generated with script tab_color_d8_1_generator.js. Check correct values of constants before script execution.
+const u16 tab_color_d8_1[FP * (STEP_COUNT + 1)] = {
 57,57,57,57,57,57,57,57,
 57,57,57,57,57,57,57,57,
 57,57,57,57,57,57,57,57,

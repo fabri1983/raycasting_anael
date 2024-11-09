@@ -5,7 +5,7 @@
 #include "consts.h"
 #include "hud.h"
 
-#define WEAPON_BASE_PAL PAL0 // Use always PAL0 because the modified Sprite Engine now supports a palette per VDP Sprite.
+#define WEAPON_BASE_PAL PAL3 // Use always PAL0 because the modified Sprite Engine now supports a palette per VDP Sprite.
 
 #define WEAPON_SPRITE_X_CENTERED (TILEMAP_COLUMNS/2)*8
 #define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 0 // -1 scanline: used for hint DMA hud palettes when the VDP is turned off

@@ -5,12 +5,12 @@
 #include <vdp_bg.h>
 
 #define HUD_HINT_SCANLINE_START_PAL_SWAP (224-32)
-#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT TRUE // If TRUE then reload happens at HInt, otherwise at VInt.
+#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT FALSE // If TRUE then reload happens at HInt, otherwise at VInt.
 #define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT TRUE
 #define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95 // Only meaningful if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT is set to TRUE
 #define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE FALSE // This is not implemented yet!
 
-#define HUD_VRAM_START_INDEX 72 // If change this value you'll have to update map_base parameter in resource file
+#define HUD_VRAM_START_INDEX (1 + 8*8 + 8*8) // If change this value you'll have to update map_base parameter in resource file
 #define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file
 // This value is the parameter map_base that has to go in the resource file if you modify one of the above. Currently is 16456.
 #define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_PAL, 0, FALSE, FALSE, HUD_VRAM_START_INDEX)

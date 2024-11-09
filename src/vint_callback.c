@@ -6,15 +6,22 @@
 #include <memory.h>
 #include "hud.h"
 #include "hud_320.h"
+#include "weapons.h"
 #include "utils.h"
 
-#if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
-static u8 hud_tilemaps;
+#if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+u32 restorePalA_addrForDMA;
+u32 restorePalB_addrForDMA;
 #endif
 
-static void* tiles_data;
-static u16 tiles_toIndex;
-static u16 tiles_lenInWord;
+#if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+u8 hud_tilemaps;
+#endif
+
+static u8 tiles_elems;
+static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
+static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
 #if DMA_ALLOW_BUFFERED_TILES
 static u8 tiles_buf_elems;
@@ -29,13 +36,19 @@ static u16 vdpSpriteCache_lenInWord;
 
 void vint_reset ()
 {
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+    restorePalA_addrForDMA = 0;
+    restorePalB_addrForDMA = 0;
+    #endif
+
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
     hud_tilemaps = 0;
     #endif
 
-    tiles_data = NULL;
-    tiles_toIndex = 0;
-    tiles_lenInWord = 0;
+    memset(tiles_from, 0, DMA_MAX_QUEUE_CAPACITY);
+    memsetU16(tiles_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
+    memsetU16(tiles_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
+    tiles_elems = 0;
 
     #if DMA_ALLOW_BUFFERED_TILES
     memsetU16(tiles_buf_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
@@ -49,18 +62,27 @@ void vint_reset ()
     #endif
 }
 
-void vint_enqueueHudTilemap ()
+FORCE_INLINE void vint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
     hud_tilemaps = 1;
     #endif
 }
 
-void vint_enqueueTiles (void *from, u16 toIndex, u16 lenInWord)
+FORCE_INLINE void vint_setPalToRestore (u16* pal)
 {
-    tiles_data = from;
-    tiles_toIndex = toIndex;
-    tiles_lenInWord = lenInWord;
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+    restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
+    //restorePalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
+    #endif
+}
+
+void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
+{
+    tiles_from[tiles_elems] = from;
+    tiles_toIndex[tiles_elems] = toIndex;
+    tiles_lenInWord[tiles_elems] = lenInWord;
+    ++tiles_elems;
 }
 
 void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
@@ -86,16 +108,14 @@ void vint_callback ()
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
 	// Reload the 2 palettes that were overriden by the HUD palettes
-	u32 palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    u32 fromAddrForDMA = (u32) (palette_green + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
-	turnOffVDP(0x74);
-    setupDMAForPals(7, fromAddrForDMA);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-	palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-    fromAddrForDMA = (u32) (palette_blue + 1) >> 1; // TODO: this can be set outside the HInt (or maybe the compiler does it already)
-    setupDMAForPals(7, fromAddrForDMA);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-    turnOnVDP(0x74);
+	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
+    turnOffVDP(0x74);
+    setupDMAForPals(15, restorePalA_addrForDMA);
+    *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
+    // setupDMAForPals(15, restorePalB_addrForDMA);
+    // *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+	turnOnVDP(0x74);
     #endif
 
 	// clear the frame buffer
@@ -108,15 +128,17 @@ void vint_callback ()
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
     // Have any hud tilemaps to DMA?
     if (hud_tilemaps) {
+        // PW_ADDR comes with the correct base position in screen
         DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         hud_tilemaps = 0;
     }
     #endif
 
     // Have any tiles to DMA?
-    if (tiles_data) {
-        DMA_doDma(DMA_VRAM, tiles_data, tiles_toIndex, tiles_lenInWord, 2);
-        tiles_data = NULL;
+    while (tiles_elems) {
+        --tiles_elems;
+        u16 lenInWord = tiles_lenInWord[tiles_elems];
+        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, 2);
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT

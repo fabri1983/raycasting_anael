@@ -7,11 +7,11 @@
 
 void hint_reset ();
 
-void hint_setupPals ();
-
 bool canDMAinHint (u16 lenInWord);
 
 void hint_enqueueWeaponPal (u16* pal);
+
+void hint_setPalToRestore (u16* pal);
 
 void hint_enqueueHudTilemap ();
 

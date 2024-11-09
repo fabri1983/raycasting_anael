@@ -99,9 +99,9 @@ int main (bool hardReset)
 	// Basic game setup
 
 	//render_loadPlaneDisplacements(); // not needed anymore, see details above in description
+    render_loadWallPalettes();
     vint_reset();
     hint_reset();
-    hint_setupPals();
 	u16 currentTileIndex = render_loadTiles();
 	currentTileIndex = hud_loadInitialState(currentTileIndex);
     SPR_initEx(weapon_biggerAnimTileNum()); // + others xxx_biggerAnimTileNum()
@@ -137,7 +137,10 @@ int main (bool hardReset)
 
 	SYS_disableInts();
 	{
+        // It has no effect because we are manually calling it on render_SYS_doVBlankProcessEx_ON_VBLANK() at render.c.
+        // We leave it in case we start using SGDK's SYS_doVBlankProcessEx().
 		SYS_setVBlankCallback(vint_callback);
+
         #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 		// Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
 		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.

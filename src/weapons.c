@@ -4,6 +4,7 @@
 #include <maths.h>
 #include "weapons_res.h"
 #include "hint_callback.h"
+#include "vint_callback.h"
 
 static u8 resetToIdle_timer;
 static u8 fire_coolDown_timer;
@@ -43,8 +44,8 @@ void weapon_resetState ()
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
-    PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal_weapon_fist_anim.data + 8, 8, DMA);
-    //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 8, sprDef_weapon_fist_anim.palette->data + 16 + 8, 8, DMA);
+    PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal_weapon_fist_anim.data + 1, 15, DMA);
+    //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 1, sprDef_weapon_fist_anim.palette->data + 16 + 1, 15, DMA);
 
     currWeaponId = 0; // Fist
     currWeaponAnimFireCooldownTimer = 0;
@@ -69,7 +70,13 @@ static FORCE_INLINE void weapon_load (const SpriteDefinition* sprDef, u16* pal, 
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
 
-    hint_enqueueWeaponPal(pal);
+    // No need to enqueue the palette since it will be restored after the hud is displayed
+    //hint_enqueueWeaponPal(pal);
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
+    hint_setPalToRestore(pal);
+    #else
+    vint_setPalToRestore(pal);
+    #endif
 }
 
 void weapon_select (u8 weaponId)

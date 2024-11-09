@@ -5,7 +5,7 @@ const {  } = require('./consts');
 
 const ELEMENTS_PER_LINE = 8;
 
-const outputFileX = 'tab_color_d8_OUTPUT.txt';
+const outputFileX = 'tab_color_d8_1_OUTPUT.txt';
 
 // Write output to file
 function writeArray (filename, inputArray) {
@@ -21,8 +21,8 @@ function writeArray (filename, inputArray) {
 
 // Main execution
 try {
-    const tab_color_d8 = utils.generateTabColorD8();
-    writeArray(outputFileX, tab_color_d8);
+    const tab_color_d8_1 = utils.generateTabColor_d8_1();
+    writeArray(outputFileX, tab_color_d8_1);
 
     console.log('Processing completed successfully.');
 } catch (error) {

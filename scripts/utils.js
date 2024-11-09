@@ -78,8 +78,8 @@ const utils = {
         return map_matrix;
     },
 
-    generateTabColorD8 () {
-        const result = new Array(4096).fill(0);
+    generateTabColor_d8_1 () {
+        const result = new Array(FP * (STEP_COUNT + 1)).fill(0);
         for (let sideDist = 0; sideDist < (FP * (STEP_COUNT + 1)); ++sideDist) {
             let d = 7 - Math.min(7, Math.floor(sideDist / FP)); // the bigger the distant the darker the color is
             result[sideDist] = 1 + d*8;

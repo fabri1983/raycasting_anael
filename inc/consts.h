@@ -5,7 +5,7 @@
 
 #define RENDER_SHOW_TEXCOORD FALSE // Show texture coords?
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
-#define RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED TRUE
+#define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED TRUE
 #define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
 #define RENDER_USE_MAP_HIT_COMPRESSED FALSE
 #define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
@@ -17,8 +17,8 @@
 #define DMA_MAX_QUEUE_CAPACITY 8 // How many objects we can hold without crashing the system due to array out of bound access.
 #define DMA_TILES_THRESHOLD_FOR_HINT 384 // when this number of tiles is exceeded they pass to vint queue.
 #define DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT ((DMA_TILES_THRESHOLD_FOR_HINT * 32) / 2)
-#define DMA_ENQUEUE_HUD_TILEMPS_IN_HINT FALSE
-#define DMA_ENQUEUE_HUD_TILEMPS_IN_VINT TRUE
+#define DMA_ENQUEUE_HUD_TILEMPS_IN_HINT TRUE
+#define DMA_ENQUEUE_HUD_TILEMPS_IN_VINT FALSE
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT TRUE
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT FALSE
 

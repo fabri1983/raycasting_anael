@@ -525,14 +525,14 @@ FORCE_INLINE void hud_update ()
     if (updateFlags & (1 << UPDATE_FLAG_FACE))
         setHUDFace();
 
-    // PW_ADDR comes with the correct base position in screen
     if (updateFlags) {
         updateFlags = 0;
         #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
-        vint_enqueueHudTilemap();
+        hint_enqueueHudTilemap();
         #elif DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
         vint_enqueueHudTilemap();
         #else
+        // PW_ADDR comes with the correct base position in screen
         DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #endif
     }

@@ -17,10 +17,10 @@
 #include "tab_dir_xy.h"
 #include "tab_wall_div.h"
 
-#if RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    #include "tab_color_d8_pals_shft.h"
-#elif !RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    #include "tab_color_d8.h"
+#if RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
+    #include "tab_color_d8_1_pals_shft.h"
+#elif !RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
+    #include "tab_color_d8_1.h"
 #endif
 
 #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
@@ -503,13 +503,13 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     //wallY = ((wallY * 8) >> FS) & 7; // faster? But is actually slower given the context
     wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
     u16 tileAttrib = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
-    #elif RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    u16 tileAttrib = tab_color_d8_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
+    #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
+    u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
     #else
-    u16 d8 = tab_color_d8[sideDistX]; // the bigger the distant the darker the color is
+    u16 d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
     u16 tileAttrib;
-    if (mapY&1) tileAttrib = d8 | (PAL2 << TILE_ATTR_PALETTE_SFT);
-    else tileAttrib = d8 | (PAL0 << TILE_ATTR_PALETTE_SFT);
+    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
+    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
     write_vline(h2, tileAttrib);
@@ -525,13 +525,13 @@ static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayD
     //wallX = ((wallX * 8) >> FS) & 7; // faster? But is actually slower given the context
     wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
     u16 tileAttrib = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
-    #elif RENDER_USE_TAB_COLOR_D8_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    u16 tileAttrib = tab_color_d8_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
+    #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
+    u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
     #else
-    u16 d8 = tab_color_d8[sideDistY]; // the bigger the distant the darker the color is
+    u16 d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
     u16 tileAttrib;
-    if (mapX&1) tileAttrib = d8 | (PAL3 << TILE_ATTR_PALETTE_SFT);
-    else tileAttrib = d8 |= (PAL1 << TILE_ATTR_PALETTE_SFT);
+    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
+    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
     write_vline(h2, tileAttrib);

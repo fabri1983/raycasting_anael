@@ -11,14 +11,17 @@
 
 u32 hudPalA_addrForDMA;
 u32 hudPalB_addrForDMA;
+
+u32 weaponPalA_addrForDMA;
+u32 weaponPalB_addrForDMA;
+
+#if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
 u32 restorePalA_addrForDMA;
 u32 restorePalB_addrForDMA;
-
-static u32 weaponPalA_addrForDMA;
-static u32 weaponPalB_addrForDMA;
+#endif
 
 #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
-static u8 hud_tilemaps;
+u8 hud_tilemaps;
 #endif
 
 u16 tilesLenInWordTotalToDMA;
@@ -41,8 +44,15 @@ static u16 vdpSpriteCache_lenInWord;
 
 void hint_reset ()
 {
-    weaponPalA_addrForDMA = NULL;
-    weaponPalB_addrForDMA = NULL;
+    hud_setup_hint_pals(&hudPalA_addrForDMA, &hudPalB_addrForDMA);
+
+    weaponPalA_addrForDMA = 0;
+    weaponPalB_addrForDMA = 0;
+
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
+    restorePalA_addrForDMA = 0;
+    restorePalB_addrForDMA = 0;
+    #endif
 
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
     hud_tilemaps = 0;
@@ -67,29 +77,30 @@ void hint_reset ()
     #endif
 }
 
-FORCE_INLINE void hint_setupPals ()
-{
-    hud_setup_hint_pals(&hudPalA_addrForDMA, &hudPalB_addrForDMA);
-    restorePalA_addrForDMA = (u32) (palette_green + 1) >> 1;
-    restorePalB_addrForDMA = (u32) (palette_blue + 1) >> 1;
-}
-
 FORCE_INLINE bool canDMAinHint (u16 lenInWord)
 {
     return (tilesLenInWordTotalToDMA + lenInWord) <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
 }
 
-void hint_enqueueWeaponPal (u16* pal)
+FORCE_INLINE void hint_enqueueWeaponPal (u16* pal)
 {
     // This was the old way
-    // PAL_setColors(WEAPON_BASE_PAL*16 + 8, pal + 8, 8, DMA_QUEUE);
-    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 9, pal + 16 + 8, 8, DMA_QUEUE);
+    // PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal + 1, 16, DMA_QUEUE);
+    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 1, pal + 16 + 1, 16, DMA_QUEUE);
 
-    weaponPalA_addrForDMA = (u32) (pal +  0 + 8) >> 1;
-    //weaponPalB_addrForDMA = (u32) (pal + 16 + 8) >> 1;
+    weaponPalA_addrForDMA = (u32) (pal + 1) >> 1;
+    //weaponPalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
 }
 
-void hint_enqueueHudTilemap ()
+FORCE_INLINE void hint_setPalToRestore (u16* pal)
+{
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
+    restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
+    //restorePalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
+    #endif
+}
+
+FORCE_INLINE void hint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
     hud_tilemaps = 1;
@@ -164,9 +175,9 @@ HINTERRUPT_CALLBACK hint_callback ()
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
     waitHCounter_DMA(152);
 
-    //turnOffVDP(0x74);
+    turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-    //turnOnVDP(0x74);
+    turnOnVDP(0x74);
 
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	// set background color used for the roof
@@ -179,6 +190,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
     // Have any hud tilemaps to DMA?
     if (hud_tilemaps) {
+        // PW_ADDR comes with the correct base position in screen
         DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         hud_tilemaps = 0;
     }
@@ -214,26 +226,26 @@ HINTERRUPT_CALLBACK hint_callback ()
     #endif
 
     // Have any weapon palette to DMA?
-    if (weaponPalA_addrForDMA) {
+    /*if (weaponPalA_addrForDMA) {
 
-        palCmd = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 8) * 2); // target starting color index multiplied by 2
+        u32 palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
         waitHCounter_DMA(152);
-        setupDMAForPals(8, weaponPalA_addrForDMA);
+        setupDMAForPals(15, weaponPalA_addrForDMA);
         waitHCounter_DMA(152);
         turnOffVDP(0x74);
-        *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+        *((vu32*) VDP_CTRL_PORT) = palCmd_weapon; // trigger DMA transfer
         turnOnVDP(0x74);
 
-        // palCmd = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 8) * 2); // target starting color index multiplied by 2
+        // palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
         // waitHCounter_DMA(152);
-        // setupDMAForPals(8, weaponPalB_addrForDMA);
+        // setupDMAForPals(15, weaponPalB_addrForDMA);
         // waitHCounter_DMA(152);
         // turnOffVDP(0x74);
-        // *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+        // *((vu32*) VDP_CTRL_PORT) = palCmd_weapon; // trigger DMA transfer
         // turnOnVDP(0x74);
 
         weaponPalA_addrForDMA = NULL;
-    }
+    }*/
 
     #if DMA_FRAMEBUFFER_FIRST_QUARTER
 	// Send first 1/4 of frame_buffer Plane A
@@ -251,14 +263,14 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
 	// Reload the 2 palettes that were overriden by the HUD palettes
-	palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    setupDMAForPals(7, restorePalA_addrForDMA);
+	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
+    setupDMAForPals(15, restorePalA_addrForDMA);
 	waitVCounterReg(224);
     turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-	palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-    setupDMAForPals(7, restorePalB_addrForDMA);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+    *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
+    // setupDMAForPals(15, restorePalB_addrForDMA);
+    // *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
 	turnOnVDP(0x74);
     #endif
 }

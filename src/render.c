@@ -9,6 +9,7 @@
 #include "hud.h"
 #include "utils.h"
 #include "frame_buffer.h"
+#include "vint_callback.h"
 
 extern VoidCallback *vblankCB;
 extern void flushQueue(u16 num);
@@ -17,9 +18,6 @@ extern bool addFrameLoad(u16 frameLoad, u32 vtime);
 extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
 #endif
 
-// Load render tiles in VRAM. 9 set of 8 tiles each => 72 tiles in total.
-// Starts locating tiles at index 0. Returns next available tile index in VRAM which must be HUD_VRAM_START_INDEX.
-// IMPORTANT: if amount of generated tiles is changed then update resource file and the constants involved too.
 u16 render_loadTiles ()
 {
 	// Create a buffer tile
@@ -33,33 +31,47 @@ u16 render_loadTiles ()
 
 	// Remaining 8 possible tile heights, distributed in 8 sets
 
-	// 8 tiles per set
-	for (u16 t = 1; t <= 8; t++) {
-		memset(tile, 0, 32); // clear the tile with color index 0
-		// 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors
-		for (u16 c = 0; c < 8; c++) {
-			// visit the heigh of each tile in current set
-			for (u16 h = t-1; h < 8; h++) {
-				// visit the columns of current row. 1 byte holds 2 colors as per Tile definition
-				for (u16 b = 0; b < 2; b++) {
-                    u8 colorX = c+0;
-                    // here we clamp to color 7 since from SGDK's palette 8th color they start to repeat
-                    u8 colorY = (c+1) == 8 ? c : c+1;
-                    u8 color = colorX | (colorY << 4);
-					tile[4*h + b] = color;
-				}
-			}
-			VDP_loadTileData((u32*)tile, c*8 + t, 1, CPU);
-		}
-	}
+    // fabri1983: we add 8 tiles more so we can use the other half of the palette.
+    // First pass loads 8 tiles with colors 0..7.
+    // Second pass loads 8 tiles with colors 0 and 8..14
+    for (u8 pass=0; pass < 2; ++pass) {
+
+        // 8 tiles per set
+        for (u16 t = 1; t <= 8; t++) {
+            memset(tile, 0, 32); // clear the tile with color index 0
+            // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors
+            for (u16 c = 0; c < 8; c++) {
+                // visit the heigh of each tile in current set
+                for (u16 h = t-1; h < 8; h++) {
+                    // visit the columns of current row. 1 byte holds 2 colors as per Tile definition,
+                    // so lower byte is color c and higher byte is color c+1, letting the RCA video signal do the blending.
+                    for (u16 b = 0; b < 2; b++) {
+                        u8 colorLow = c;
+                        if (pass == 1)
+                            colorLow = c == 0 ? 0 : c+7;
+
+                        u8 colorHigh = (c+1) == 8 ? c : c+1;
+                        // we clamp to color 7 since starting at SGDK's palette 8th color they repeat
+                        if (pass == 1)
+                            colorHigh += 7;
+
+                        u8 color = colorLow | (colorHigh << 4);
+                        tile[4*h + b] = color;
+                    }
+                }
+                VDP_loadTileData((u32*)tile, c*8 + t + (pass*(8*8)), 1, CPU);
+            }
+        }
+    }
 
 	MEM_free(tile);
 
 	// Returns next available tile index in VRAM
-	return HUD_VRAM_START_INDEX; // 8 + 8*8
+	return HUD_VRAM_START_INDEX; // 1 + 8*8 + 8*8
 }
 
-void render_loadPlaneDisplacements () {
+void render_loadPlaneDisplacements ()
+{
 	for (u16 column = 0; column < PIXEL_COLUMNS; column++) {
 		// column is even => base offset is 0
 		// column is odd => base offset is VERTICAL_ROWS*PLANE_COLUMNS which is after the first plane
@@ -67,8 +79,19 @@ void render_loadPlaneDisplacements () {
 	}
 }
 
+void render_loadWallPalettes ()
+{
+    // palette grey and palette red were already loaded
+
+    // load colors used from green palette into PAL0
+    PAL_setColors(PAL0*16 + 8, palette_green + 1, 7, CPU);
+    // load colors used from blue palette into PAL1
+    PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, CPU);
+}
+
 /// Wait for a certain amount of subtick. ONLY values < 150.
-static FORCE_INLINE void waitSubTick_ (u32 subtick) {
+static FORCE_INLINE void waitSubTick_ (u32 subtick)
+{
 	if (subtick == 0)
 		return;
 
@@ -88,7 +111,8 @@ static FORCE_INLINE void waitSubTick_ (u32 subtick) {
 /// NOTE: This implementation doesn't disable interrupts because at the moment it's called no interrupt is expected to occur.
 /// NOTE: This implementation assumes the Z80 bus was not already requested, and requests it immediatelly.
 /// @param value TRUE enables protection, FALSE disables it.
-static FORCE_INLINE void render_Z80_setBusProtection (bool value) {
+static FORCE_INLINE void render_Z80_setBusProtection (bool value)
+{
     Z80_requestBus(FALSE);
 	u16 busProtectSignalAddress = (Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
     vu8* pb = (u8*) (Z80_RAM + busProtectSignalAddress); // See Z80_useBusProtection() reference in z80_ctrl.c
@@ -99,7 +123,8 @@ static FORCE_INLINE void render_Z80_setBusProtection (bool value) {
 /// @brief This implementation differs from DMA_flushQueue() in which:
 /// - it doesn't check if transfer size exceeds capacity because we know before hand the max capacity.
 /// - it assumes Z80 bus wasn't requested and hence request it.
-static FORCE_INLINE void render_DMA_flushQueue () {
+static FORCE_INLINE void render_DMA_flushQueue ()
+{
 	#ifdef DEBUG_VIDEO_PLAYER
 	if (DMA_getQueueTransferSize() > DMA_getMaxTransferSize())
 		KLog("[VIDEOPLAYER] WARNING: DMA transfer size limit raised. Modify the capacity in your DMA_initEx() call.");
@@ -152,7 +177,8 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     turnOnVDP(0x74);
 
     // user VBlank callback
-    (*vblankCB)();
+    //(*vblankCB)();
+    vint_callback();
 
     // joy state refresh
     JOY_update();
