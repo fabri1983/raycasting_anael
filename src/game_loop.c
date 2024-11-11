@@ -1,8 +1,9 @@
 #include "game_loop.h"
-#include <joy.h>
 #include <dma.h>
 #include <sys.h>
 #include <maths.h>
+#include <joy.h>
+#include "joy_6btn.h"
 #include "utils.h"
 #include "consts.h"
 #include "map_matrix.h"
@@ -67,15 +68,16 @@ void game_loop () {
         clear_buffer(frame_buffer);
         #endif
 
-		u16 joy = JOY_readJoypad(JOY_1);
+		//u16 joyState = JOY_readJoypad(JOY_1);
+        u16 joyState = joy_readJoypad_joy1();
 
-        if (joy & BUTTON_X) {
+        if (joyState & BUTTON_X) {
             weapon_next(-1);
         }
-        else if (joy & BUTTON_Y) {
+        else if (joyState & BUTTON_Y) {
             weapon_next(1);
         }
-        else if (joy & BUTTON_A) {
+        else if (joyState & BUTTON_A) {
             weapon_fire();
         }
 
@@ -83,31 +85,31 @@ void game_loop () {
         hud_update();
 
         // movement and collisions
-        if (joy & (BUTTON_UP | BUTTON_DOWN | BUTTON_B | BUTTON_LEFT | BUTTON_RIGHT)) {
+        if (joyState & (BUTTON_UP | BUTTON_DOWN | BUTTON_B | BUTTON_LEFT | BUTTON_RIGHT)) {
 
             // Direction amount and sign depending on angle
             s16 dx=0, dy=0;
 
             // Strafe movement is perpendicular to facing direction
-            if (joy & BUTTON_B) {
+            if (joyState & BUTTON_B) {
                 // Strafe left
-                if (joy & BUTTON_LEFT) {
+                if (joyState & BUTTON_LEFT) {
                     dx = tab_dir_y_div24[angle];
                     dy = -tab_dir_x_div24[angle];
                 }
                 // Strafe Right
-                else if (joy & BUTTON_RIGHT) {
+                else if (joyState & BUTTON_RIGHT) {
                     dx = -tab_dir_y_div24[angle];
                     dy = tab_dir_x_div24[angle];
                 }
             }
 
             // Simple forward/backward movement
-            if (joy & BUTTON_UP) {
+            if (joyState & BUTTON_UP) {
                 dx += tab_dir_x_div24[angle];
                 dy += tab_dir_y_div24[angle];
             }
-            else if (joy & BUTTON_DOWN) {
+            else if (joyState & BUTTON_DOWN) {
                 dx -= tab_dir_x_div24[angle];
                 dy -= tab_dir_y_div24[angle];
             }
@@ -157,10 +159,10 @@ void game_loop () {
             }
 
             // Rotation (only when not strafing)
-            if (!(joy & BUTTON_B)) {
-                if (joy & BUTTON_LEFT)
+            if (!(joyState & BUTTON_B)) {
+                if (joyState & BUTTON_LEFT)
                     angle = (angle + (1024/AP)) & 1023;
-                else if (joy & BUTTON_RIGHT)
+                else if (joyState & BUTTON_RIGHT)
                     angle = (angle - (1024/AP)) & 1023;
             }
 
@@ -300,8 +302,9 @@ void game_loop_auto ()
                 render_SYS_doVBlankProcessEx_ON_VBLANK();
 
                 // handle inputs
-                // u16 joy = JOY_readJoypad(JOY_1);
-                // if (joy & BUTTON_START)
+                // u16 joyState = JOY_readJoypad(JOY_1);
+                // u16 joyState = joy_readJoypad_joy1();
+                // if (joyState & BUTTON_START)
                 //     break;
             }
         }

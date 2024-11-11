@@ -270,7 +270,7 @@ typedef union {
     u32 i;
 } ConvUnion;
 
-static const ConvUnion conv = { .p = (u16*)tab_mulu_256_shft_FS };
+static const ConvUnion conv = { .p = (u16*) tab_mulu_256_shft_FS };
 
 FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
 {
@@ -297,7 +297,7 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     return *ptr;
 
     // 22 cycles (+ the load of table into ax)
-    // u16 *table_ptr = tab_mulu_256_shft_FS;
+    // u16* table_ptr = conv.p;
     // u16 result;
     // __asm volatile (
     //     "adda.l  %[rowStride],%[temp]\n\t"       // table_ptr += rowStride

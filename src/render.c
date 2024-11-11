@@ -2,10 +2,11 @@
 #include <vdp.h>
 #include <z80_ctrl.h>
 #include <timer.h>
-#include <joy.h>
 #include <dma.h>
 #include <sys.h>
 #include <memory.h>
+//#include <joy.h>
+#include "joy_6btn.h"
 #include "hud.h"
 #include "utils.h"
 #include "frame_buffer.h"
@@ -181,5 +182,6 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     vint_callback();
 
     // joy state refresh
-    JOY_update();
+    //JOY_update();
+    joy_update_6btn();
 }

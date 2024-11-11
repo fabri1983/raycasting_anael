@@ -36,8 +36,10 @@
 //   use/abuse of FORCE_INLINE.
 // * Manual unrolling of 2 (or 4) iterations for column processing => 2% saved in cpu usage. It may vary according the 
 //   use/abuse of FORCE_INLINE.
-// * SGDK's SPR_update() function was modified to handle DMA for specific cases. See comments with tag fabri1983 at spr_eng_override.c.
-// * SGDK's SYS_doVBlankProcessEx() function was modified to cut off unwanted logic. See render.c.
+// * SGDK's SPR_update() function was modified to handle DMA for specific cases, and also cut off unused features.
+//   See comments with tag fabri1983 at spr_eng_override.c => ~1% saved in cpu usage.
+// * SGDK's SYS_doVBlankProcessEx() function was modified to cut off unwanted logic. See render.c => ~1% saved in cpu usage.
+// * SGDK's JOY_update() and JOY_readJoypad(JOY_1) functions were modified to handle only 6 button joypad => 2% saved in cpu usage.
 
 // fabri1983's resources notes:
 // ----------------------------

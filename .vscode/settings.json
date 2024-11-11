@@ -41,7 +41,8 @@
     "vint_callback.h": "c",
     "segalogo.h": "c",
     "teddybearlogo.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "joy.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {
