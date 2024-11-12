@@ -2,6 +2,7 @@
 #include <vdp_tile.h>
 #include <sprite_eng.h>
 #include <maths.h>
+#include <timer.h>
 #include "weapons_res.h"
 #include "hint_callback.h"
 #include "vint_callback.h"
@@ -17,6 +18,16 @@ static u8 currWeaponId;
 static u8 currWeaponAnimFireCooldownTimer;
 static u8 currWeaponAnimReadyToHitAgainFrame;
 static u16 ammoInventory[WEAPON_MAX_COUNT] = {0};
+
+s16 weaponSwayX = 0;
+s16 weaponSwayY = 0;
+s16 weaponSwayDirX = 1;
+s16 weaponSwayDirY = 0; // Neutral
+bool isMoving = FALSE;
+#define MAX_WEAPON_SWAY_X 8 // Maximum weapon sway in pixels
+#define MAX_WEAPON_SWAY_Y 6 // Maximum weapon sway in pixels. Must be >= MAX_WEAPON_SWAY_X
+u16 currWeaponSpriteX;
+u16 currWeaponSpriteY;
 
 u16 weapon_biggerAnimTileNum ()
 {
@@ -68,7 +79,7 @@ static FORCE_INLINE void weapon_load (const SpriteDefinition* sprDef, u16* pal, 
 
     spr_currWeapon = SPR_addSpriteEx(sprDef, x, y, baseTileAttribs, 
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
-    SPR_setAutoAnimation(spr_currWeapon, FALSE);
+    SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually
 
     // No need to enqueue the palette since it will be restored after the hud is displayed
     //hint_enqueueWeaponPal(pal);
@@ -81,34 +92,36 @@ static FORCE_INLINE void weapon_load (const SpriteDefinition* sprDef, u16* pal, 
 
 void weapon_select (u8 weaponId)
 {
-    // start weapon change effect for the current weapon
+    currWeaponId = weaponId;
+
+    // Start weapon change effect for the current weapon
     changeWeaponEffect_direction = -1;
     changeWeaponEffect_timer = WEAPON_CHANGE_COOLDOWN_TIMER;
-    hud_setAmmo(0, 0, 0);
-    hud_addAmmoUnits(ammoInventory[weaponId]);
 
-    currWeaponId = weaponId;
+    hud_setAmmo(0, 0, 0);
+    hud_addAmmoUnits(ammoInventory[currWeaponId]);
+
     switch (currWeaponId) {
         case WEAPON_FIST:
             currWeaponAnimFireCooldownTimer = WEAPON_FIST_FIRE_COOLDOWN_TIMER;
             currWeaponAnimReadyToHitAgainFrame = WEAPON_FIST_ANIM_READY_TO_HIT_AGAIN_FRAME;
-            weapon_load(&sprDef_weapon_fist_anim, pal_weapon_fist_anim.data, 
-                WEAPON_SPRITE_X_CENTERED - ((WEAPON_FIST_ANIM_WIDTH+1)/2)*8 - 3*8, 
-                WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_FIST_ANIM_HEIGHT*8);
+            currWeaponSpriteX = WEAPON_SPRITE_FIST_X;
+            currWeaponSpriteY = WEAPON_SPRITE_FIST_Y;
+            weapon_load(&sprDef_weapon_fist_anim, pal_weapon_fist_anim.data, WEAPON_SPRITE_FIST_X, WEAPON_SPRITE_FIST_Y);
             break;
         case WEAPON_PISTOL:
             currWeaponAnimFireCooldownTimer = WEAPON_PISTOL_FIRE_COOLDOWN_TIMER;
             currWeaponAnimReadyToHitAgainFrame = WEAPON_PISTOL_ANIM_READY_TO_HIT_AGAIN_FRAME;
-            weapon_load(&sprDef_weapon_pistol_anim, pal_weapon_pistol_anim.data, 
-                WEAPON_SPRITE_X_CENTERED - ((WEAPON_PISTOL_ANIM_WIDTH+1)/2)*8 - 8, 
-                WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_PISTOL_ANIM_HEIGHT*8);
+            currWeaponSpriteX = WEAPON_SPRITE_PISTOL_X;
+            currWeaponSpriteY = WEAPON_SPRITE_PISTOL_Y;
+            weapon_load(&sprDef_weapon_pistol_anim, pal_weapon_pistol_anim.data, WEAPON_SPRITE_PISTOL_X, WEAPON_SPRITE_PISTOL_Y);
             break;
         case WEAPON_SHOTGUN: 
             currWeaponAnimFireCooldownTimer = WEAPON_SHOTGUN_FIRE_COOLDOWN_TIMER;
             currWeaponAnimReadyToHitAgainFrame = WEAPON_SHOTGUN_ANIM_READY_TO_HIT_AGAIN_FRAME;
-            weapon_load(&sprDef_weapon_shotgun_anim, pal_weapon_shotgun_anim.data, 
-                WEAPON_SPRITE_X_CENTERED - ((WEAPON_SHOTGUN_ANIM_WIDTH+1)/2)*8 - 2*8, 
-                WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_SHOTGUN_ANIM_HEIGHT*8);
+            currWeaponSpriteX = WEAPON_SPRITE_SHOTGUN_X;
+            currWeaponSpriteY = WEAPON_SPRITE_SHOTGUN_Y;
+            weapon_load(&sprDef_weapon_shotgun_anim, pal_weapon_shotgun_anim.data, WEAPON_SPRITE_SHOTGUN_X, WEAPON_SPRITE_SHOTGUN_Y);
             break;
         case WEAPON_MACHINE_GUN: break;
         case WEAPON_ROCKET: break;
@@ -234,6 +247,9 @@ FORCE_INLINE void weapon_fire ()
     if (useAmmo() == FALSE)
         return;
 
+    weaponSwayX = 0;
+    weaponSwayY = 0;
+
     fire_coolDown_timer = currWeaponAnimFireCooldownTimer;
     resetToIdle_timer = WEAPON_RESET_TO_IDLE_TIMER;
 
@@ -242,13 +258,68 @@ FORCE_INLINE void weapon_fire ()
     SPR_setAutoAnimation(spr_currWeapon, TRUE);
 }
 
+FORCE_INLINE void weapon_updateSway (bool _isMoving)
+{
+    isMoving = _isMoving;
+    if (isMoving == FALSE) {
+        // Set Sway Y as neutral until Sway X reaches left or right bound
+        weaponSwayDirY = 0;
+        return;
+    }
+
+    weaponSwayX += weaponSwayDirX;
+    if (weaponSwayX > MAX_WEAPON_SWAY_X) {
+        weaponSwayX = MAX_WEAPON_SWAY_X;
+        weaponSwayDirX = -1;
+        // This only applies at the start of moving action
+        if (weaponSwayDirY == 0)
+            weaponSwayDirY = 1;
+    }
+    else if (weaponSwayX < -MAX_WEAPON_SWAY_X) {
+        weaponSwayX = -MAX_WEAPON_SWAY_X;
+        weaponSwayDirX = 1;
+        // This only applies at the start of moving action
+        if (weaponSwayDirY == 0)
+            weaponSwayDirY = 1;
+    }
+
+    // When Sway X is at the center we tell Sway Y to start moving up
+    if (weaponSwayX == 0 && weaponSwayDirY == 1)
+        weaponSwayDirY = -1;
+
+    weaponSwayY += weaponSwayDirY;
+    if (weaponSwayY > MAX_WEAPON_SWAY_Y) {
+        weaponSwayY = MAX_WEAPON_SWAY_Y;
+    }
+    else if (weaponSwayY < 0) {
+        weaponSwayY = 0;
+        weaponSwayDirY = 0; // Wait until start of walking action and Sway X reaches any bound
+    }
+}
+
 FORCE_INLINE void weapon_update ()
 {
-    if (SPR_isAnimationDone(spr_currWeapon))
+    if (SPR_getAutoAnimation(spr_currWeapon) && SPR_isAnimationDone(spr_currWeapon)) {
         stopFireAnimation();
+    }
 
     if (fire_coolDown_timer != 0) {
         --fire_coolDown_timer;
+    }
+    // If fire_coolDown_timer == 0 it means is not in fire animation
+    else {
+        if ((weaponSwayX | weaponSwayY) != 0) {
+            // When no moving we damper the sway values to 0
+            if (isMoving == FALSE) {
+                // Sway X damping to 0
+                if (weaponSwayX > 0) weaponSwayX -= 1;
+                else if (weaponSwayX < 0) weaponSwayX += 1;
+                // Sway Y damping to 0
+                if (weaponSwayY > 0) weaponSwayY -= 1;
+            }
+            isMoving = FALSE;
+            SPR_setPosition(spr_currWeapon, currWeaponSpriteX + weaponSwayX, currWeaponSpriteY + weaponSwayY);
+        }
     }
 
     if (select_coolDown_timer != 0) {

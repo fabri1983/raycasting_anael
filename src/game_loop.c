@@ -81,9 +81,6 @@ void game_loop () {
             weapon_fire();
         }
 
-        weapon_update();
-        hud_update();
-
         // movement and collisions
         if (joyState & (BUTTON_UP | BUTTON_DOWN | BUTTON_B | BUTTON_LEFT | BUTTON_RIGHT)) {
 
@@ -170,7 +167,12 @@ void game_loop () {
             delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
 
             map_hit_setRow(posX, posY, a);
+
+            weapon_updateSway(dx | dy);
         }
+
+        weapon_update();
+        hud_update();
 
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, delta_a_ptr);

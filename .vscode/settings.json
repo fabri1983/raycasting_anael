@@ -42,7 +42,9 @@
     "segalogo.h": "c",
     "teddybearlogo.h": "c",
     "string.h": "c",
-    "joy.h": "c"
+    "joy.h": "c",
+    "timer.h": "c",
+    "vdp_bg.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

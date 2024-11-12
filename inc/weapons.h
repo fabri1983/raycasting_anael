@@ -9,6 +9,12 @@
 
 #define WEAPON_SPRITE_X_CENTERED (TILEMAP_COLUMNS/2)*8
 #define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 0 // -1 scanline: used for hint DMA hud palettes when the VDP is turned off
+#define WEAPON_SPRITE_FIST_X (WEAPON_SPRITE_X_CENTERED - ((WEAPON_FIST_ANIM_WIDTH+1)/2)*8 - 3*8)
+#define WEAPON_SPRITE_FIST_Y (WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_FIST_ANIM_HEIGHT*8)
+#define WEAPON_SPRITE_PISTOL_X (WEAPON_SPRITE_X_CENTERED - ((WEAPON_PISTOL_ANIM_WIDTH+1)/2)*8 - 8)
+#define WEAPON_SPRITE_PISTOL_Y (WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_PISTOL_ANIM_HEIGHT*8)
+#define WEAPON_SPRITE_SHOTGUN_X (WEAPON_SPRITE_X_CENTERED - ((WEAPON_SHOTGUN_ANIM_WIDTH+1)/2)*8 - 2*8)
+#define WEAPON_SPRITE_SHOTGUN_Y (WEAPON_SPRITE_Y_ABOVE_HUD - WEAPON_SHOTGUN_ANIM_HEIGHT*8)
 
 #define WEAPON_FIST_ANIM_WIDTH 20
 #define WEAPON_FIST_ANIM_HEIGHT 10
@@ -36,6 +42,7 @@
 #define WEAPON_BFG_MAX_AMMO 600
 
 u16 weapon_biggerAnimTileNum ();
+
 u16 weapon_getVRAMLocation ();
 
 void weapon_resetState ();
@@ -47,6 +54,8 @@ void weapon_addAmmo (u8 weaponId, u16 amnt);
 /// @brief Loads next or previous available weapon in the inventory.
 /// @param sign 1: next weapon, -1: previous weapon
 void weapon_next (u8 sign);
+
+void weapon_updateSway (bool _isMoving);
 
 void weapon_fire ();
 

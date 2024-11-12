@@ -9,6 +9,7 @@
 // * Ray Casting: https://lodev.org/cgtutor/raycasting.html
 // * DDA = Digital Differential Analysis.
 // * Modified to display full screen in mode 320x224.
+// * Only 6 button pad supported.
 // * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
 // * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
 // * clear_buffer() using SP (Stack Pointer) to point end of buffer => 60 cycles saved if PLANE_COLUMNS=32, and 
@@ -79,7 +80,7 @@
 
 int main (bool hardReset)
 {
-	// On soft reset do like a hard reset
+	// On soft reset we do like a hard reset
 	if (!hardReset) {
 		VDP_waitDMACompletion(); // avoids some glitches as per Genesis Manual's Addendum section
         SPR_end();
