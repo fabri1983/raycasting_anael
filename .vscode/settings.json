@@ -44,7 +44,8 @@
     "string.h": "c",
     "joy.h": "c",
     "timer.h": "c",
-    "vdp_bg.h": "c"
+    "vdp_bg.h": "c",
+    "config.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

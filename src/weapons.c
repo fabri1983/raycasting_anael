@@ -19,6 +19,9 @@ static u8 currWeaponAnimFireCooldownTimer;
 static u8 currWeaponAnimReadyToHitAgainFrame;
 static u16 ammoInventory[WEAPON_MAX_COUNT] = {0};
 
+u16 currWeaponSpriteX;
+u16 currWeaponSpriteY;
+
 s16 weaponSwayX = 0;
 s16 weaponSwayY = 0;
 s16 weaponSwayDirX = 1;
@@ -26,8 +29,6 @@ s16 weaponSwayDirY = 0; // Neutral
 bool isMoving = FALSE;
 #define MAX_WEAPON_SWAY_X 8 // Maximum weapon sway in pixels
 #define MAX_WEAPON_SWAY_Y 6 // Maximum weapon sway in pixels. Must be >= MAX_WEAPON_SWAY_X
-u16 currWeaponSpriteX;
-u16 currWeaponSpriteY;
 
 u16 weapon_biggerAnimTileNum ()
 {
