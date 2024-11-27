@@ -104,7 +104,7 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
-	// NOTE: AT THIS POINT THE SGDK's DMA QUEUE HAS BEEN FLUSHED
+	// NOTE: AT THIS POINT WE HAVE USUALLY FLUSHED SGDK's DMA QUEUE.
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
 	// Reload the 2 palettes that were overriden by the HUD palettes

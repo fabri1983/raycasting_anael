@@ -1,0 +1,33 @@
+magick doom_title_screen_full.png -unique -depth 8 -colors 256 -crop x8 -define png:format=png8 -define histogram:unique-colors=false doom_title_screen_full_0_%d.png
+
+
+# Quantize every chunk using imagemagick tool and 2 (32 colors) palettes per chunk:
+magick doom_title_screen_full.png ^
+  -unique -depth 4 -colors 32 -crop x8 -define png:format=png8 -define histogram:unique-colors=false ^
+  -type Palette ^
+  -quantize RGB ^
+  -define colormap:colors-per-palette=16 ^
+  -define colormap:first-shared-color=true ^
+  -define quantum:palette-size=16 ^
+  -define quantum:tile-geometry=8x8 ^
+  -define quantum:palette-shared-color=true ^
+  doom_title_screen_full_0_%d.png
+
+
+# Paste every chunk in a new image:
+magick montage doom_title_screen_full_0_*.png -tile 1x -geometry +0+0 -background none doom_title_screen_full_reconstructed.png
+If you need to crop top 32 pixels height add before -tile 1x: -crop +0+32
+
+
+# Quantize full image using imagemagick tool:
+convert doom_title_screen_full.png ^
+  -unique -depth 4 ^
+  -colors 64 ^
+  -type Palette ^
+  -quantize RGB ^
+  -define colormap:colors-per-palette=16 ^
+  -define colormap:first-shared-color=true ^
+  -define quantum:palette-size=16 ^
+  -define quantum:tile-geometry=8x8 ^
+  -define quantum:palette-shared-color=true ^
+  doom_title_screen_full_RGB.png

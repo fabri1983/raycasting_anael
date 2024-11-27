@@ -4,23 +4,43 @@
 #include <types.h>
 #include <vdp.h>
 
+/**
+ *  \brief
+ *      Declare function for the hint callback (generate a RTE to return from interrupt instead of RTS)
+ */
 #ifdef __GNUC__
-#define HINTERRUPT_CALLBACK     __attribute__ ((interrupt)) void
+#define HINTERRUPT_CALLBACK __attribute__ ((interrupt)) void
 #elif defined(_MSC_VER)
-#define HINTERRUPT_CALLBACK     void
+#define HINTERRUPT_CALLBACK void
+#endif
+
+/**
+ *  \brief
+ *      To force method inlining (not sure that GCC does actually care of it)
+ */
+#ifdef __GNUC__
+#define FORCE_INLINE inline __attribute__ ((always_inline))
+#elif defined(_MSC_VER)
+#define FORCE_INLINE inline __forceinline
+#endif
+
+/**
+ *  \brief
+ *      To force no inlining for this method
+ */
+#ifdef __GNUC__
+#define NO_INLINE __attribute__ ((noinline))
+#elif defined(_MSC_VER)
+#define NO_INLINE __declspec(noinline)
 #endif
 
 #ifdef __GNUC__
-#define FORCE_INLINE            inline __attribute__ ((always_inline))
+#define VOID_OR_CHAR void
 #elif defined(_MSC_VER)
-#define FORCE_INLINE            inline __forceinline
+#define VOID_OR_CHAR char
 #endif
 
-#ifdef __GNUC__
-#define NO_INLINE               __attribute__ ((noinline))
-#elif defined(_MSC_VER)
-#define NO_INLINE               __declspec(noinline)
-#endif
+#define MEMORY_BARRIER() __asm volatile ("" : : : "memory")
 
 #define CLAMP(x, minimum, maximum) ( min(max((x),(minimum)),(maximum)) )
 
@@ -88,6 +108,9 @@ void showFPS (u16 xPos, u16 yPos);
 /// This method CAN NOT be called from V-Int callback or when V-Int is disabled.
 /// @param ms >= 100ms, otherwise use waitMs() from timer.h
 void waitMs_ (u32 ms);
+
+/// Wait for a certain amount of subticks. ONLY values < 150.
+void waitSubTick_ (u32 subtick);
 
 void unpackSelector (u16 compression, u8* src, u8* dest);
 

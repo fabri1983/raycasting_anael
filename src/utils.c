@@ -226,6 +226,23 @@ void waitMs_ (u32 ms)
     while (current < max);
 }
 
+FORCE_INLINE void waitSubTick_ (u32 subtick)
+{
+	if (subtick == 0)
+		return;
+
+    u32 tmp = subtick*7;
+    // Seems that every 7 loops it simulates a tick.
+    // TODO: use cycle accurate wait loop in asm (about 100 cycles for 1 subtick)
+    __asm volatile (
+        "1:\n\t"
+        "dbra   %0, 1b" // dbf/dbra: test if not zero, then decrement register dN and branch back (b) to label 1
+        : "+d" (tmp)
+        :
+        : "cc"
+	);
+}
+
 FORCE_INLINE void unpackSelector (u16 compression, u8* src, u8* dest)
 {
     switch (compression) {

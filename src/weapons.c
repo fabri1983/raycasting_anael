@@ -306,6 +306,11 @@ FORCE_INLINE void weapon_update ()
 
     if (fire_coolDown_timer != 0) {
         --fire_coolDown_timer;
+        if ((weaponSwayX | weaponSwayY) != 0) {
+            SPR_setPosition(spr_currWeapon, currWeaponSpriteX, currWeaponSpriteY);
+            weaponSwayX = 0;
+            weaponSwayY = 0;
+        }
     }
     // If fire_coolDown_timer == 0 it means is not in fire animation
     else {

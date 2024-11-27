@@ -100,6 +100,4 @@ void displayTeddyBearLogo ()
     PAL_setPalette(PAL1, palette_red, CPU);
     PAL_setPalette(PAL2, palette_green, CPU);
     PAL_setPalette(PAL3, palette_blue, CPU);
-
-    SYS_doVBlankProcess();
 }

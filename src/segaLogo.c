@@ -253,7 +253,7 @@ void displaySegaLogo ()
     s16 highlightBarY = -14; // starting from top
     s16 frameCtr = 0;
 
-    while (1)
+    for (;;)
     {
         const u16 joyState = JOY_readJoypad(JOY_1);
 
@@ -333,6 +333,4 @@ void displaySegaLogo ()
     PAL_setPalette(PAL1, palette_red, CPU);
     PAL_setPalette(PAL2, palette_green, CPU);
     PAL_setPalette(PAL3, palette_blue, CPU);
-
-    SYS_doVBlankProcess();
 }

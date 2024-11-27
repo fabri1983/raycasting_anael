@@ -32,15 +32,16 @@
 // * Replaced color calculation out of tab_color_d8[] by using tables in tab_color_d8_pals_shft.h => 1% saved in cpu usage.
 // * Replaced (mulu(sideDistX_l0, deltaDistX) >> FS) by a table => ~4% saved in cpu usage, though rom size increased 
 //   460 KB (+ padding to 128KB boundary).
-// * sega.s: use _VINT_lean instead of _VINT to enter vint callback as soon as possible => some cycles saved.
+// * SGDK's SPR_update() function was modified to handle DMA for specific cases, and also cut off unused features.
+//   See comments with tag fabri1983 at spr_eng_override.c => ~1% saved in cpu usage.
+// * sega.s: use _VINT_vtimer instead of SGDK's _VINT to only increment vtimer, since we are calling the vint callback manually
+// * SGDK's SYS_doVBlankProcessEx() function was modified to cut off unwanted logic. See render.c => ~1% saved in cpu usage.
+// * SGDK's JOY_update() and JOY_readJoypad(JOY_1) functions were modified to handle only 6 button joypad => 2% saved in cpu usage.
+//   at render_SYS_doVBlankProcessEx_ON_VBLANK() => some cycles saved.
 // * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage. It may vary according the 
 //   use/abuse of FORCE_INLINE.
 // * Manual unrolling of 2 (or 4) iterations for column processing => 2% saved in cpu usage. It may vary according the 
 //   use/abuse of FORCE_INLINE.
-// * SGDK's SPR_update() function was modified to handle DMA for specific cases, and also cut off unused features.
-//   See comments with tag fabri1983 at spr_eng_override.c => ~1% saved in cpu usage.
-// * SGDK's SYS_doVBlankProcessEx() function was modified to cut off unwanted logic. See render.c => ~1% saved in cpu usage.
-// * SGDK's JOY_update() and JOY_readJoypad(JOY_1) functions were modified to handle only 6 button joypad => 2% saved in cpu usage.
 
 // fabri1983's resources notes:
 // ----------------------------
@@ -72,6 +73,9 @@
 #include "segaLogo.h"
 #include "teddyBearLogo.h"
 #endif
+#if DISPLAY_TITLE_SCREEN
+#include "title.h"
+#endif
 
 // the code is optimised further using GCC's automatic unrolling, but might not be true if too much inlining is used (or whatever reason).
 #pragma GCC push_options
@@ -92,6 +96,10 @@ int main (bool hardReset)
     waitMs_(200);
     displayTeddyBearLogo();
     waitMs_(200);
+    #endif
+
+    #if DISPLAY_TITLE_SCREEN
+    title_show();
     #endif
 
     // Restart DMA with this settings
@@ -141,7 +149,7 @@ int main (bool hardReset)
 	SYS_disableInts();
 	{
         // It has no effect because we are manually calling it on render_SYS_doVBlankProcessEx_ON_VBLANK() at render.c.
-        // We leave it in case we start using SGDK's SYS_doVBlankProcessEx().
+        // We leave it in case we decide start using SGDK's SYS_doVBlankProcessEx().
 		SYS_setVBlankCallback(vint_callback);
 
         #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE

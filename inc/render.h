@@ -17,7 +17,7 @@ void render_loadPlaneDisplacements ();
 // It assumes palettes grey and red are already loaded, then it loads the chunks for green and blue palettes.
 void render_loadWallPalettes ();
 
-// Custom SYS_doVBlankProcessEx() impl only for VBlankProcessTime ON_VBLANK.
+// Custom SYS_doVBlankProcessEx() impl only for VBlankProcessTime ON_VBLANK, in conjunction with a faster _VINT_doom in sega.s.
 // Please compare it with original SYS_doVBlankProcessEx() at vdp.c to see what has been removed.
 void render_SYS_doVBlankProcessEx_ON_VBLANK ();
 

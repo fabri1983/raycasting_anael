@@ -13,7 +13,6 @@
 #include "vint_callback.h"
 
 extern VoidCallback *vblankCB;
-extern void flushQueue(u16 num);
 #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
 extern bool addFrameLoad(u16 frameLoad, u32 vtime);
 extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
@@ -90,24 +89,6 @@ void render_loadWallPalettes ()
     PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, CPU);
 }
 
-/// Wait for a certain amount of subtick. ONLY values < 150.
-static FORCE_INLINE void waitSubTick_ (u32 subtick)
-{
-	if (subtick == 0)
-		return;
-
-    u32 tmp = subtick*7;
-    // Seems that every 7 loops it simulates a tick.
-    // TODO: use cycle accurate wait loop in asm (about 100 cycles for 1 subtick)
-    __asm volatile (
-        "1:\n\t"
-        "dbra   %0, 1b" // dbf/dbra: test if not zero, then decrement register dN and branch back (b) to label 1
-        : "+d" (tmp)
-        :
-        : "cc"
-	);
-}
-
 /// @brief See original Z80_setBusProtection() method.
 /// NOTE: This implementation doesn't disable interrupts because at the moment it's called no interrupt is expected to occur.
 /// NOTE: This implementation assumes the Z80 bus was not already requested, and requests it immediatelly.
@@ -121,6 +102,8 @@ static FORCE_INLINE void render_Z80_setBusProtection (bool value)
 	Z80_releaseBus();
 }
 
+extern DMAOpInfo *dmaQueues;
+
 /// @brief This implementation differs from DMA_flushQueue() in which:
 /// - it doesn't check if transfer size exceeds capacity because we know before hand the max capacity.
 /// - it assumes Z80 bus wasn't requested and hence request it.
@@ -130,15 +113,52 @@ static FORCE_INLINE void render_DMA_flushQueue ()
 	if (DMA_getQueueTransferSize() > DMA_getMaxTransferSize())
 		KLog("[VIDEOPLAYER] WARNING: DMA transfer size limit raised. Modify the capacity in your DMA_initEx() call.");
 	#endif
+
     // u8 autoInc = VDP_getAutoInc(); // save autoInc
 	// Z80_requestBus(FALSE);
-	flushQueue(DMA_getQueueSize());
-	// Z80_releaseBus();
+
+	// flush queue we know is never empty
+    u16 queueIndex = DMA_getQueueSize();
+    vu16* pw = (u16*) VDP_CTRL_PORT;
+    __asm volatile (
+        "subq.w  #1,%2\n\t"       // prepare for dbra
+        ".fq_loop_%=:\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.w  (%0)+,(%1)\n\t"
+        "move.w  (%0)+,(%1)\n\t"  // Stef: important to use word write for command triggering DMA (see SEGA notes)
+        "dbra    %2,.fq_loop_%=\n\t"
+        :
+        : "a" (dmaQueues), "a" (pw), "d" (queueIndex)
+        : "cc"
+    );
+
+    // Z80_releaseBus();
     DMA_clearQueue();
     // VDP_setAutoInc(autoInc); // restore autoInc
 }
 
-void render_SYS_doVBlankProcessEx_ON_VBLANK ()
+static FORCE_INLINE void render_waitVInt ()
+{
+    // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is the first byte of vtimer
+    const u8* vtimerPtr = (u8*)&vtimer + 3;
+    // Loops while vtimer keeps unchanged. Exits loop when it changes, meaning we are in VBlank.
+    u8 currVal;
+	__asm volatile (
+        "move.b  (%1), %0\n\t"
+        "1:\n\t"
+        "cmp.b   (%1), %0\n\t" // cmp: %0 - (%1) => dN - (aN)
+        "beq.s   1b"           // loop back if equal
+        : "=d" (currVal)
+        : "a" (vtimerPtr)
+        : "cc"
+    );
+
+    // AT THIS POINT THE _VINT_vtimer INTERRUPT CALLBACK HAS BEEN CALLED. vtimer has been incremented by 1. Check sega.s.
+}
+
+FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 {
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     // For frame CPU load calculation
@@ -149,23 +169,15 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     const u16 blank = *pw & VDP_VBLANK_FLAG;
     #endif
 
-    // casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is the first byte of vtimer
-	u8* vtimerPtr = (u8*)&vtimer + 3;
-	__asm volatile (
-        "1:\n\t"
-        "cmp.b   (%1), %0\n\t" // cmp: %0 - (%1) => dN - (aN)
-        "beq.s   1b"           // loop back if equal
-        :
-        : "d" (*vtimerPtr), "a" (vtimerPtr)
-        : "cc"
-    );
+    // Wait until vint is triggered which increments vtimer
+    render_waitVInt();
+
+    turnOffVDP(0x74);
 
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     // update CPU frame load
     addFrameLoad(getAdjustedVCounterInternal(blank, vcnt), t);
     #endif
-
-    turnOffVDP(0x74);
 
 	render_Z80_setBusProtection(TRUE);
 	waitSubTick_(0); // Z80 delay --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)

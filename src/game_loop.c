@@ -181,12 +181,20 @@ void game_loop () {
         spr_eng_update();
 
         // DMA frame_buffer Plane A portion
-        #if DMA_FRAMEBUFFER_FIRST_QUARTER
+        #if DMA_FRAMEBUFFER_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
+        // Send first 1/8 of frame_buffer Plane A
+        DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        // Remaining 6/8 of the frame_buffer Plane A
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
+            ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        #elif DMA_FRAMEBUFFER_FIRST_QUARTER_ON_HINT
         // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #elif DMA_FRAMEBUFFER_FIRST_HALF
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, 
+            ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        #elif DMA_FRAMEBUFFER_FIRST_HALF_ON_HINT
         // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
+            (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #else
         // All the frame_buffer Plane A
         DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);

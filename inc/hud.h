@@ -6,7 +6,7 @@
 
 #define HUD_HINT_SCANLINE_START_PAL_SWAP (224-32)
 #define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT FALSE // If TRUE then reload happens at HInt, otherwise at VInt.
-#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT TRUE
+#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT TRUE // If TRUE then it will change from floor to roof background color at HInt. If FALSE then we use single bg color.
 #define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95 // Only meaningful if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT is set to TRUE
 #define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE FALSE // This is not implemented yet!
 
@@ -15,7 +15,7 @@
 // This value is the parameter map_base that has to go in the resource file if you modify one of the above. Currently is 16456.
 #define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_PAL, 1, FALSE, FALSE, HUD_VRAM_START_INDEX)
 
-#define HUD_TILEMAP_COMPRESSED TRUE // If TRUE then we decompress it into a buffer. Otherwise we use the data from ROM which saves some RAM.
+#define HUD_TILEMAP_COMPRESSED TRUE // If TRUE then we decompress it into a buffer. Otherwise we use the uncompressed data from ROM.
 
 #define HUD_XP 0
 #define HUD_YP (PLANE_COLUMNS == 64 ? 24 : 12)
