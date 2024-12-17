@@ -31,7 +31,7 @@ u16 render_loadTiles ()
 
 	// Remaining 8 possible tile heights, distributed in 8 sets
 
-    // fabri1983: we add 8 tiles more so we can use the other half of the palette.
+    // fabri1983: we'll add 8 more tiles so we can use the other half of the palette.
     // First pass loads 8 tiles with colors 0..7.
     // Second pass loads 8 tiles with colors 0 and 8..14
     for (u8 pass=0; pass < 2; ++pass) {
@@ -41,21 +41,24 @@ u16 render_loadTiles ()
             memset(tile, 0, 32); // clear the tile with color index 0
             // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors
             for (u16 c = 0; c < 8; c++) {
-                // visit the heigh of each tile in current set
+                // Visit the heigh of each tile in current set
                 for (u16 h = t-1; h < 8; h++) {
-                    // visit the columns of current row. 1 byte holds 2 colors as per Tile definition,
+                    // Visit the columns of current row. 1 byte holds 2 colors as per Tile definition (4 bits per color),
                     // so lower byte is color c and higher byte is color c+1, letting the RCA video signal do the blending.
+                    // We only fill most left 4 pixels of the tile, leaving the other 4 pixels with color 0. 
                     for (u16 b = 0; b < 2; b++) {
                         u8 colorLow = c;
                         if (pass == 1)
                             colorLow = c == 0 ? 0 : c+7;
 
                         u8 colorHigh = (c+1) == 8 ? c : c+1;
-                        // we clamp to color 7 since starting at SGDK's palette 8th color they repeat
+                        // We clamp to color 7 since starting at SGDK's palette 8th color they repeat
                         if (pass == 1)
                             colorHigh += 7;
 
                         u8 color = colorLow | (colorHigh << 4);
+                        // This sets 2 pixels (remember color holds 2 color pixels) at [4*h] and [4*h + 1] 
+                        // meaning we are leaving next 4 pixels at [4*h + 2] and [4*h + 2] as it is (currently 0)
                         tile[4*h + b] = color;
                     }
                 }
@@ -109,15 +112,30 @@ extern DMAOpInfo *dmaQueues;
 /// - it assumes Z80 bus wasn't requested and hence request it.
 static FORCE_INLINE void render_DMA_flushQueue ()
 {
-	#ifdef DEBUG_VIDEO_PLAYER
-	if (DMA_getQueueTransferSize() > DMA_getMaxTransferSize())
-		KLog("[VIDEOPLAYER] WARNING: DMA transfer size limit raised. Modify the capacity in your DMA_initEx() call.");
-	#endif
-
     // u8 autoInc = VDP_getAutoInc(); // save autoInc
 	// Z80_requestBus(FALSE);
 
-	// flush queue we know is never empty
+	// Flush queue. We know is never empty because the framebuffer is always DMAed in 2 chunks.
+    #if RENDER_FRAMEBUFER_DMA_QUEUE_SIZE_ALWAYS_2
+    vu16* pw = (u16*) VDP_CTRL_PORT;
+    __asm volatile (
+        // first queue element
+        "move.l  (%0)+,(%1)\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.w  (%0)+,(%1)\n\t"
+        "move.w  (%0)+,(%1)\n\t"  // Stef: important to use word write for command triggering DMA (see SEGA notes)
+        // second queue element
+        "move.l  (%0)+,(%1)\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.l  (%0)+,(%1)\n\t"
+        "move.w  (%0)+,(%1)\n\t"
+        "move.w  (%0)+,(%1)\n\t"  // Stef: important to use word write for command triggering DMA (see SEGA notes)
+        :
+        : "a" (dmaQueues), "a" (pw)
+        : "cc"
+    );
+    #else
     u16 queueIndex = DMA_getQueueSize();
     vu16* pw = (u16*) VDP_CTRL_PORT;
     __asm volatile (
@@ -133,6 +151,7 @@ static FORCE_INLINE void render_DMA_flushQueue ()
         : "a" (dmaQueues), "a" (pw), "d" (queueIndex)
         : "cc"
     );
+    #endif
 
     // Z80_releaseBus();
     DMA_clearQueue();

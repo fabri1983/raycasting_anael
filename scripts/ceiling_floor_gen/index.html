@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ceiling and Floor Textures</title>
+    <style>
+        div {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            background-color: #cacaca;
+        }
+        canvas {
+            border: 0px;
+            /*width: 320px;*/ /* Set by javascript */
+            /*height: 224px;*/ /* Set by javascript */
+        }
+
+        /* Control aliasing in the canvas. See also script.js for the context setup. */
+
+        /* Unset */
+        .unset {
+            image-rendering: unset;
+        }
+        /* Smoothing enabled (default) */
+        .smooth {
+            image-rendering: auto;
+        }
+
+        /* Disable smoothing (for pixel art or retro style) */
+        .pixelated {
+            image-rendering: pixelated;
+        }
+
+        /* Crisp edges (for low-res textures) */
+        .crisp {
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body>
+    <h3 style="display:block; clear:both;">run with: node server.js</h3>
+	<br/>
+	<div>
+		<canvas id="gameCanvas" class="smooth"></canvas>
+		<script src="script_context2d.js"></script>
+		<!--script src="script_webgl2.js"></script-->
+	</div>
+</body>
+</html>

@@ -17,11 +17,11 @@ if (joy & (BUTTON_LEFT | BUTTON_RIGHT)) {
 }
 
 Then used as next:
-    s16 dx = dirX / 24;
-    s16 dy = dirY / 24;
+    s16 dx = dirX / ANGLE_DIR_NORMALIZATION;
+    s16 dy = dirY / ANGLE_DIR_NORMALIZATION;
 */
 
-// dirX by angle divided by 24
+// dirX divided by ANGLE_DIR_NORMALIZATION
 const s16 tab_dir_x_div24[1017] = {
     0/ANGLE_DIR_NORMALIZATION,  0,0,0,0,0,0,0,
     12/ANGLE_DIR_NORMALIZATION,  0,0,0,0,0,0,0,
@@ -153,7 +153,7 @@ const s16 tab_dir_x_div24[1017] = {
     -12/ANGLE_DIR_NORMALIZATION
 };
 
-// dirY by angle divided by 24
+// dirY divided by ANGLE_DIR_NORMALIZATION
 const s16 tab_dir_y_div24[1017] = {
     256/ANGLE_DIR_NORMALIZATION,  0,0,0,0,0,0,0,
     252/ANGLE_DIR_NORMALIZATION,  0,0,0,0,0,0,0,

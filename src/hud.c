@@ -512,28 +512,33 @@ FORCE_INLINE void hud_update ()
 {
     updateFaceExpressionTimer();
 
-    if (updateFlags & (1 << UPDATE_FLAG_AMMO))
-        setHUDAmmo();
-    if (updateFlags & (1 << UPDATE_FLAG_HEALTH))
-        setHUDHealth();
-    if (updateFlags & (1 << UPDATE_FLAG_WEAPON))
-        setHUDWeapons();
-    if (updateFlags & (1 << UPDATE_FLAG_ARMOR))
-        setHUDArmor();
-    if (updateFlags & (1 << UPDATE_FLAG_KEY))
-        setHUDKeys();
-    if (updateFlags & (1 << UPDATE_FLAG_FACE))
-        setHUDFace();
-
     if (updateFlags) {
+        if (updateFlags & (1 << UPDATE_FLAG_AMMO))
+            setHUDAmmo();
+        if (updateFlags & (1 << UPDATE_FLAG_HEALTH))
+            setHUDHealth();
+        if (updateFlags & (1 << UPDATE_FLAG_WEAPON))
+            setHUDWeapons();
+        if (updateFlags & (1 << UPDATE_FLAG_ARMOR))
+            setHUDArmor();
+        if (updateFlags & (1 << UPDATE_FLAG_KEY))
+            setHUDKeys();
+        if (updateFlags & (1 << UPDATE_FLAG_FACE))
+            setHUDFace();
+    
         updateFlags = 0;
         #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
         hint_enqueueHudTilemap();
         #elif DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
         vint_enqueueHudTilemap();
+        #elif DMA_ENQUEUE_HUD_TILEMPS
+        // PW_ADDR comes with the correct base position in screen
+        // enqueue in sprite's queue
+        render_hud_queueDmaFast(hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS));
+        //DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #else
         // PW_ADDR comes with the correct base position in screen
-        DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #endif
     }
 }

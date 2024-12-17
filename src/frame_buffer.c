@@ -222,12 +222,12 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 
 	// Draw a solid vertical line
 	if (h2 == 0) {
-		// C version.
+		// C version
 		//for (u16 y = 0; y < VERTICAL_ROWS*PLANE_COLUMNS; y+=PLANE_COLUMNS) {
 		// 	column_ptr[y] = tileAttrib;
 		//}
 
-		// Inline ASM version.
+		// Inline ASM version
 		__asm volatile (
 			".set off,0\n"
 			".rept %c[_VERTICAL_ROWS]\n"

@@ -28,9 +28,10 @@
 // * Replaced DMA_doDmaFast() by DMA_queueDmaFast() => 1% saved in cpu usage but consumes all VBlank period and runs 
 //   into next display period.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
-// * Replaced variable d used for color calculation by two tables defined in tab_color_d8.h => 2% saved in cpu usage.
-// * Replaced color calculation out of tab_color_d8[] by using tables in tab_color_d8_pals_shft.h => 1% saved in cpu usage.
-// * Replaced (mulu(sideDistX_l0, deltaDistX) >> FS) by a table => ~4% saved in cpu usage, though rom size increased 
+// * Replaced variable d used for color calculation by two tables defined in tab_color_d8_1.h => 2% saved in cpu usage.
+//   There is also a replacement for tab_color_d8_1[] by using tables in tab_color_d8_pals_shft.h, but as access to array is for u16 
+//   values this is indeed a little slower than just using previous table.
+// * Replaced mulu(sideDistX_l0, deltaDistX) >> FS by a table => ~4% saved in cpu usage, though rom size increased 
 //   460 KB (+ padding to 128KB boundary).
 // * SGDK's SPR_update() function was modified to handle DMA for specific cases, and also cut off unused features.
 //   See comments with tag fabri1983 at spr_eng_override.c => ~1% saved in cpu usage.
@@ -100,6 +101,7 @@ int main (bool hardReset)
 
     #if DISPLAY_TITLE_SCREEN
     title_show();
+    VDP_resetScreen();
     #endif
 
     // Restart DMA with this settings

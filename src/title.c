@@ -293,7 +293,5 @@ void title_show ()
 
     SYS_enableInts();
 
-    VDP_resetScreen();
-
     freePalettes();
 }

@@ -121,7 +121,7 @@ void vint_callback ()
 	// clear the frame buffer
 	#if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
 	//clear_buffer_sp(frame_buffer);
-	#else
+	#elif RENDER_CLEAR_FRAMEBUFFER
 	//clear_buffer(frame_buffer);
 	#endif
 

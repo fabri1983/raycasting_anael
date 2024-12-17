@@ -5,30 +5,39 @@
 #define DISPLAY_TITLE_SCREEN FALSE
 
 #define RENDER_SHOW_TEXCOORD FALSE // Show texture coords?
+
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
-#define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED TRUE
+#define RENDER_CLEAR_FRAMEBUFFER FALSE
+
+#define RENDER_FRAMEBUFER_DMA_QUEUE_SIZE_ALWAYS_2 TRUE
+
+#define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED FALSE
 #define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
 #define RENDER_USE_MAP_HIT_COMPRESSED FALSE
 #define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
 #define RENDER_ENABLE_FRAME_LOAD_CALCULATION TRUE
 
-#define DMA_FRAMEBUFFER_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT FALSE
-#define DMA_FRAMEBUFFER_FIRST_QUARTER_ON_HINT FALSE
-#define DMA_FRAMEBUFFER_FIRST_HALF_ON_HINT TRUE
+#define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT FALSE
+#define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT FALSE
+#define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT FALSE
+
 #define DMA_ALLOW_BUFFERED_TILES FALSE // Set to TRUE if you have compressed sprites, otherwise FALSE.
 #define DMA_MAX_QUEUE_CAPACITY 8 // How many objects we can hold without crashing the system due to array out of bound access.
-#define DMA_TILES_THRESHOLD_FOR_HINT 384 // when this number of tiles is exceeded they pass to VInt queue.
+#define DMA_TILES_THRESHOLD_FOR_HINT 384 // when this number of tiles is exceeded we move tiles to VInt queue.
 #define DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT ((DMA_TILES_THRESHOLD_FOR_HINT * 32) / 2)
+
 #define DMA_ENQUEUE_HUD_TILEMPS_IN_HINT TRUE
 #define DMA_ENQUEUE_HUD_TILEMPS_IN_VINT FALSE
+#define DMA_ENQUEUE_HUD_TILEMPS FALSE
+
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT TRUE
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT FALSE
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision
 #define AP 128 // Angle Precision (optimal for a rotation step of 8 : 1024/8 = 128)
-#define STEP_COUNT 15 // View distance depth. (STEP_COUNT+1 should be a power of two)
-#define STEP_COUNT_LOOP STEP_COUNT // If lower than STEP_COUNT then far distant attempts are ignored => less cpu usage but less view depth
+#define STEP_COUNT 15 // View distance depth. STEP_COUNT+1 should be a power of two.
+#define STEP_COUNT_LOOP 15 // 15 or 7.
 
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24

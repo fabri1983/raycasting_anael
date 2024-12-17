@@ -23,7 +23,7 @@ ONLY the value 1 + d*8 is stored in tab_color_d8_1[].
 */
 
 // Table body generated with script tab_color_d8_1_generator.js. Check correct values of constants before script execution.
-const u16 tab_color_d8_1[FP * (STEP_COUNT + 1)] = {
+const u8 tab_color_d8_1[FP * (STEP_COUNT + 1)] = {
 57,57,57,57,57,57,57,57,
 57,57,57,57,57,57,57,57,
 57,57,57,57,57,57,57,57,

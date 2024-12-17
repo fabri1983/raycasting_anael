@@ -40,7 +40,9 @@ static void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u32 sideDistX_
 static void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
 #endif
 static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY);
-static void do_stepping_hit_map (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY);
+#if USE_MAP_HIT_COMPRESSED
+static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY);
+#endif
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
@@ -64,7 +66,7 @@ void game_loop () {
 		// clear the frame buffer
         #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
 		clear_buffer_sp(frame_buffer);
-        #else
+        #elif RENDER_CLEAR_FRAMEBUFFER
         clear_buffer(frame_buffer);
         #endif
 
@@ -87,28 +89,35 @@ void game_loop () {
             // Direction amount and sign depending on angle
             s16 dx=0, dy=0;
 
+            // Simple forward/backward movement
+            if (joyState & BUTTON_UP) {
+                dx = tab_dir_x_div24[angle];
+                dy = tab_dir_y_div24[angle];
+            }
+            else if (joyState & BUTTON_DOWN) {
+                dx = -tab_dir_x_div24[angle];
+                dy = -tab_dir_y_div24[angle];
+            }
+
             // Strafe movement is perpendicular to facing direction
             if (joyState & BUTTON_B) {
                 // Strafe left
                 if (joyState & BUTTON_LEFT) {
-                    dx = tab_dir_y_div24[angle];
-                    dy = -tab_dir_x_div24[angle];
+                    dx += tab_dir_y_div24[angle];
+                    dy -= tab_dir_x_div24[angle];
                 }
                 // Strafe Right
                 else if (joyState & BUTTON_RIGHT) {
-                    dx = -tab_dir_y_div24[angle];
-                    dy = tab_dir_x_div24[angle];
+                    dx -= tab_dir_y_div24[angle];
+                    dy += tab_dir_x_div24[angle];
                 }
             }
-
-            // Simple forward/backward movement
-            if (joyState & BUTTON_UP) {
-                dx += tab_dir_x_div24[angle];
-                dy += tab_dir_y_div24[angle];
-            }
-            else if (joyState & BUTTON_DOWN) {
-                dx -= tab_dir_x_div24[angle];
-                dy -= tab_dir_y_div24[angle];
+            // Rotation (only when not strafing)
+            else {
+                if (joyState & BUTTON_LEFT)
+                    angle = (angle + (1024/AP)) & 1023;
+                else if (joyState & BUTTON_RIGHT)
+                    angle = (angle - (1024/AP)) & 1023;
             }
 
             // Current location (normalized) before displacement
@@ -155,14 +164,6 @@ void game_loop () {
                     posY = max(posY, y*FP + MAP_FRACTION);
             }
 
-            // Rotation (only when not strafing)
-            if (!(joyState & BUTTON_B)) {
-                if (joyState & BUTTON_LEFT)
-                    angle = (angle + (1024/AP)) & 1023;
-                else if (joyState & BUTTON_RIGHT)
-                    angle = (angle - (1024/AP)) & 1023;
-            }
-
             u16 a = angle / (1024/AP); // a range is [0, 128)
             delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
 
@@ -173,25 +174,23 @@ void game_loop () {
 
         weapon_update();
         hud_update();
+        spr_eng_update();
 
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, delta_a_ptr);
 
-        //SPR_update(); // must be called before the DMA enqueue of the framebuffer
-        spr_eng_update();
-
         // DMA frame_buffer Plane A portion
-        #if DMA_FRAMEBUFFER_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
+        #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
         // Send first 1/8 of frame_buffer Plane A
         DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         // Remaining 6/8 of the frame_buffer Plane A
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
             ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #elif DMA_FRAMEBUFFER_FIRST_QUARTER_ON_HINT
+        #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
         // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, 
             ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #elif DMA_FRAMEBUFFER_FIRST_HALF_ON_HINT
+        #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
         // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
             (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -217,7 +216,6 @@ void game_loop_auto ()
 {
     weapon_update();
     hud_update();
-    //SPR_update(); // must be called before the DMA enqueue of the framebuffer
     spr_eng_update();
 
     // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
@@ -283,7 +281,7 @@ void game_loop_auto ()
                 // clear the frame buffer
                 #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
                 clear_buffer_sp(frame_buffer);
-                #else
+                #elif RENDER_CLEAR_FRAMEBUFFER
                 clear_buffer(frame_buffer);
                 #endif
 
@@ -294,12 +292,20 @@ void game_loop_auto ()
                 dda(posX, posY, delta_a_ptr);
 
                 // DMA frame_buffer Plane A portion
-                #if DMA_FRAMEBUFFER_FIRST_QUARTER
+                #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
+                // Send first 1/8 of frame_buffer Plane A
+                DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                // Remaining 6/8 of the frame_buffer Plane A
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
+                    ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
                 // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                #elif DMA_FRAMEBUFFER_FIRST_HALF
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, 
+                    ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
                 // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
+                    (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
                 #else
                 // All the frame_buffer Plane A
                 DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -321,9 +327,10 @@ void game_loop_auto ()
     }
 }
 
-/**
- * Digital Differential Analyzer
- */
+/// @brief Digital Differential Analyzer algorithm
+/// @param posX 
+/// @param posY 
+/// @param delta_a_ptr tab_deltas at the current viewing angle
 static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
 
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
@@ -445,7 +452,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 	}
 
     #if RENDER_USE_MAP_HIT_COMPRESSED
-    do_stepping_hit_map(posX, posY, sideDistX, sideDistY, rayDirAngleX, rayDirAngleY);
+    hit_map_do_stepping(posX, posY, sideDistX, sideDistY, rayDirAngleX, rayDirAngleY);
     #else
     do_stepping(posX, posY, deltaDistX, deltaDistY, sideDistX, sideDistY, stepX, stepY, stepYMS, rayDirAngleX, rayDirAngleY);
     #endif
@@ -455,7 +462,7 @@ static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 de
 {
     u16 mapX = posX / FP;
 	u16 mapY = posY / FP;
-	const u8 *map_ptr = &map[mapY][mapX];
+	const u8* map_ptr = &map[mapY][mapX];
 
 	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
 
@@ -484,7 +491,8 @@ static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 de
 	}
 }
 
-static FORCE_INLINE void do_stepping_hit_map (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
+#if USE_MAP_HIT_COMPRESSED
+static FORCE_INLINE void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     u16 hit_value = map_hit_decompressAt();
     // if (hit_value == 0)
@@ -505,24 +513,25 @@ static FORCE_INLINE void do_stepping_hit_map (u16 posX, u16 posY, u16 sideDistX,
         hitOnSideY(hit_sideDistXY, hit_mapXY, posX, rayDirAngleX);
     }
 }
+#endif
 
 static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 {
-    u16 h2 = tab_wall_div[sideDistX];
+    u16 h2 = tab_wall_div[sideDistX]; // height halved
 
     #if RENDER_SHOW_TEXCOORD
     u16 d = (7 - min(7, sideDistX / FP));
-    u16 wallY = posY + (muls(sideDistX, rayDirAngleY) >> FS);
-    //wallY = ((wallY * 8) >> FS) & 7; // faster? But is actually slower given the context
+    u16 wallY = posY + (mulu(sideDistX, rayDirAngleY) >> FS);
+    //wallY = ((wallY * 8) >> FS) & 7; // Faster? But is actually slower given the context
     wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
-    u16 tileAttrib = ((0 + 2*(mapY&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8;
+    u16 tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8 + (mapY&1)*(8*8);
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
     u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
     #else
-    u16 d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
+    u8 d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
     u16 tileAttrib;
-    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
-    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1;
+    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
+    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
     #endif
 
     write_vline(h2, tileAttrib);
@@ -530,21 +539,21 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
 
 static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
-    u16 h2 = tab_wall_div[sideDistY];
+    u16 h2 = tab_wall_div[sideDistY]; // height halved
 
     #if RENDER_SHOW_TEXCOORD
     u16 d = (7 - min(7, sideDistY / FP));
-    u16 wallX = posX + (muls(sideDistY, rayDirAngleX) >> FS);
-    //wallX = ((wallX * 8) >> FS) & 7; // faster? But is actually slower given the context
+    u16 wallX = posX + (mulu(sideDistY, rayDirAngleX) >> FS);
+    //wallX = ((wallX * 8) >> FS) & 7; // Faster? But is actually slower given the context
     wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
-    u16 tileAttrib = ((1 + 2*(mapX&1)) << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
+    u16 tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8 + (mapX&1)*(8*8);
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
     u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
     #else
-    u16 d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
+    u8 d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
     u16 tileAttrib;
-    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
-    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
+    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
+    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) | d8_1;
     #endif
 
     write_vline(h2, tileAttrib);
