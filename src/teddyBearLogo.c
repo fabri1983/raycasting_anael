@@ -95,9 +95,11 @@ void displayTeddyBearLogo ()
 
     // restore planes
     VDP_clearPlane(BG_A, TRUE);
+    // restore SGDK's default palete for text
+    VDP_setTextPalette(PAL0);
     // restore SGDK's default palettes
-    PAL_setPalette(PAL0, palette_grey, CPU);
-    PAL_setPalette(PAL1, palette_red, CPU);
-    PAL_setPalette(PAL2, palette_green, CPU);
-    PAL_setPalette(PAL3, palette_blue, CPU);
+    PAL_setPalette(PAL0, palette_grey, DMA);
+    PAL_setPalette(PAL1, palette_red, DMA);
+    PAL_setPalette(PAL2, palette_green, DMA);
+    PAL_setPalette(PAL3, palette_blue, DMA);
 }

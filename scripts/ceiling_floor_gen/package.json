@@ -1,0 +1,17 @@
+{
+  "name": "ceiling_floor_gen",
+  "version": "1.0.0",
+  "description": "Ceiling And Floor texture perspective generator",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo Hello ceiling_floor_gen",
+    "start": "node server.js",
+    "stop": "node server.stop.js"
+  },
+  "author": "https://github.com/fabri1983",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2"
+  }
+}

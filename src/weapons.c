@@ -128,7 +128,6 @@ void weapon_select (u8 weaponId)
         case WEAPON_ROCKET: break;
         case WEAPON_PLASMA: break;
         case WEAPON_BFG: break;
-        default: break;
     }
 }
 
@@ -141,6 +140,7 @@ static FORCE_INLINE void stopFireAnimation ()
 
 FORCE_INLINE void weapon_next (u8 sign)
 {
+    // allow select other weapon after a certain period of time
     if (select_coolDown_timer != 0)
         return;
 
@@ -188,7 +188,6 @@ void weapon_addAmmo (u8 weaponId, u16 amnt)
             if ((currAmmo + amnt) > WEAPON_BFG_MAX_AMMO)
                 amnt = WEAPON_BFG_MAX_AMMO - currAmmo;
             break;
-        default: return;
     }
 
     ammoInventory[weaponId] = currAmmo + amnt;

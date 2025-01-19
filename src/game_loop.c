@@ -54,7 +54,7 @@ void game_loop () {
 	u16 posX = 2*FP, posY = 2*FP;
 
 	// angle max value is 1023 and is updated in (1024/AP) units.
-	// 0 points down in the map[], 256 points right, 512 points up, 768 points left.
+	// 0 points down in the map[], 256 points right, 512 points up, 768 points left, 1024 = 0.
 	u16 angle = 0; 
     u16* delta_a_ptr = (u16*)tab_deltas;
 
@@ -65,10 +65,15 @@ void game_loop () {
 	{
 		// clear the frame buffer
         #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-		clear_buffer_sp(frame_buffer);
+		clear_buffer_sp();
         #elif RENDER_CLEAR_FRAMEBUFFER
-        clear_buffer(frame_buffer);
+        clear_buffer();
         #endif
+
+        // ceiling_copy_tilemap(BG_B, angle);
+        // floor_copy_tilemap(BG_B, angle);
+        // ceiling_dma_tileset(angle);
+        // floor_dma_tileset(angle);
 
 		//u16 joyState = JOY_readJoypad(JOY_1);
         u16 joyState = joy_readJoypad_joy1();
@@ -122,7 +127,7 @@ void game_loop () {
 
             // Current location (normalized) before displacement
             u16 x = posX / FP; // x > 0 always because min pos x is bigger than FP
-            u16 y = posY / FP; // y > 0 always because min pos x is bigger than FP
+            u16 y = posY / FP; // y > 0 always because min pos y is bigger than FP
 
             // Limit y axis location (normalized)
             const u16 ytop = (posY - (MAP_FRACTION-1)) / FP;
@@ -280,9 +285,9 @@ void game_loop_auto ()
 
                 // clear the frame buffer
                 #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-                clear_buffer_sp(frame_buffer);
+                clear_buffer_sp();
                 #elif RENDER_CLEAR_FRAMEBUFFER
-                clear_buffer(frame_buffer);
+                clear_buffer();
                 #endif
 
                 u16 a = angle / (1024/AP); // a range is [0, 128)
@@ -405,8 +410,8 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 {
 	const u16 deltaDistX = *(delta_a_ptr + 0); // value from 182 up to 65535, but only 915 different values
 	const u16 deltaDistY = *(delta_a_ptr + 1); // value from 182 up to 65535, but only 915 different values
-	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2); // value from 0 up to 65535, but only 717 signed different values in [-360, 360]
-	const s16 rayDirAngleY = (s16) *(delta_a_ptr + 3); // value from 0 up to 65535, but only 717 signed different values in [-360, 360]
+	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2); // value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
+	const s16 rayDirAngleY = (s16) *(delta_a_ptr + 3); // value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     const u16 deltaDistX_perf_hash = *(delta_a_ptr + 4); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
 	const u16 deltaDistY_perf_hash = *(delta_a_ptr + 5); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access

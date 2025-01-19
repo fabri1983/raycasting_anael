@@ -139,7 +139,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	if (GET_VCOUNTER <= HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
 		// set background color used for the floor
-		waitHCounter_DMA(156);
+		waitHCounter_opt2(156);
         const u16 addr = 0 * 2; // CRAM index 0
         *((vu32*) VDP_CTRL_PORT) = VDP_WRITE_CRAM_ADDR((u32)addr);
         *((vu16*) VDP_DATA_PORT) = 0x0444; //palette_grey[2]; // floor color
@@ -151,7 +151,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     u32 palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
 
 	// We are one scanline earlier so wait until entering the HBlank region
-	waitHCounter_DMA(152);
+	waitHCounter_opt2(152);
 
     //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalA_addrForDMA);
@@ -159,7 +159,7 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     // At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter_DMA(152);
+    waitHCounter_opt2(152);
 
     //turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
@@ -173,7 +173,7 @@ HINTERRUPT_CALLBACK hint_callback ()
 
 	// At this moment we are at the middle/end of the scanline due to the previous DMA setup.
     // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
-    waitHCounter_DMA(152);
+    waitHCounter_opt2(152);
 
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
@@ -181,7 +181,7 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	// set background color used for the roof
-	waitHCounter_DMA(156);
+	waitHCounter_opt2(156);
 	u32 addr = 0 * 2; // color index 0
     *((vu32*) VDP_CTRL_PORT) = VDP_WRITE_CRAM_ADDR(addr);
     *((vu16*) VDP_DATA_PORT) = 0x0222; //palette_grey[1]; // roof color
@@ -229,17 +229,17 @@ HINTERRUPT_CALLBACK hint_callback ()
     /*if (weaponPalA_addrForDMA) {
 
         u32 palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-        waitHCounter_DMA(152);
+        waitHCounter_opt2(152);
         setupDMAForPals(15, weaponPalA_addrForDMA);
-        waitHCounter_DMA(152);
+        waitHCounter_opt2(152);
         turnOffVDP(0x74);
         *((vu32*) VDP_CTRL_PORT) = palCmd_weapon; // trigger DMA transfer
         turnOnVDP(0x74);
 
         // palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-        // waitHCounter_DMA(152);
+        // waitHCounter_opt2(152);
         // setupDMAForPals(15, weaponPalB_addrForDMA);
-        // waitHCounter_DMA(152);
+        // waitHCounter_opt2(152);
         // turnOffVDP(0x74);
         // *((vu32*) VDP_CTRL_PORT) = palCmd_weapon; // trigger DMA transfer
         // turnOnVDP(0x74);
@@ -262,7 +262,7 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     // USE THIS TO SEE HOW MUCH DEEP IN THE HUD IMAGE ALL THE DMA GOES
     // turnOffVDP(0x74);
-    // waitHCounter_DMA(160);
+    // waitHCounter_opt2(160);
     // turnOnVDP(0x74);
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT

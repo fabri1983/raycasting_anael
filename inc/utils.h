@@ -4,33 +4,24 @@
 #include <types.h>
 #include <vdp.h>
 
-/**
- *  \brief
- *      Declare function for the hint callback (generate a RTE to return from interrupt instead of RTS)
- */
 #ifdef __GNUC__
-#define HINTERRUPT_CALLBACK __attribute__ ((interrupt)) void
+#define HINTERRUPT_CALLBACK __attribute__((interrupt)) void
 #elif defined(_MSC_VER)
+// Declare function for the hint callback (generate a RTE to return from interrupt instead of RTS)
 #define HINTERRUPT_CALLBACK void
 #endif
 
-/**
- *  \brief
- *      To force method inlining (not sure that GCC does actually care of it)
- */
 #ifdef __GNUC__
-#define FORCE_INLINE inline __attribute__ ((always_inline))
+#define FORCE_INLINE inline __attribute__((always_inline))
 #elif defined(_MSC_VER)
+// To force method inlining (not sure that GCC does actually care of it)
 #define FORCE_INLINE inline __forceinline
 #endif
 
-/**
- *  \brief
- *      To force no inlining for this method
- */
 #ifdef __GNUC__
-#define NO_INLINE __attribute__ ((noinline))
+#define NO_INLINE __attribute__((noinline))
 #elif defined(_MSC_VER)
+// To force no inlining for this method
 #define NO_INLINE __declspec(noinline)
 #endif
 
@@ -67,21 +58,21 @@ void turnOnVDP (u8 reg01);
 /**
  * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
 */
-void waitHCounter_CPU (u8 n);
+void waitHCounter_opt1 (u8 n);
 
 /**
  * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
 */
-void waitHCounter_DMA (u8 n);
+void waitHCounter_opt2 (u8 n);
 
 /**
  * Wait until VCounter 0xC00008 reaches nth scanline position. Parameter n is loaded into a register.
+ * The docs straight up say to not trust the value of the V counter during vblank, in that case use VDP_getAdjustedVCounter().
 */
 void waitVCounterReg (u16 n);
 
 /**
- * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
- * Optimizations may apply manually if you know before hand the source address is only 8 bits or 12 bits, and same for the length parameter.
+ * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address).
  * \param len How many colors to move.
  * \param fromAddr Must come >> 1 (shifted to right) already.
 */

@@ -20,7 +20,7 @@ FORCE_INLINE void turnOnVDP (u8 reg01)
     *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
 }
 
-FORCE_INLINE void waitHCounter_CPU (u8 n)
+FORCE_INLINE void waitHCounter_opt1 (u8 n)
 {
     u32 regA = VDP_HVCOUNTER_PORT + 1; // HCounter address is 0xC00009
     __asm volatile (
@@ -34,7 +34,7 @@ FORCE_INLINE void waitHCounter_CPU (u8 n)
     );
 }
 
-FORCE_INLINE void waitHCounter_DMA (u8 n)
+FORCE_INLINE void waitHCounter_opt2 (u8 n)
 {
     u32* regA=0; // placeholder used to indicate the use of an An register
     __asm volatile (
@@ -51,6 +51,12 @@ FORCE_INLINE void waitHCounter_DMA (u8 n)
 
 FORCE_INLINE void waitVCounterReg (u16 n)
 {
+    // The docs straight up say to not trust the value of the V counter during vblank, in that case use VDP_getAdjustedVCounter().
+    // - Sik: on PAL Systems it jumps from 0x102 (258) to 0x1CA (458) (assuming V28).
+    // - Sik: Note that the 9th bit is not visible through the VCounter, so what happens from the 68000's viewpoint is that it reaches 0xFF (255), 
+    // then counts from 0x00 to 0x02, then from 0xCA (202) to 0xFF (255), and finally starts back at 0x00.
+    // - Stef: on PAL System the VCounter rollback occurs at 0xCA (202) so probably better to use n up to 202 to avoid that edge case.
+
     u32 regA = VDP_HVCOUNTER_PORT; // VCounter address is 0xC00008
     __asm volatile (
         "1:\n"
@@ -69,16 +75,15 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
     // Uncomment if you previously change it to 1 (CPU access to VRAM is 1 byte length, and 2 bytes length for CRAM and VSRAM)
     //VDP_setAutoInc(2);
 
-    vu16* dmaPtr = (vu16*) VDP_CTRL_PORT;
-
-    // Setup DMA length (in word here): low and high
-    *dmaPtr = 0x9300 | (len & 0xff);
-    *dmaPtr = 0x9400 | ((len >> 8) & 0xff); // This step is useless if the length has only set first 8 bits
+    // Setup DMA length (in long word here): low at higher word, high at lower word
+    vu32* dmaPtr_l = (vu32*) VDP_CTRL_PORT;
+    *dmaPtr_l = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8));
 
     // Setup DMA address
-    *dmaPtr = 0x9500 | (fromAddr & 0xff);
-    *dmaPtr = 0x9600 | ((fromAddr >> 8) & 0xff); // This step is useless if the address has only set first 8 bits
-    *dmaPtr = 0x9700 | ((fromAddr >> 16) & 0x7f); // This step is useless if the address has only set first 12 bits
+    vu16* dmaPtr_w = (vu16*) VDP_CTRL_PORT;
+    *dmaPtr_w = 0x9500 | (u8)fromAddr; // low
+    *dmaPtr_w = 0x9600 | (u8)(fromAddr >> 8); // mid
+    *dmaPtr_w = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
 }
 
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2)
@@ -252,6 +257,5 @@ FORCE_INLINE void unpackSelector (u16 compression, u8* src, u8* dest)
         case COMPRESSION_LZ4W:
             lz4w_unpack(src, dest); // SGDK
             break;
-        default: break;
     }
 }

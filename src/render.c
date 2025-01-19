@@ -160,6 +160,14 @@ static FORCE_INLINE void render_DMA_flushQueue ()
 
 static FORCE_INLINE void render_waitVInt ()
 {
+#if RENDER_WAIT_VINT_BASED_ON_VDP_VBLANK_FLAG
+    // This strategy is used when VInt is disabled in the VDP
+    vu16* pw = (u16*) VDP_CTRL_PORT;
+    // wait end of active period
+    while (!(*pw & VDP_VBLANK_FLAG));
+    // now advance one frame
+    vtimer++;
+#else
     // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is the first byte of vtimer
     const u8* vtimerPtr = (u8*)&vtimer + 3;
     // Loops while vtimer keeps unchanged. Exits loop when it changes, meaning we are in VBlank.
@@ -173,8 +181,7 @@ static FORCE_INLINE void render_waitVInt ()
         : "a" (vtimerPtr)
         : "cc"
     );
-
-    // AT THIS POINT THE _VINT_vtimer INTERRUPT CALLBACK HAS BEEN CALLED. vtimer has been incremented by 1. Check sega.s.
+#endif
 }
 
 FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
@@ -188,7 +195,7 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     const u16 blank = *pw & VDP_VBLANK_FLAG;
     #endif
 
-    // Wait until vint is triggered which increments vtimer
+    // Wait until vint is triggered
     render_waitVInt();
 
     turnOffVDP(0x74);

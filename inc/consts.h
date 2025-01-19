@@ -1,10 +1,14 @@
 #ifndef _CONSTS_H_
 #define _CONSTS_H_
 
-#define DISPLAY_LOGOS_AT_START FALSE
-#define DISPLAY_TITLE_SCREEN FALSE
+#define DISPLAY_LOGOS_AT_START TRUE
+#define DISPLAY_TITLE_SCREEN TRUE
 
 #define RENDER_SHOW_TEXCOORD FALSE // Show texture coords?
+
+// If true then it disables VInt at VDP level saving some cycles due to call and return of exception.
+// IMPORTANT: WHEN VINT IS DISABLED THEN vtimer STOPS BEING ACCURATE.
+#define RENDER_WAIT_VINT_BASED_ON_VDP_VBLANK_FLAG FALSE
 
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 #define RENDER_CLEAR_FRAMEBUFFER FALSE
@@ -37,7 +41,7 @@
 #define FP (1<<FS) // Fixed Precision
 #define AP 128 // Angle Precision (optimal for a rotation step of 8 : 1024/8 = 128)
 #define STEP_COUNT 15 // View distance depth. STEP_COUNT+1 should be a power of two.
-#define STEP_COUNT_LOOP 15 // 15 or 7.
+#define STEP_COUNT_LOOP 15 // >= 12 were the values that work without any glitch.
 
 // 224 px display height / 8 = 28. Tiles are 8 pixels in height.
 // The HUD takes the bottom 32px / 8 = 4 tiles => 28-4=24

@@ -93,15 +93,14 @@ int main (bool hardReset)
 	}
 
     #if DISPLAY_LOGOS_AT_START
-    displaySegaLogo();
-    waitMs_(200);
+    // displaySegaLogo();
+    // waitMs_(200);
     displayTeddyBearLogo();
     waitMs_(200);
     #endif
 
     #if DISPLAY_TITLE_SCREEN
     title_show();
-    VDP_resetScreen();
     #endif
 
     // Restart DMA with this settings
@@ -149,35 +148,38 @@ int main (bool hardReset)
     VDP_setEnable(TRUE);
 
 	SYS_disableInts();
-	{
-        // It has no effect because we are manually calling it on render_SYS_doVBlankProcessEx_ON_VBLANK() at render.c.
-        // We leave it in case we decide start using SGDK's SYS_doVBlankProcessEx().
-		SYS_setVBlankCallback(vint_callback);
 
-        #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
-		// Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
-		// The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
-		// 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-		VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR-1); // -1 since hintcounter is 0 based
-        #else
-        VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of palettes
-        #endif
-    	SYS_setHIntCallback(hint_callback);
-    	VDP_setHInterrupt(TRUE);
-	}
+    #if RENDER_WAIT_VINT_BASED_ON_VDP_VBLANK_FLAG
+    VDP_setVInterrupt(false);
+    #else
+    // It has no effect because we are manually calling it on render_SYS_doVBlankProcessEx_ON_VBLANK() at render.c.
+    SYS_setVBlankCallback(vint_callback);
+    #endif
+
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
+    // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
+    // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
+    // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
+    VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR-1); // -1 since hintcounter is 0 based
+    #else
+    VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of palettes
+    #endif
+    SYS_setHIntCallback(hint_callback);
+    VDP_setHInterrupt(TRUE);
+
 	SYS_enableInts();
 
     // In case we enqueued some DMA ops
-	SYS_doVBlankProcess();
+	//SYS_doVBlankProcess();
 
 	game_loop();
 
 	SYS_disableInts();
-	{
-		SYS_setVBlankCallback(NULL);
-		VDP_setHInterrupt(FALSE);
-    	SYS_setHIntCallback(NULL);
-	}
+
+    SYS_setVBlankCallback(NULL);
+    VDP_setHInterrupt(FALSE);
+    SYS_setHIntCallback(NULL);
+
 	SYS_enableInts();
 
     SPR_end();

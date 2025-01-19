@@ -181,6 +181,7 @@ typedef struct {
 
 extern const ImageNoPalsCompField img_title_bg_full;
 extern const Palette32AllStripsCompField pal_title_bg_full;
+extern const Palette32AllStripsCompField pal_title_bg_full_shifted;
 extern const Image img_title_logo;
 
 #endif // _RES_TITLE_RES_H_

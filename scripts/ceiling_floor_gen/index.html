@@ -11,43 +11,100 @@
             justify-content: center;
             align-items: center;
             height: 100%;
-            background-color: #cacaca;
         }
-        canvas {
+        #viewportContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+        }
+        #gameCanvas {
             border: 0px;
-            /*width: 320px;*/ /* Set by javascript */
-            /*height: 224px;*/ /* Set by javascript */
         }
 
-        /* Control aliasing in the canvas. See also script.js for the context setup. */
+        /* Control aliasing in the canvas. */
 
-        /* Unset */
         .unset {
             image-rendering: unset;
         }
-        /* Smoothing enabled (default) */
         .smooth {
             image-rendering: auto;
         }
-
-        /* Disable smoothing (for pixel art or retro style) */
         .pixelated {
             image-rendering: pixelated;
         }
-
-        /* Crisp edges (for low-res textures) */
         .crisp {
             image-rendering: crisp-edges;
+        }
+
+        /* Arrow button styling */
+        .arrow-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 4px;
+        }
+        .arrow-row {
+            display: flex;
+            gap: 5px;
+        }
+        .arrow-button {
+            width: 25px;
+            height: 25px;
+            background-color: #f0f0f0;
+            border: 1px solid #888;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 25px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .arrow-button:hover {
+            background-color: #ddd;
+        }
+
+        /* Spacebar button styling */
+        .spacebar-button {
+            width: 150px;
+            height: 30px;
+            margin: 6px 0;
+            background-color: #f0f0f0;
+            border: 1px solid #888;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 30px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .spacebar-button:hover {
+            background-color: #ddd;
         }
     </style>
 </head>
 <body>
-    <h3 style="display:block; clear:both;">run with: node server.js</h3>
-	<br/>
-	<div>
-		<canvas id="gameCanvas" class="smooth"></canvas>
-		<script src="script_context2d.js"></script>
-		<!--script src="script_webgl2.js"></script-->
-	</div>
+    <div id="viewportContainer">
+        <div class="arrow-container">
+            <!-- Top row with the up button -->
+            <div class="arrow-row">
+                <div class="arrow-button up" id="arrow_up_btn">↑</div>
+            </div>
+            <!-- Bottom row with left, down, and right buttons -->
+            <div class="arrow-row">
+                <div class="arrow-button left" id="arrow_left_btn">←</div>
+                <div class="arrow-button down" id="arrow_down_btn">↓</div>
+                <div class="arrow-button right" id="arrow_right_btn">→</div>
+            </div>
+        </div>
+        <canvas id="gameCanvas" class="smooth"></canvas>
+        <button class="spacebar-button" id="spacebar_btn">␣</button>
+        <h4 style="display:block; clear:both; margin: 0;">(press Space to reset viewport)</h4>
+        <script src="script_context2d.js"></script>
+    </div>
 </body>
 </html>

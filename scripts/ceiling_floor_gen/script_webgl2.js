@@ -1,3 +1,8 @@
+const ANGLE_MAX = 1024;
+const AP = 128;
+const ANGLE_INCREMENT = Math.floor(ANGLE_MAX / AP);
+const ANGLE_DIR_NORMALIZATION = 24;
+
 class TextureDemo {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
@@ -11,10 +16,6 @@ class TextureDemo {
         this.HEIGHT = this.canvas.height;
         this.HALF_HEIGHT = this.HEIGHT / 2;
         this.TEXTURE_SIZE = 64;
-
-        this.ANGLE_MAX = 1024;
-        this.AP = 128;
-        this.ANGLE_INCREMENT = Math.floor(this.ANGLE_MAX / this.AP);
 
         this.textureState = {
             offsetX: 0,
@@ -212,7 +213,7 @@ class TextureDemo {
 
     updateTextureState() {
         const translateSpeed = 0.05;
-        const rotateSpeed = (2 * Math.PI) / this.ANGLE_MAX;
+        const rotateSpeed = (2 * Math.PI) / ANGLE_MAX;
 
         // Texture translation
         const radians = (this.textureState.rotation * rotateSpeed);
@@ -228,10 +229,10 @@ class TextureDemo {
         
         // Texture rotation
         if (this.keys.ArrowLeft) {
-            this.textureState.rotation = (this.textureState.rotation + this.ANGLE_INCREMENT) % this.ANGLE_MAX;
+            this.textureState.rotation = (this.textureState.rotation + ANGLE_INCREMENT) % ANGLE_MAX;
         }
         if (this.keys.ArrowRight) {
-            this.textureState.rotation = (this.textureState.rotation - this.ANGLE_INCREMENT) % this.ANGLE_MAX;
+            this.textureState.rotation = (this.textureState.rotation - ANGLE_INCREMENT) % ANGLE_MAX;
         }
     }
 
@@ -284,7 +285,7 @@ class TextureDemo {
         gl.enable(gl.DEPTH_TEST);
 
         // Calculate rotation in radians
-        const rotationRadians = (this.textureState.rotation * (2 * Math.PI)) / this.ANGLE_MAX;
+        const rotationRadians = (this.textureState.rotation * (2 * Math.PI)) / ANGLE_MAX;
 
         // Projection matrix
         const projectionMatrix = this.createProjectionMatrix();

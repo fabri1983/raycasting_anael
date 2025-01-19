@@ -1,3 +1,8 @@
+const ANGLE_MAX = 1024;
+const AP = 128;
+const ANGLE_INCREMENT = Math.floor(ANGLE_MAX / AP);
+const ANGLE_DIR_NORMALIZATION = 24;
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
@@ -5,11 +10,6 @@ const WIDTH = 320;
 const HEIGHT = (224 - 32)*2; // substract 32 pixels for the HUD
 const HALF_HEIGHT = HEIGHT / 2;
 const TEXTURE_SIZE = 64;
-
-const ANGLE_MAX = 1024;
-const AP = 128;
-const ANGLE_INCREMENT = Math.floor(ANGLE_MAX / AP);
-const ANGLE_DIR_NORMALIZATION = 24;
 
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
@@ -23,6 +23,9 @@ const textureState = {
     rotation: 0  // In binary angle units
 };
 
+// Flag to track movement with button clicks
+var mouseClickMovement = false;
+
 // Keyboard state tracking
 const keys = {
     ArrowUp: false,
@@ -31,6 +34,16 @@ const keys = {
     ArrowRight: false,
     Space: false
 };
+
+// Attach event listeners to the arrow buttons
+const buttonArrowUp = document.getElementById("arrow_up_btn");
+const buttonArrowDown = document.getElementById("arrow_down_btn");
+const buttonArrowLeft = document.getElementById("arrow_left_btn");
+const buttonArrowRight = document.getElementById("arrow_right_btn");
+buttonArrowUp.addEventListener("click", moveUp_click);
+buttonArrowDown.addEventListener("click", moveDown_click);
+buttonArrowLeft.addEventListener("click", moveLeft_click);
+buttonArrowRight.addEventListener("click", moveRight_click);
 
 function resetTexturesState () {
 	textureState.offsetX = 0;
@@ -83,6 +96,26 @@ function handleKeyUp (e) {
     }
 }
 
+function moveUp_click () {
+    mouseClickMovement = true
+    keys.ArrowUp = true;
+}
+
+function moveDown_click () {
+    mouseClickMovement = true
+    keys.ArrowDown = true;
+}
+
+function moveLeft_click () {
+    mouseClickMovement = true
+    keys.ArrowLeft = true;
+}
+
+function moveRight_click () {
+    mouseClickMovement = true
+    keys.ArrowRight = true;
+}
+
 function updateTextureState () {
     const translateSpeed = 0.1;
 
@@ -96,18 +129,34 @@ function updateTextureState () {
     if (keys.ArrowUp) {
         textureState.offsetX -= translateSpeed * Math.sin(radians);
         textureState.offsetY += translateSpeed * Math.cos(radians);
+        if (mouseClickMovement == true) {
+            mouseClickMovement = false;
+            keys.ArrowUp = false
+        }
     }
     if (keys.ArrowDown) {
         textureState.offsetX += translateSpeed * Math.sin(radians);
         textureState.offsetY -= translateSpeed * Math.cos(radians);
+        if (mouseClickMovement == true) {
+            mouseClickMovement = false;
+            keys.ArrowDown = false
+        }
     }
     
     // Texture rotation in binary angles
     if (keys.ArrowLeft) {
         textureState.rotation = (textureState.rotation + ANGLE_INCREMENT) % ANGLE_MAX;
+        if (mouseClickMovement == true) {
+            mouseClickMovement = false;
+            keys.ArrowLeft = false
+        }
     }
     if (keys.ArrowRight) {
         textureState.rotation = (textureState.rotation - ANGLE_INCREMENT) % ANGLE_MAX;
+        if (mouseClickMovement == true) {
+            mouseClickMovement = false;
+            keys.ArrowRight = false
+        }
     }
 }
 
@@ -141,7 +190,7 @@ function drawTexturedPlane (y, height, texture, isCeiling) {
 	
 	// Texture scale factor. Increase this value to make the texture looks more repetitive
 	const textureScaleX = useOrthogonalProjection == true ? 3.0 : 1.0;
-    const textureScaleY = useOrthogonalProjection == true ? 6.0 : 1.0;
+    const textureScaleY = useOrthogonalProjection == true ? 3.0 : 1.0;
 
     for (let screenY = 0; screenY < height; screenY++) {
 		let rowDistance;

@@ -13,7 +13,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 	// We need to clear all the tilemap
 	__asm volatile (
 		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer_ptr + TOTAL_BYTES: buffer end
-		// Save all registers (except scratch pad)
+		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0
@@ -43,7 +43,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		:
 		: "a" (frame_buffer_ptr), 
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		: "cc"
+		: "cc", "memory"
 	);
 #elif PLANE_COLUMNS == 64
 	// We need to clear only first PIXEL_COLUMNS columns of each row from the tilemap
@@ -51,7 +51,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 	__asm volatile (
 		// Makes SP points to the memory location of the framebuffer's end 
 		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer_ptr + TOTAL_BYTES: buffer end
-		// Save all registers (except scratch pad)
+		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0
@@ -95,7 +95,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
-		: "cc"
+		: "cc", "memory"
 	);
 #endif
 }
@@ -107,18 +107,17 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 // *2 because we have 2 planes. /2 because every time we read from the inverted buffer we do it by long word (twice u16).
 #define INVERTED_BUFFER_SIZE ((VERTICAL_COLUMNS*TILEMAP_COLUMNS*2)/2)
 
-u32 spBackup[1] = {0};
-
-FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
+FORCE_INLINE void clear_buffer_sp () {
 #if PLANE_COLUMNS == 32
 	// We need to clear all the tilemap
 	__asm volatile (
-        // Save all registers (except scratch pad)
+        // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Save current SP value in a 4 bytes region dedicated for it
-		"    move.l  %%sp,%[mem_spBackup]\n"
+		// Save current SP value in USP
+		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%sp\n" // frame_buffer_ptr + TOTAL_BYTES: buffer end
+        "    lea     (%[frame_buffer]),%%sp\n"
+		"    lea     %c[TOTAL_BYTES](%%sp),%%sp\n" // frame_buffer + TOTAL_BYTES: buffer end
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0
 		"    move.l  %%d0,%%d1\n"
@@ -144,24 +143,24 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    move.l  %%d0,-(%%sp)\n"
 		"    .endr\n"
 		// Restore SP
-		"    move.l  %[mem_spBackup],%%sp\n"
+		"    move.l  %%usp,%%sp\n"
         // Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		: [mem_spBackup] "+m" (spBackup)
-		: "a" (frame_buffer_ptr),
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		: "cc"
+		: [frame_buffer] "+m" (frame_buffer)
+		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
+		: "cc", "memory"
 	);
 #elif PLANE_COLUMNS == 64
 	// We need to clear the tilemap following the addresses loaded into the SP
 	// 9693 cycles according Blastem cycle counter
 	__asm volatile (
-        // Save all registers (except scratch pad)
+        // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Save current SP value in a 4 bytes region dedicated for it
-		"    move.l  %%sp,%[mem_spBackup]\n"
+		// Save current SP value in USP
+		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%sp\n" // frame_buffer_ptr + TOTAL_BYTES: buffer end
+        "    lea     (%[frame_buffer]),%%sp\n"
+		"    lea     %c[TOTAL_BYTES](%%sp),%%sp\n" // frame_buffer + TOTAL_BYTES: buffer end
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0
 		"    move.l  %%d0,%%d1\n"
@@ -199,15 +198,14 @@ FORCE_INLINE void clear_buffer_sp (u16* frame_buffer_ptr) {
 		"    move.l  %%d0,-(%%sp)\n"
 		"    .endr\n"
 		// Restore SP
-		"    move.l  %[mem_spBackup],%%sp\n"
+		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		: [mem_spBackup] "+m" (spBackup)
-		: "a" (frame_buffer_ptr), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
+		: [frame_buffer] "+m" (frame_buffer)
+		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
-		: "cc"
+		: "cc", "memory"
 	);
 #endif
 }
@@ -259,40 +257,40 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 
         // HERE WE TRY TO CLEAR THE TILEMAP ENTRIES FOR THE CURRENT COLUMN. THIS IS SLOWER THAN USING clear_buffer().
         // C version (for VERTICAL_ROWS = 24).
-        // Set tileAttribTile0 which points to tile 0.
-        /*u16 tileAttribTile0 = tileAttrib & ~TILE_INDEX_MASK;
+        // Set tileAttrib_tile0 which points to tile 0.
+        /*u16 tileAttrib_tile0 = tileAttrib & ~TILE_INDEX_MASK;
         switch (ta) {
-            case 11:	column_ptr[(11-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(12+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 10:	column_ptr[(10-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(13+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 9:		column_ptr[(9-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(14+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 8:		column_ptr[(8-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(15+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 7:		column_ptr[(7-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(16+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 6:		column_ptr[(6-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(17+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 5:		column_ptr[(5-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(18+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 4:		column_ptr[(4-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(19+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 3:		column_ptr[(3-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(20+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-			case 2:		column_ptr[(2-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(21+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
-            case 1:		column_ptr[(1-1)*PLANE_COLUMNS] = tileAttribTile0;
-						column_ptr[(22+1)*PLANE_COLUMNS] = tileAttribTile0; // fallthru
+            case 11:	column_ptr[(11-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(12+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 10:	column_ptr[(10-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(13+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 9:		column_ptr[(9-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(14+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 8:		column_ptr[(8-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(15+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 7:		column_ptr[(7-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(16+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 6:		column_ptr[(6-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(17+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 5:		column_ptr[(5-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(18+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 4:		column_ptr[(4-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(19+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 3:		column_ptr[(3-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(20+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+			case 2:		column_ptr[(2-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(21+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
+            case 1:		column_ptr[(1-1)*PLANE_COLUMNS] = tileAttrib_tile0;
+						column_ptr[(22+1)*PLANE_COLUMNS] = tileAttrib_tile0; // fallthru
             case 0:     break;
 		}*/
 
         // HERE WE TRY TO CLEAR THE TILEMAP ENTRIES FOR THE CURRENT COLUMN. THIS IS SLOWER THAN USING clear_buffer().
         // Inline ASM version.
-        // This block sets tileAttribTile0 which points to tile 0.
+        // This block sets tileAttrib_tile0 which points to tile 0.
         /*u16 jump = ((VERTICAL_ROWS-2)/2) * 8; // (multiplied by jump block size)
         u16 h2_aux1 = h2;
-        u16 tileAttribTile0 = tileAttrib & ~TILE_INDEX_MASK;
+        u16 tileAttrib_tile0 = tileAttrib & ~TILE_INDEX_MASK;
         __asm volatile (
             // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
 			// we can use it as a multiple of the jump block size (8 bytes)
@@ -308,19 +306,19 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
             ".set offdown, (((%c[_VERTICAL_ROWS] - 2) / 2) - 1) * %c[_PLANE_COLUMNS] * 2\n" // *2 for byte convertion
 			".set offup, (((%c[_VERTICAL_ROWS] - 2) / 2) + 1 + 1) * %c[_PLANE_COLUMNS] * 2\n" // *2 for byte convertion
 			".rept ((%c[_VERTICAL_ROWS] - 2) / 2)\n"
-			"    move.w  %[tileAttribTile0],offdown(%[tilemap])\n"
-			"    move.w  %[tileAttribTile0],offup(%[tilemap])\n"
+			"    move.w  %[tileAttrib_tile0],offdown(%[tilemap])\n"
+			"    move.w  %[tileAttrib_tile0],offup(%[tilemap])\n"
 			"    .set offdown, offdown - %c[_PLANE_COLUMNS] * 2\n" // *2 for byte convertion
 			"    .set offup, offup + %c[_PLANE_COLUMNS] * 2\n" // *2 for byte convertion
 			".endr\n"
             // Case 0 (the complement to (VERTICAL_ROWS-2)/2) falls here
-            : [h2] "+d" (h2_aux1), [tileAttribTile0] "+d" (tileAttribTile0), [jump] "+d" (jump)
+            : [h2] "+d" (h2_aux1), [tileAttrib_tile0] "+d" (tileAttrib_tile0), [jump] "+d" (jump)
 			: [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
               [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
 			: "cc"
 		);*/
 
-        // C version (for VERTICAL_ROWS = 28 which was the original implementation).
+        // C version (for VERTICAL_ROWS = 28, which was the original implementation).
         // Set tileAttrib which points to a colored tile.
 		/*switch (ta) {
 			case 0:		column_ptr[1*PLANE_COLUMNS] = tileAttrib;
