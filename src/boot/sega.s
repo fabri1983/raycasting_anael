@@ -40,7 +40,7 @@ _Vecteurs_68K:
         dc.l    _INT
         dc.l    hintCaller
         dc.l    _INT
-        dc.l    _VINT_vtimer            /* _VINT_lean is faster than SGDK's _VINT but skips some features */
+        dc.l    _VINT_lean              /* _VINT_lean is faster than SGDK's _VINT but skips some features */
         dc.l    _INT
         dc.l    _trap_0                 /* Resume supervisor task */
         dc.l    _INT,_INT,_INT,_INT,_INT,_INT,_INT
@@ -171,14 +171,6 @@ _VINT_lean:
         jsr     (a0)
         *andi.w  #0xFFFE, intTrace           /* out V-Int */
         move.l  usp, a0
-        rte
-
-* Custom version of the _VINT vector which discards User tasks, Bitmap tasks, and XGM tasks, 
-* and only increments the vtimer since the user vint callback is called manually.
-_VINT_vtimer:
-        *ori.w   #0x0001, intTrace           /* in V-Int */
-        addq.l  #1, vtimer                  /* increment frame counter (more a vint counter) */
-        *andi.w  #0xFFFE, intTrace           /* out V-Int */
         rte
 
 *------------------------------------------------

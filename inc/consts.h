@@ -6,10 +6,6 @@
 
 #define RENDER_SHOW_TEXCOORD FALSE // Show texture coords?
 
-// If true then it disables VInt at VDP level saving some cycles due to call and return of exception.
-// IMPORTANT: WHEN VINT IS DISABLED THEN vtimer STOPS BEING ACCURATE.
-#define RENDER_WAIT_VINT_BASED_ON_VDP_VBLANK_FLAG FALSE
-
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 #define RENDER_CLEAR_FRAMEBUFFER FALSE
 

@@ -46,8 +46,8 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
-void game_loop () {
-
+void game_loop ()
+{
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
 	// Smaller positions locate at top-left corner of the map[][] layout (as seen in the .h), bigger positions locate at bottom-right.
 	// But dx and dy, applied to posX and posY respectively, goes from 0 to (+/-)FP/ANGLE_DIR_NORMALIZATION (used in tab_dir_xy.h).
@@ -184,10 +184,11 @@ void game_loop () {
 		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, delta_a_ptr);
 
-        // DMA frame_buffer Plane A portion
+        // DMA frame_buffer Plane A
         #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
         // Send first 1/8 of frame_buffer Plane A
-        DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        // The other 1/8 is sent in HInt
         // Remaining 6/8 of the frame_buffer Plane A
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
             ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -204,16 +205,11 @@ void game_loop () {
         DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #endif
 
-        // DMA frame_buffer Plane B portion
+        // DMA frame_buffer Plane B
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
         //SYS_doVBlankProcessEx(ON_VBLANK);
         render_SYS_doVBlankProcessEx_ON_VBLANK();
-
-        #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
-        // showFPS(0, 1);
-        showCPULoad(0, 1);
-        #endif
 	}
 }
 

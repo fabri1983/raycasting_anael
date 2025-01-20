@@ -8,7 +8,7 @@ u16 frame_buffer_pxcolumn[PIXEL_COLUMNS];
 
 #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP == FALSE
 
-FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
+void clear_buffer (u16* frame_buffer_ptr) {
 #if PLANE_COLUMNS == 32
 	// We need to clear all the tilemap
 	__asm volatile (
@@ -107,7 +107,7 @@ FORCE_INLINE void clear_buffer (u16* frame_buffer_ptr) {
 // *2 because we have 2 planes. /2 because every time we read from the inverted buffer we do it by long word (twice u16).
 #define INVERTED_BUFFER_SIZE ((VERTICAL_COLUMNS*TILEMAP_COLUMNS*2)/2)
 
-FORCE_INLINE void clear_buffer_sp () {
+void clear_buffer_sp () {
 #if PLANE_COLUMNS == 32
 	// We need to clear all the tilemap
 	__asm volatile (
@@ -214,7 +214,7 @@ FORCE_INLINE void clear_buffer_sp () {
 
 u16* column_ptr = NULL;
 
-FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
+void write_vline (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
 
@@ -351,16 +351,16 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 		}*/
 
 		// Inline ASM version.
-        // This block sets tileAttrib which points to a colored tile.
-        // This block sets top and bottom tilemap entries.
+        // This block of code sets tileAttrib which points to a colored tile.
+        // This block of code sets top and bottom tilemap entries.
         u16 h2_aux2 = h2;
 		__asm volatile (
 			// Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
-			// we can use it as a multiple of the jump block size (8 bytes)
+			// we can use it as a multiple of the block size (8 bytes) we'll jump into
 			"    andi.w  %[CLEAR_BITS_OFFSET],%[h2]\n" // (h2 & ~(8-1))
 			// Jump into table using h2
 			"    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
-			// Assignment table:
+			// Assignment ranges:
 			//  from [1*PLANE_COLUMNS] up to [((VERTICAL_ROWS-2)/2)*PLANE_COLUMNS]
 			//  from [(VERTICAL_ROWS-2)*PLANE_COLUMNS] down to [(((VERTICAL_ROWS-2)/2)+1)*PLANE_COLUMNS]
 			// Eg for VERTICAL_ROWS=28: 

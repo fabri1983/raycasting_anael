@@ -92,11 +92,7 @@ void render_loadWallPalettes ()
     PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, CPU);
 }
 
-/// @brief See original Z80_setBusProtection() method.
-/// NOTE: This implementation doesn't disable interrupts because at the moment it's called no interrupt is expected to occur.
-/// NOTE: This implementation assumes the Z80 bus was not already requested, and requests it immediatelly.
-/// @param value TRUE enables protection, FALSE disables it.
-static FORCE_INLINE void render_Z80_setBusProtection (bool value)
+FORCE_INLINE void render_Z80_setBusProtection (bool value)
 {
     Z80_requestBus(FALSE);
 	u16 busProtectSignalAddress = (Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
@@ -107,10 +103,7 @@ static FORCE_INLINE void render_Z80_setBusProtection (bool value)
 
 extern DMAOpInfo *dmaQueues;
 
-/// @brief This implementation differs from DMA_flushQueue() in which:
-/// - it doesn't check if transfer size exceeds capacity because we know before hand the max capacity.
-/// - it assumes Z80 bus wasn't requested and hence request it.
-static FORCE_INLINE void render_DMA_flushQueue ()
+FORCE_INLINE void render_DMA_flushQueue ()
 {
     // u8 autoInc = VDP_getAutoInc(); // save autoInc
 	// Z80_requestBus(FALSE);
@@ -158,16 +151,8 @@ static FORCE_INLINE void render_DMA_flushQueue ()
     // VDP_setAutoInc(autoInc); // restore autoInc
 }
 
-static FORCE_INLINE void render_waitVInt ()
+static FORCE_INLINE void render_waitVInt_vtimer ()
 {
-#if RENDER_WAIT_VINT_BASED_ON_VDP_VBLANK_FLAG
-    // This strategy is used when VInt is disabled in the VDP
-    vu16* pw = (u16*) VDP_CTRL_PORT;
-    // wait end of active period
-    while (!(*pw & VDP_VBLANK_FLAG));
-    // now advance one frame
-    vtimer++;
-#else
     // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is the first byte of vtimer
     const u8* vtimerPtr = (u8*)&vtimer + 3;
     // Loops while vtimer keeps unchanged. Exits loop when it changes, meaning we are in VBlank.
@@ -181,45 +166,46 @@ static FORCE_INLINE void render_waitVInt ()
         : "a" (vtimerPtr)
         : "cc"
     );
-#endif
 }
+
+#if RENDER_ENABLE_FRAME_LOAD_CALCULATION
+static u32 vtimerStart;
+static u16 vcnt;
+static u16 blank;
+
+static void render_setupFrameLoadCalculation ()
+{
+    // For frame CPU load calculation
+    vtimerStart = vtimer;
+    // store V-Counter and initial blank state
+    vcnt = GET_VCOUNTER;
+    vu16* pw = (u16*) VDP_CTRL_PORT;
+    blank = *pw & VDP_VBLANK_FLAG;
+}
+
+static void render_calculateFrameLoad ()
+{
+    // update CPU frame load
+    addFrameLoad(getAdjustedVCounterInternal(blank, vcnt), vtimerStart);
+}
+#endif
 
 FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 {
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
-    // For frame CPU load calculation
-    const u32 t = vtimer;
-    // store V-Counter and initial blank state
-    const u16 vcnt = GET_VCOUNTER;
-    vu16 *pw = (u16 *) VDP_CTRL_PORT;
-    const u16 blank = *pw & VDP_VBLANK_FLAG;
+    render_setupFrameLoadCalculation();
     #endif
 
-    // Wait until vint is triggered
-    render_waitVInt();
-
-    turnOffVDP(0x74);
-
-    #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
-    // update CPU frame load
-    addFrameLoad(getAdjustedVCounterInternal(blank, vcnt), t);
-    #endif
-
-	render_Z80_setBusProtection(TRUE);
-	waitSubTick_(0); // Z80 delay --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
-
-	//DMA_flushQueue();
-    render_DMA_flushQueue();
-
-	render_Z80_setBusProtection(FALSE);
-
-    turnOnVDP(0x74);
-
-    // user VBlank callback
-    //(*vblankCB)();
-    vint_callback();
+    // Wait until vint is triggered and returned from vint_callback()
+    render_waitVInt_vtimer();
 
     // joy state refresh
     //JOY_update();
     joy_update_6btn();
+
+    #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
+    render_calculateFrameLoad();
+    showCPULoad(0, 1);
+    //showFPS(0, 1);
+    #endif
 }

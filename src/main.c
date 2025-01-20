@@ -1,8 +1,8 @@
 // MIT License - Copyright (c) 2024 Anaël Seghezzi
-// raymarching rendering with precomputed tiles interleaved in both planes at 60fps
-// full screen in mode 256x224 with 4 pixels wide column (effective resolution 64x224)
-// it's possible to use 60+1 colors, but only 32+1 are used here
-// reference for raymarching: https://lodev.org/cgtutor/raycasting.html
+// Raymarching rendering with precomputed tiles interleaved in both planes at 60fps.
+// Full screen in mode 256x224 with 4 pixels wide column (effective resolution 64x224),
+// It's possible to use 60+1 colors, but only 32+1 are used here.
+// Reference for raymarching: https://lodev.org/cgtutor/raycasting.html
 
 // fabri1983's notes (since Aug/18/2024)
 // -------------------------------------
@@ -29,20 +29,20 @@
 //   into next display period.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
 // * Replaced variable d used for color calculation by two tables defined in tab_color_d8_1.h => 2% saved in cpu usage.
-//   There is also a replacement for tab_color_d8_1[] by using tables in tab_color_d8_pals_shft.h, but as access to array is for u16 
-//   values this is indeed a little slower than just using previous table.
+//   There is also a replacement for tab_color_d8_1[] by using tables in tab_color_d8_pals_shft.h, but given that the access
+//   to the arrays is for u16 values they need internal conversion to byte addressing resulting in a bit slower access.
 // * Replaced mulu(sideDistX_l0, deltaDistX) >> FS by a table => ~4% saved in cpu usage, though rom size increased 
 //   460 KB (+ padding to 128KB boundary).
 // * SGDK's SPR_update() function was modified to handle DMA for specific cases, and also cut off unused features.
 //   See comments with tag fabri1983 at spr_eng_override.c => ~1% saved in cpu usage.
 // * sega.s: use _VINT_vtimer instead of SGDK's _VINT to only increment vtimer, since we are calling the vint callback manually
 // * SGDK's SYS_doVBlankProcessEx() function was modified to cut off unwanted logic. See render.c => ~1% saved in cpu usage.
-// * SGDK's JOY_update() and JOY_readJoypad(JOY_1) functions were modified to handle only 6 button joypad => 2% saved in cpu usage.
+// * SGDK's JOY_update() and JOY_readJoypad(JOY_1) functions were copied and modified to handle only 6 button joypad => 2% saved in cpu usage.
 //   at render_SYS_doVBlankProcessEx_ON_VBLANK() => some cycles saved.
 // * Commented out the #pragma directives for loop unrolling => ~1% saved in cpu usage. It may vary according the 
 //   use/abuse of FORCE_INLINE.
-// * Manual unrolling of 2 (or 4) iterations for column processing => 2% saved in cpu usage. It may vary according the 
-//   use/abuse of FORCE_INLINE.
+// * Manual unrolling of 2 (or 4) iterations for column processing => 2% saved in cpu usage. It may vary according
+//   the use/abuse of FORCE_INLINE.
 
 // fabri1983's resources notes:
 // ----------------------------
@@ -149,12 +149,7 @@ int main (bool hardReset)
 
 	SYS_disableInts();
 
-    #if RENDER_WAIT_VINT_BASED_ON_VDP_VBLANK_FLAG
-    VDP_setVInterrupt(false);
-    #else
-    // It has no effect because we are manually calling it on render_SYS_doVBlankProcessEx_ON_VBLANK() at render.c.
-    SYS_setVBlankCallback(vint_callback);
-    #endif
+    SYS_setVIntCallback(vint_callback);
 
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
     // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
@@ -168,9 +163,6 @@ int main (bool hardReset)
     VDP_setHInterrupt(TRUE);
 
 	SYS_enableInts();
-
-    // In case we enqueued some DMA ops
-	//SYS_doVBlankProcess();
 
 	game_loop();
 

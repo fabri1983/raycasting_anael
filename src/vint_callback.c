@@ -8,6 +8,7 @@
 #include "hud_320.h"
 #include "weapons.h"
 #include "utils.h"
+#include "render.h"
 
 #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
 u32 restorePalA_addrForDMA;
@@ -104,26 +105,25 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
-	// NOTE: AT THIS POINT WE HAVE USUALLY FLUSHED SGDK's DMA QUEUE.
+	turnOffVDP(0x74);
+
+    render_Z80_setBusProtection(TRUE);
+	//waitSubTick_(10); // Z80 delay --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
+
+	//DMA_flushQueue();
+    render_DMA_flushQueue();
+
+	render_Z80_setBusProtection(FALSE);
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
 	// Reload the 2 palettes that were overriden by the HUD palettes
-	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    turnOffVDP(0x74);
     setupDMAForPals(15, restorePalA_addrForDMA);
+	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
     *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
-	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     // setupDMAForPals(15, restorePalB_addrForDMA);
+	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     // *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
-	turnOnVDP(0x74);
     #endif
-
-	// clear the frame buffer
-	#if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-	//clear_buffer_sp(frame_buffer);
-	#elif RENDER_CLEAR_FRAMEBUFFER
-	//clear_buffer(frame_buffer);
-	#endif
 
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
     // Have any hud tilemaps to DMA?
@@ -160,4 +160,6 @@ void vint_callback ()
         DMA_releaseTemp(lenInWord);
     }
     #endif
+
+    turnOnVDP(0x74);
 }
