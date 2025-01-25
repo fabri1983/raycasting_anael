@@ -187,7 +187,7 @@ void game_loop ()
         // DMA frame_buffer Plane A
         #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
         // Send first 1/8 of frame_buffer Plane A
-        DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         // The other 1/8 is sent in HInt
         // Remaining 6/8 of the frame_buffer Plane A
         DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
@@ -202,11 +202,11 @@ void game_loop ()
             (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #else
         // All the frame_buffer Plane A
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #endif
 
         // DMA frame_buffer Plane B
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
         //SYS_doVBlankProcessEx(ON_VBLANK);
         render_SYS_doVBlankProcessEx_ON_VBLANK();
@@ -292,10 +292,11 @@ void game_loop_auto ()
                 // DDA (Digital Differential Analyzer)
                 dda(posX, posY, delta_a_ptr);
 
-                // DMA frame_buffer Plane A portion
+                // DMA frame_buffer Plane A
                 #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
                 // Send first 1/8 of frame_buffer Plane A
-                DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+                // The other 1/8 is sent in HInt
                 // Remaining 6/8 of the frame_buffer Plane A
                 DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
                     ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -309,11 +310,11 @@ void game_loop_auto ()
                     (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
                 #else
                 // All the frame_buffer Plane A
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
                 #endif
 
-                // DMA frame_buffer Plane B portion
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + VERTICAL_ROWS*PLANE_COLUMNS, PB_ADDR, VERTICAL_ROWS*PLANE_COLUMNS - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+                // DMA frame_buffer Plane B
+                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 
                 //SYS_doVBlankProcessEx(ON_VBLANK);
                 render_SYS_doVBlankProcessEx_ON_VBLANK();
@@ -365,18 +366,18 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
         if ((column & 1) == 0)
-            column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
+            column_ptr += VERTICAL_ROWS*PLANE_COLUMNS + 0; // 0 if Plane B is the one displaced 4 pixels, otherwise 1
         else
-            column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
+            column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // 1 if Plane B is the one displaced 4 pixels, otherwise 0
 
         #elif RENDER_COLUMNS_UNROLL == 2
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS + 0; // 0 if Plane B is the one displaced 4 pixels, otherwise 1
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // 1 if Plane B is the one displaced 4 pixels, otherwise 0
 
         #elif RENDER_COLUMNS_UNROLL == 4
 

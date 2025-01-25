@@ -74,16 +74,44 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
 {
     // Uncomment if you previously change it to 1 (CPU access to VRAM is 1 byte length, and 2 bytes length for CRAM and VSRAM)
     //VDP_setAutoInc(2);
-
-    // Setup DMA length (in long word here): low at higher word, high at lower word
-    vu32* dmaPtr_l = (vu32*) VDP_CTRL_PORT;
-    *dmaPtr_l = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8));
-
+/*
+    vu16* pw = (vu16*) VDP_CTRL_PORT;
+    // Setup DMA length (in word here)
+    *pw = 0x9300 + (len & 0xff);
+    *pw = 0x9400 + ((len >> 8) & 0xff);
     // Setup DMA address
-    vu16* dmaPtr_w = (vu16*) VDP_CTRL_PORT;
-    *dmaPtr_w = 0x9500 | (u8)fromAddr; // low
-    *dmaPtr_w = 0x9600 | (u8)(fromAddr >> 8); // mid
-    *dmaPtr_w = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
+    // fromAddr already comes with >> 1
+    *pw = 0x9500 + (fromAddr & 0xff); // low
+    fromAddr >>= 8;
+    *pw = 0x9600 + (fromAddr & 0xff); // mid
+    fromAddr >>= 8;
+    *pw = 0x9700 + (fromAddr & 0x7f); // high
+*/
+    u32* dmaCtrl_ptr = (u32*) VDP_CTRL_PORT;
+    u32 dmaLen = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8));
+    u16 dn = 0x9500;
+    __asm volatile (
+        // Setup DMA length (in long word here)
+        "move.l   %[dmaLen],(%[dmaCtrl_ptr])\n\t" // *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8));
+        // Setup DMA address low
+        //"move.w   #0x9500,%[dn]\n\t"              // dn: 0x9500
+        "or.b     %[fromAddr],%[dn]\n\t"          // dn: 0x9500 | (u8)(fromAddr)
+        "move.w   %[dn],(%[dmaCtrl_ptr])\n\t"     // *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)fromAddr; // low
+        // Setup DMA address mid
+        "move.w   %[fromAddr],-(%%sp)\n\t"
+        "move.w   #0x9600,%[dn]\n\t"              // dn: 0x9600
+        "or.b     (%%sp)+,%[dn]\n\t"              // dn: 0x9600 | (u8)(fromAddr >> 8)
+        "move.w   %[dn],(%[dmaCtrl_ptr])\n\t"     // *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddr >> 8); // mid
+        // Setup DMA address high
+        "move.l   %[fromAddr],%[dn]\n\t"          // dn: fromAddr
+        "swap     %[dn]\n\t"                      // dn: fromAddr >> 16
+        "andi.w   #0x007f,%[dn]\n\t"              // dn: (fromAddr >> 16) & 0x7f
+        "ori.w    #0x9700,%[dn]\n\t"              // dn: 0x9700 | ((fromAddr >> 16) & 0x7f)
+        "move.w   %[dn],(%[dmaCtrl_ptr])"         // *((vu16*) VDP_CTRL_PORT) = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
+        : [dmaCtrl_ptr] "+a" (dmaCtrl_ptr), [dn] "+d" (dn)
+        : [fromAddr] "d" (fromAddr), [dmaLen] "id" (dmaLen)
+        : "cc"
+    );
 }
 
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2)

@@ -26,6 +26,13 @@ static void setVisibility(Sprite* sprite, u16 newVisibility)
 
 static u16 updateVisibility(Sprite* sprite, u16 status)
 {
+    // fabri1983: sprites are always visible, they are unloaded when not used.
+    // set the new computed visibility
+    setVisibility(sprite, VISIBILITY_ON);
+    // visibility update done !
+    return status & ~NEED_VISIBILITY_UPDATE;
+
+
     u16 visibility;
     const SpriteDefinition* sprDef = sprite->definition;
 
@@ -279,7 +286,7 @@ void NO_INLINE spr_eng_update()
     // VDP sprite index (for link field)
     u8 vdpSpriteInd = 1;
 
-    // fabri1983: we don't use this method for showing frame load
+    // fabri1983: we don't use this method for showing the frame load.
     // first sprite used by CPU load monitor
     /*if (SYS_getShowFrameLoad())
     {

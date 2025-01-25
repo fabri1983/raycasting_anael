@@ -9,6 +9,7 @@
 #include "weapons.h"
 #include "utils.h"
 #include "render.h"
+#include "hint_callback.h"
 
 #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
 u32 restorePalA_addrForDMA;
@@ -105,6 +106,8 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
+    resetVCounterManual();
+
 	turnOffVDP(0x74);
 
     render_Z80_setBusProtection(TRUE);
@@ -116,20 +119,21 @@ void vint_callback ()
 	render_Z80_setBusProtection(FALSE);
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 	// Reload the 2 palettes that were overriden by the HUD palettes
     setupDMAForPals(15, restorePalA_addrForDMA);
 	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+    *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
     // setupDMAForPals(15, restorePalB_addrForDMA);
 	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-    // *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+    // *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
     #endif
 
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
     // Have any hud tilemaps to DMA?
     if (hud_tilemaps) {
         // PW_ADDR comes with the correct base position in screen
-        DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         hud_tilemaps = 0;
     }
     #endif
@@ -138,13 +142,13 @@ void vint_callback ()
     while (tiles_elems) {
         --tiles_elems;
         u16 lenInWord = tiles_lenInWord[tiles_elems];
-        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, 2);
+        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
-        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, 2);
+        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, -1);
         vdpSpriteCache_lenInWord = 0;
     }
     #endif
@@ -156,7 +160,7 @@ void vint_callback ()
         u16 lenInWord = tiles_buf_lenInWord[tiles_buf_elems];
         tiles_buf_dmaBufPtr -= lenInWord;
         u16 toIndex = tiles_buf_toIndex[tiles_buf_elems];
-        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, 2);
+        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, -1);
         DMA_releaseTemp(lenInWord);
     }
     #endif

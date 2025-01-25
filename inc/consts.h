@@ -1,10 +1,10 @@
 #ifndef _CONSTS_H_
 #define _CONSTS_H_
 
-#define DISPLAY_LOGOS_AT_START TRUE
-#define DISPLAY_TITLE_SCREEN TRUE
+#define DISPLAY_LOGOS_AT_START FALSE
+#define DISPLAY_TITLE_SCREEN FALSE
 
-#define RENDER_SHOW_TEXCOORD FALSE // Show texture coords?
+#define RENDER_SHOW_TEXCOORD FALSE // Show texture coords? Is not optimized though
 
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 #define RENDER_CLEAR_FRAMEBUFFER FALSE

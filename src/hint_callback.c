@@ -134,56 +134,60 @@ void hint_enqueueVdpSpriteCache (u16 lenInWord)
     #endif
 }
 
+static u16 vCounterManual = 0;
+
+FORCE_INLINE void resetVCounterManual ()
+{
+    vCounterManual = HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR;
+}
+
 HINTERRUPT_CALLBACK hint_callback ()
 {
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
-	if (GET_VCOUNTER <= HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
+	if (vCounterManual == HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
+        vCounterManual += HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR;
 		// set background color used for the floor
+        vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+        vu16* vdpData_ptr_w = (vu16*) VDP_DATA_PORT;
+        const u32 color_cmd = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
 		waitHCounter_opt2(156);
-        const u16 addr = 0 * 2; // CRAM index 0
-        *((vu32*) VDP_CTRL_PORT) = VDP_WRITE_CRAM_ADDR((u32)addr);
-        *((vu16*) VDP_DATA_PORT) = 0x0444; //palette_grey[2]; // floor color
+        *vdpCtrl_ptr_l = color_cmd;
+        *vdpData_ptr_w = 0x0444; //palette_grey[2]; // floor color
 		return;
 	}
     #endif
 
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+
 	// Prepare DMA cmd and source address for first palette
     u32 palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-
-	// We are one scanline earlier so wait until entering the HBlank region
-	waitHCounter_opt2(152);
-
+    //waitHCounter_opt2(152);
     //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalA_addrForDMA);
     //turnOnVDP(0x74);
 
-    // At this moment we are at the middle/end of the scanline due to the previous DMA setup.
-    // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
     waitHCounter_opt2(152);
-
     //turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
+    *vdpCtrl_ptr_l = palCmd; // trigger DMA transfer
     //turnOnVDP(0x74);
 
 	// Prepare DMA cmd and source address for second palette
     palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
+    //waitHCounter_opt2(152);
     //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalB_addrForDMA);
     //turnOnVDP(0x74);
 
-	// At this moment we are at the middle/end of the scanline due to the previous DMA setup.
-    // So we need to wait for next HBlank (indeed some pixels before to absorb some overhead)
     waitHCounter_opt2(152);
-
-    turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmd; // trigger DMA transfer
-    turnOnVDP(0x74);
+    //turnOffVDP(0x74);
+    *vdpCtrl_ptr_l = palCmd; // trigger DMA transfer
+    //turnOnVDP(0x74);
 
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	// set background color used for the roof
-	waitHCounter_opt2(156);
-	u32 addr = 0 * 2; // color index 0
-    *((vu32*) VDP_CTRL_PORT) = VDP_WRITE_CRAM_ADDR(addr);
+	//waitHCounter_opt2(156);
+	const u32 color_cmd = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0
+    *vdpCtrl_ptr_l = color_cmd;
     *((vu16*) VDP_DATA_PORT) = 0x0222; //palette_grey[1]; // roof color
     #endif
 
@@ -191,7 +195,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemaps) {
         // PW_ADDR comes with the correct base position in screen
-        DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         hud_tilemaps = 0;
     }
     #endif
@@ -201,13 +205,13 @@ HINTERRUPT_CALLBACK hint_callback ()
         --tiles_elems;
         u16 lenInWord = tiles_lenInWord[tiles_elems];
         tilesLenInWordTotalToDMA -= lenInWord;
-        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, 2);
+        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
-        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, 2);
+        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, -1);
         vdpSpriteCache_lenInWord = 0;
     }
     #endif
@@ -220,7 +224,7 @@ HINTERRUPT_CALLBACK hint_callback ()
         tilesLenInWordTotalToDMA -= lenInWord;
         tiles_buf_dmaBufPtr -= lenInWord;
         u16 toIndex = tiles_buf_toIndex[tiles_buf_elems];
-        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, 2);
+        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, -1);
         DMA_releaseTemp(lenInWord);
     }
     #endif
@@ -233,7 +237,7 @@ HINTERRUPT_CALLBACK hint_callback ()
         setupDMAForPals(15, weaponPalA_addrForDMA);
         waitHCounter_opt2(152);
         turnOffVDP(0x74);
-        *((vu32*) VDP_CTRL_PORT) = palCmd_weapon; // trigger DMA transfer
+        *vdpCtrl_ptr_l = palCmd_weapon; // trigger DMA transfer
         turnOnVDP(0x74);
 
         // palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
@@ -241,7 +245,7 @@ HINTERRUPT_CALLBACK hint_callback ()
         // setupDMAForPals(15, weaponPalB_addrForDMA);
         // waitHCounter_opt2(152);
         // turnOffVDP(0x74);
-        // *((vu32*) VDP_CTRL_PORT) = palCmd_weapon; // trigger DMA transfer
+        // *vdpCtrl_ptr_l = palCmd_weapon; // trigger DMA transfer
         // turnOnVDP(0x74);
 
         weaponPalA_addrForDMA = NULL;
@@ -250,13 +254,13 @@ HINTERRUPT_CALLBACK hint_callback ()
     #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
     // Send next 1/8 of frame_buffer Plane A
     DMA_doDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/8, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET, 
-        (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
     #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
 	// Send first 1/4 of frame_buffer Plane A
-	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
     #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
 	// Send first 1/2 of frame_buffer Plane A
-	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
     #else
     #endif
 
@@ -271,10 +275,10 @@ HINTERRUPT_CALLBACK hint_callback ()
     setupDMAForPals(15, restorePalA_addrForDMA);
 	waitVCounterReg(224);
     turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+    *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
 	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     // setupDMAForPals(15, restorePalB_addrForDMA);
-    // *((vu32*) VDP_CTRL_PORT) = palCmd_restore; // trigger DMA transfer
+    // *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
 	turnOnVDP(0x74);
     #endif
 }

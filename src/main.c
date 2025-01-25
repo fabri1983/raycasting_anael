@@ -71,7 +71,6 @@
 #include "hud.h"
 #include "weapons.h"
 #if DISPLAY_LOGOS_AT_START
-#include "segaLogo.h"
 #include "teddyBearLogo.h"
 #endif
 #if DISPLAY_TITLE_SCREEN
@@ -93,8 +92,6 @@ int main (bool hardReset)
 	}
 
     #if DISPLAY_LOGOS_AT_START
-    // displaySegaLogo();
-    // waitMs_(200);
     displayTeddyBearLogo();
     waitMs_(200);
     #endif
@@ -149,15 +146,16 @@ int main (bool hardReset)
 
 	SYS_disableInts();
 
+    resetVCounterManual();
     SYS_setVIntCallback(vint_callback);
 
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
-    // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the first palette burst).
+    // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the HUD palettes load into VRAM).
     // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
     // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
     VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR-1); // -1 since hintcounter is 0 based
     #else
-    VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of palettes
+    VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of HUD palettes
     #endif
     SYS_setHIntCallback(hint_callback);
     VDP_setHInterrupt(TRUE);

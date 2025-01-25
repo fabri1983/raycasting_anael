@@ -21,6 +21,8 @@ void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord);
 
 void hint_enqueueVdpSpriteCache (u16 lenInWord);
 
+void resetVCounterManual ();
+
 HINTERRUPT_CALLBACK hint_callback ();
 
 #endif // _HINT_CALLBACK_H_
