@@ -29,8 +29,7 @@
 //   into next display period.
 // * Changes in tab_wall_div.h so the start of the vertical line to be written is calculated ahead of time => 1% saved in cpu usage.
 // * Replaced variable d used for color calculation by two tables defined in tab_color_d8_1.h => 2% saved in cpu usage.
-//   There is also a replacement for tab_color_d8_1[] by using tables in tab_color_d8_pals_shft.h, but given that the access
-//   to the arrays is for u16 values they need internal conversion to byte addressing resulting in a bit slower access.
+//   There is also a replacement for tab_color_d8_1[] by using tables in tab_color_d8_pals_shft.h in asm which is slightly faster.
 // * Replaced mulu(sideDistX_l0, deltaDistX) >> FS by a table => ~4% saved in cpu usage, though rom size increased 
 //   460 KB (+ padding to 128KB boundary).
 // * SGDK's SPR_update() function was modified to handle DMA for specific cases, and also cut off unused features.
