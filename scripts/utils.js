@@ -1,7 +1,8 @@
 const fs = require('fs');
 
 // Check correct values of constants before script execution. See consts.h.
-const { FP, AP, PIXEL_COLUMNS, MAP_SIZE, STEP_COUNT } = require('./consts');
+const { FP, AP, PIXEL_COLUMNS, TILEMAP_COLUMNS, VERTICAL_ROWS, 
+        MAP_SIZE, STEP_COUNT, MAX_U8, TILE_ATTR_VFLIP_MASK } = require('./consts');
 
 const utils = {
 
@@ -85,6 +86,80 @@ const utils = {
             result[sideDist] = 1 + d*8;
         }
         return result;
+    },
+
+    /**
+     * Generates tab_wall_div array.
+     * @returns An Array.
+     */
+    generateTabWallDiv () {
+        // Vertical height calculation starts at the center
+        const WALL_H2 = (VERTICAL_ROWS * 8) / 2;
+
+        // Initialize the tab_wall_div array
+        const tab_wall_div = new Array(FP * (STEP_COUNT + 1));
+
+        // Populate the tab_wall_div array
+        for (let i = 0; i < tab_wall_div.length; i++) {
+            let v = (TILEMAP_COLUMNS * FP) / (i + 1);
+            let div = Math.round(Math.min(v, MAX_U8));
+            if (div >= WALL_H2) {
+                tab_wall_div[i] = 0;
+            } else {
+                tab_wall_div[i] = WALL_H2 - div;
+            }
+        }
+
+        return tab_wall_div;
+    },
+
+    clean_framebuffer (framebuffer) {
+        for (let i = 0; i < VERTICAL_ROWS*TILEMAP_COLUMNS; ++i)
+            framebuffer[i] = 0; // tile 0 with all attributes in 0
+    },
+
+    write_vline (h2, tileAttrib, framebuffer, column) {
+        // Draw a solid vertical line
+        if (h2 == 0) {
+            for (let y = 0; y < VERTICAL_ROWS*TILEMAP_COLUMNS; y+=TILEMAP_COLUMNS) {
+            	framebuffer[y + column] = tileAttrib;
+            }
+            return;
+        }
+
+        const ta = Math.floor(h2 / 8); // vertical tilemap entry position
+        // top tilemap entry
+        framebuffer[ta*TILEMAP_COLUMNS + column] = tileAttrib + (h2 & 7); // offsets the tileAttrib by the halved pixel height modulo 8
+        // bottom tilemap entry (with flipped attribute)
+        framebuffer[((VERTICAL_ROWS-1)-ta)*TILEMAP_COLUMNS + column] = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
+
+        // Version for VERTICAL_ROWS = 24
+        // Set tileAttrib which points to a colored tile.
+        switch (ta) {
+            case 0:		framebuffer[1*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[22*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 1:		framebuffer[2*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[21*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 2:		framebuffer[3*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[20*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 3:		framebuffer[4*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[19*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 4:		framebuffer[5*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[18*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 5:		framebuffer[6*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[17*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 6:		framebuffer[7*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[16*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 7:		framebuffer[8*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[15*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 8:		framebuffer[9*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[14*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 9:		framebuffer[10*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[13*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+            case 10:	framebuffer[11*TILEMAP_COLUMNS + column] = tileAttrib;
+                        framebuffer[12*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
+                        break;
+        }   
     },
 
     /**

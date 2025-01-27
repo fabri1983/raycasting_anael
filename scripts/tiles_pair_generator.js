@@ -5,18 +5,13 @@ const utils = require('./utils');
 // Check correct values of constants before script execution. See consts.h.
 const {
     FS, FP, AP, STEP_COUNT_LOOP, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
-    MAP_HIT_MASK_MAPXY, MAP_HIT_MASK_SIDEDISTXY, MAP_HIT_OFFSET_MAPXY, MAP_HIT_OFFSET_SIDEDISTXY, 
-    MAX_U32, MAP_HIT_MIN_CALCULATED_INDEX
-} = require('./consts');
+    TILE_ATTR_PALETTE_SFT, PAL0, PAL1 } = require('./consts');
 
 const tabDeltasFile = '../inc/tab_deltas.h';
 const mapMatrixFile = '../src/map_matrix.c';
-const outputFile = 'tab_map_hit_OUTPUT.txt';
+const outputFile = 'tiles_pair_OUTPUT.txt';
 
 const MAX_JOBS = 256;
-
-const MODE_CHECK_LOADED_MATRIX = false;
-const loadedMatrix = [];
 
 // Progress tracking
 const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024/(1024/AP));
@@ -28,28 +23,8 @@ function displayProgress () {
     process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
-function calculateHitMapEntry (mapX, mapY, a, column, sideDistXY, mapXY) {
-    // sanity check
-    if (sideDistXY >= 4096)
-        throw new Error(`Sanity check failed: sideDistXY >= 4096`);
-    if (mapX >= MAP_SIZE || mapY >= MAP_SIZE)
-        throw new Error(`Sanity check failed: mapX >= MAP_SIZE || mapY >= MAP_SIZE`);
-    
-    const key = `[${mapX}][${mapY}][${a}][${column}]`;
-
-    // At this point we know sideDistXY < 4096, mapXY < MAP_SIZE
-    // The value is calculated in next layout:
-    //   16 bits:  dddddddddddd    mmmm
-    //              sideDistXY     mapXY
-    let value = ((sideDistXY & MAP_HIT_MASK_SIDEDISTXY) << MAP_HIT_OFFSET_SIDEDISTXY) 
-                    | ((mapXY & MAP_HIT_MASK_MAPXY) << MAP_HIT_OFFSET_MAPXY);
-    value &= 0xFFFF;
-
-    return { key, value };
-}
-
 // Processing function to be run inside the worker thread
-function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
+function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map) {
     const outputHitMap = new Map();
     const posStepping = 1;
 
@@ -123,6 +98,9 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
 
             for (let angle = 0; angle < 1024; angle += (1024/AP)) {
 
+                utils.clean_framebuffer(framebuffer_planeA);
+                utils.clean_framebuffer(framebuffer_planeB);
+
                 // DDA (Digital Differential Analyzer)
 
                 const sideDistX_l0 = posX - (Math.floor(posX / FP) * FP);
@@ -166,23 +144,24 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
                     let mapX = Math.floor(posX / FP);
                     let mapY = Math.floor(posY / FP);
 
-                    let loadedValue = 0;
-                    if (MODE_CHECK_LOADED_MATRIX) {
-                        const matrixIndex = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS + column) - MAP_HIT_MIN_CALCULATED_INDEX;
-                        loadedValue = loadedMatrix[matrixIndex];
-                    }
-
                     for (let n = 0; n < STEP_COUNT_LOOP; ++n) {
                         // side X
                         if (sideDistX < sideDistY) {
                             mapX += stepX;
                             const hit = map[mapY * MAP_SIZE + mapX];
                             if (hit != 0) {
-                                // Here we found a hit for side X when user is at (posX/FP,posY/FP,a,column).
-                                const entry = calculateHitMapEntry(Math.floor(posX/FP), Math.floor(posY/FP), a, column, sideDistX, mapY);
-                                // if (outputHitMap.has(entry.key))
-                                //     throw new Error(`ERROR: Key already set. key: ${entry.key} value: ${entry.value}`);
-                                outputHitMap.set(entry.key, entry.value);
+                                const h2 = tab_wall_div[sideDistX]; // height halved
+
+                                const d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
+                                let tileAttrib;
+                                if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
+                                else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
+
+                                let framebuffer = frambuffer_planeA;
+                                if ((column % 2) == 1)
+                                    framebuffer = frambuffer_planeB;
+                                utils.write_vline(h2, tileAttrib, framebuffer, column/2);
+
                                 break;
                             }
                             sideDistX += deltaDistX;
@@ -192,17 +171,27 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
                             mapY += stepY;
                             const hit = map[mapY * MAP_SIZE + mapX];
                             if (hit != 0) {
-                                // Here we found a hit for side Y when user is at (posX/FP,posY/FP,a,column).
-                                const entry = calculateHitMapEntry(Math.floor(posX/FP), Math.floor(posY/FP), a, column, sideDistY, mapX);
-                                // if (outputHitMap.has(entry.key))
-                                //     throw new Error(`ERROR: Key already set. key: ${entry.key} value: ${entry.value}`);
-                                outputHitMap.set(entry.key, entry.value);
+                                const h2 = tab_wall_div[sideDistY]; // height halved
+
+                                const d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
+                                let tileAttrib;
+                                if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
+                                else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
+
+                                let framebuffer = frambuffer_planeA;
+                                if ((column % 2) == 1)
+                                    framebuffer = frambuffer_planeB;
+                                utils.write_vline(h2, tileAttrib, framebuffer, column/2);
+
                                 break;
                             }
                             sideDistY += deltaDistY;
                         }
                     }
                 }
+
+                // traverse both framebuffers and count the generated pairs between each entry
+                here;
             }
 
             //global.gc(false); // Not sure if false sets a Minor GC call but it works fine.
@@ -213,69 +202,6 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, map) {
     }
 
     return outputHitMap;
-}
-
-function checkFinalSize (map) {
-    const expectedCount = MAP_SIZE * MAP_SIZE * (1024/(1024/AP)) * PIXEL_COLUMNS;
-    if (map.size != expectedCount)
-        throw new Error(`Sanity check failed: hit map size is ${map.size} instead of ${expectedCount}`);
-}
-
-function toIndex (keyString) {
-    const match = keyString.match(/\[(\d+)\]\[(\d+)\]\[(\d+)\]\[(\d+)\]/);
-    if (!match) {
-        throw new Error('Invalid key format');
-    }
-
-    const [, mapX, mapY, a, column] = match.map(Number);
-
-    if (mapX < 0 || mapX >= MAP_SIZE ||
-            mapY < 0 || mapY >= MAP_SIZE ||
-            a < 0 || a >= (1024/(1024/AP)) ||
-            column < 0 || column >= PIXEL_COLUMNS) {
-        throw new Error('Invalid key format or values out of range. key: ' + keyString);
-    }
-
-    const index = ((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS + column;
-    return index;
-}
-
-function getMinIndex (map) {
-    let minIndex = MAX_U32;
-    for (const [key, value] of map.entries()) {
-        const index = toIndex(key);
-        if (index < minIndex)
-            minIndex = index;
-    }
-    return minIndex;
-}
-
-function getMaxIndex (map) {
-    let maxIndex = 0;
-    for (const [key, value] of map.entries()) {
-        const index = toIndex(key);
-        if (index > maxIndex)
-            maxIndex = index;
-    }
-    return maxIndex;
-}
-
-function convertToFullArray (map) {
-    const minIndex = getMinIndex(map);
-    const maxIndex = getMaxIndex(map);
-    const finalArraySize = (maxIndex - minIndex) + 1;
-    console.log(`min calculated index: ${minIndex}`);
-    console.log(`max calculated index: ${maxIndex}`);
-    console.log(`final array size: (${maxIndex} - ${minIndex}) + 1 = ${finalArraySize}`);
-    // Initialize with 0s (no hits)
-    const fullArray = new Array(finalArraySize).fill(0);
-
-    for (const [key, value] of map.entries()) {
-        const index = toIndex(key);
-        fullArray[index - minIndex] = value;
-    }
-
-    return fullArray;
 }
 
 function writeOutputToFile (arr, outputFile) {
@@ -300,6 +226,8 @@ function runWorkers () {
 
         const numCores = Math.min(16, os.cpus().length);
         const tab_deltas = utils.readTabDeltas(tabDeltasFile);
+        const tab_wall_div = utils.generateTabWallDiv();
+        const tab_color_d8_1 = utils.generateTabColor_d8_1();
         const map = utils.readMapMatrix(mapMatrixFile);
         const jobQueue = [];
         const activeWorkers = new Set();
@@ -339,7 +267,7 @@ function runWorkers () {
             const workerId = `[${job.startPosX}-${job.endPosX}]`;
 
             const worker = new Worker(__filename, {
-                workerData: { workerId, ...job, tab_deltas, map }
+                workerData: { workerId, ...job, tab_deltas, tab_wall_div, tab_color_d8_1, map }
             });
 
             activeWorkers.add(worker);
@@ -392,20 +320,12 @@ function runWorkers () {
 if (isMainThread) {
     runWorkers()
         .then((results) => {
-            if (MODE_CHECK_LOADED_MATRIX) {
-                console.log('Check of loaded matrix complete.');
-                return;
-            }
-
             const finalMap = new Map();
             results.forEach(resultMap => {
                 for (const [key, value] of resultMap) {
                     finalMap.set(key, value);
                 }
             });
-
-            // Sanity check on size
-            //checkFinalSize(finalMap);
 
             // Complete the array of values with the missing elements (those unaccessible map regions)
             const completeOutputArray = convertToFullArray(finalMap);
@@ -425,7 +345,7 @@ if (isMainThread) {
             console.log(endTimeStr);
         });
 } else {
-    const { workerId, startPosX, endPosX, tab_deltas, map } = workerData;
-    const result = processGameChunk(workerId, startPosX, endPosX, tab_deltas, map);
+    const { workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map } = workerData;
+    const result = processGameChunk(workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map);
     parentPort.postMessage(result);
 }

@@ -22,7 +22,7 @@ u16 render_loadTiles ()
 {
 	// Create a buffer tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4*8]
-	memset(tile, 0, 32); // clear the tile with color index 0
+	memset(tile, 0, 32); // clear the tile with color index 0 (which is the BG color index)
 
 	// 9 possible tile heights
 

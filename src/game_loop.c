@@ -526,14 +526,28 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     u16 wallY = posY + (mulu(sideDistX, rayDirAngleY) >> FS);
     //wallY = ((wallY * 8) >> FS) & 7; // Faster? But is actually slower given the context
     wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
-    u16 tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8 + (mapY&1)*(8*8);
+    u16 tileAttrib;
+    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8 + (8*8);
+    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
+    //u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
+    u16 tileAttrib = mapY;
+    u16* tab = (u16*)tab_color_d8_1_X_pals_shft;
+    __asm volatile (
+        "andi.w  #1,%[tileAttrib]\n\t"
+        "add.w   %[sideDist],%[tileAttrib]\n\t"
+        "add.w   %[sideDist],%[tileAttrib]\n\t"
+        "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
+        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
+        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistX), [tab] "+a" (tab)
+        : 
+        : 
+    );
     #else
     u8 d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
     u16 tileAttrib;
-    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
-    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
+    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
+    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
     write_vline(h2, tileAttrib);
@@ -548,14 +562,28 @@ static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayD
     u16 wallX = posX + (mulu(sideDistY, rayDirAngleX) >> FS);
     //wallX = ((wallX * 8) >> FS) & 7; // Faster? But is actually slower given the context
     wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
-    u16 tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8 + (mapX&1)*(8*8);
+    u16 tileAttrib;
+    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8 + (8*8);
+    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
+    //u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
+    u16 tileAttrib = mapX;
+    u16* tab = (u16*)tab_color_d8_1_Y_pals_shft;
+    __asm volatile (
+        "andi.w  #1,%[tileAttrib]\n\t"
+        "add.w   %[sideDist],%[tileAttrib]\n\t"
+        "add.w   %[sideDist],%[tileAttrib]\n\t"
+        "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
+        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
+        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistY), [tab] "+a" (tab)
+        : 
+        : 
+    );
     #else
     u8 d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
     u16 tileAttrib;
-    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
-    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) | d8_1;
+    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
+    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
     write_vline(h2, tileAttrib);
