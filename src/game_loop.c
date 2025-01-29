@@ -67,7 +67,7 @@ void game_loop ()
         #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
 		clear_buffer_sp();
         #elif RENDER_CLEAR_FRAMEBUFFER
-        clear_buffer();
+		clear_buffer();
         #endif
 
         // ceiling_copy_tilemap(BG_B, angle);

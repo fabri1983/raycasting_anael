@@ -258,7 +258,7 @@ void weapon_fire ()
     SPR_setAutoAnimation(spr_currWeapon, TRUE);
 }
 
-void weapon_updateSway (bool _isMoving)
+FORCE_INLINE void weapon_updateSway (bool _isMoving)
 {
     isMoving = _isMoving;
     if (isMoving == FALSE) {
@@ -297,7 +297,7 @@ void weapon_updateSway (bool _isMoving)
     }
 }
 
-void weapon_update ()
+FORCE_INLINE void weapon_update ()
 {
     if (SPR_getAutoAnimation(spr_currWeapon) && SPR_isAnimationDone(spr_currWeapon)) {
         stopFireAnimation();

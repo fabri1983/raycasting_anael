@@ -507,7 +507,7 @@ static FORCE_INLINE void updateFaceExpressionTimer ()
     }
 }
 
-void hud_update ()
+FORCE_INLINE void hud_update ()
 {
     updateFaceExpressionTimer();
 
