@@ -151,7 +151,6 @@ void hud_setArmor (u8 hundreds, u8 tens, u8 ones)
     armor_digits.hundrs = hundreds;
     armor_digits.tens = tens;
     armor_digits.ones = ones;
-
 }
 
 void hud_addArmorUnits (u16 amnt)
@@ -508,7 +507,7 @@ static FORCE_INLINE void updateFaceExpressionTimer ()
     }
 }
 
-FORCE_INLINE void hud_update ()
+void hud_update ()
 {
     updateFaceExpressionTimer();
 

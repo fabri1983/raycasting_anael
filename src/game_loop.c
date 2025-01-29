@@ -75,8 +75,9 @@ void game_loop ()
         // ceiling_dma_tileset(angle);
         // floor_dma_tileset(angle);
 
-		//u16 joyState = JOY_readJoypad(JOY_1);
         u16 joyState = joy_readJoypad_joy1();
+        // if (joyState & BUTTON_START)
+        //     break;
 
         if (joyState & BUTTON_X) {
             weapon_next(-1);
@@ -320,7 +321,6 @@ void game_loop_auto ()
                 render_SYS_doVBlankProcessEx_ON_VBLANK();
 
                 // handle inputs
-                // u16 joyState = JOY_readJoypad(JOY_1);
                 // u16 joyState = joy_readJoypad_joy1();
                 // if (joyState & BUTTON_START)
                 //     break;
@@ -354,45 +354,48 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
     //u16 a = angle / (1024/AP); // a range is [0, 128)
     //u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT));
 
-    map_hit_setIndexForStartingColumn(0);
+    // ALWAYS starts rendering process at column 0, given that column_ptr increment is hardcoded assuming first column is even.
+    // If the target display dimensions are lower than full screen (except the hud) then just adjust PA_ADDR and PB_ADDR.
+    u8 column = 0;
 
+    map_hit_setIndexForStartingColumn(column);
+    
     // reset to the start of frame_buffer
     column_ptr = frame_buffer;
 
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-    for (u8 column = 0; column < PIXEL_COLUMNS; column += RENDER_COLUMNS_UNROLL) {
+    for (; column < PIXEL_COLUMNS; column += RENDER_COLUMNS_UNROLL) {
         #if RENDER_COLUMNS_UNROLL == 1
 
         process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
         if ((column & 1) == 0)
-            column_ptr += VERTICAL_ROWS*PLANE_COLUMNS + 0; // 0 if Plane B is the one displaced 4 pixels, otherwise 1
+            column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
         else
-            column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // 1 if Plane B is the one displaced 4 pixels, otherwise 0
+            column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
 
         #elif RENDER_COLUMNS_UNROLL == 2
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS + 0; // 0 if Plane B is the one displaced 4 pixels, otherwise 1
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // 1 if Plane B is the one displaced 4 pixels, otherwise 0
-
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
         #elif RENDER_COLUMNS_UNROLL == 4
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
         process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS;
+        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
         process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1;
+        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
         #endif
 
         delta_a_ptr += RENDER_COLUMNS_UNROLL * DELTA_PTR_OFFSET_AMNT;

@@ -138,7 +138,7 @@ static FORCE_INLINE void stopFireAnimation ()
     SPR_setFrame(spr_currWeapon, currWeaponAnimReadyToHitAgainFrame);
 }
 
-FORCE_INLINE void weapon_next (u8 sign)
+void weapon_next (u8 sign)
 {
     // allow select other weapon after a certain period of time
     if (select_coolDown_timer != 0)
@@ -239,7 +239,7 @@ static FORCE_INLINE bool useAmmo ()
     }
 }
 
-FORCE_INLINE void weapon_fire ()
+void weapon_fire ()
 {
     if ((fire_coolDown_timer | changeWeaponEffect_timer) != 0)
         return;
@@ -258,7 +258,7 @@ FORCE_INLINE void weapon_fire ()
     SPR_setAutoAnimation(spr_currWeapon, TRUE);
 }
 
-FORCE_INLINE void weapon_updateSway (bool _isMoving)
+void weapon_updateSway (bool _isMoving)
 {
     isMoving = _isMoving;
     if (isMoving == FALSE) {
@@ -297,7 +297,7 @@ FORCE_INLINE void weapon_updateSway (bool _isMoving)
     }
 }
 
-FORCE_INLINE void weapon_update ()
+void weapon_update ()
 {
     if (SPR_getAutoAnimation(spr_currWeapon) && SPR_isAnimationDone(spr_currWeapon)) {
         stopFireAnimation();

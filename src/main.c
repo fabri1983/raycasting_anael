@@ -106,7 +106,6 @@ int main (bool hardReset)
 
 	// Basic game setup
 
-	//render_loadPlaneDisplacements(); // not needed anymore, see details above in description
     render_loadWallPalettes();
     vint_reset();
     hint_reset();
@@ -170,17 +169,6 @@ int main (bool hardReset)
     SYS_setHIntCallback(NULL);
 
 	SYS_enableInts();
-
-    SPR_end();
-
-	PAL_setColor(0, 0x000); // Black BG color
-	VDP_clearPlane(BG_B, TRUE);
-	VDP_clearPlane(BG_A, TRUE);
-    VDP_clearPlane(WINDOW, TRUE);
-	VDP_setHorizontalScroll(BG_A, 0);
-	VDP_setHorizontalScroll(BG_B, 0);
-    VDP_setWindowHPos(FALSE, 0);
-    VDP_setWindowVPos(TRUE, 0);
 
 	return 0;
 }

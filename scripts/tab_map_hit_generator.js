@@ -397,6 +397,7 @@ if (isMainThread) {
                 return;
             }
 
+            // Process all the maps gathered from each execution of processGameChunk()
             const finalMap = new Map();
             results.forEach(resultMap => {
                 for (const [key, value] of resultMap) {

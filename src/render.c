@@ -73,15 +73,6 @@ u16 render_loadTiles ()
 	return HUD_VRAM_START_INDEX; // 1 + 8*8 + 8*8
 }
 
-void render_loadPlaneDisplacements ()
-{
-	for (u16 column = 0; column < PIXEL_COLUMNS; column++) {
-		// column is even => base offset is 0
-		// column is odd => base offset is VERTICAL_ROWS*PLANE_COLUMNS which is after the first plane
-		frame_buffer_pxcolumn[column] = column&1 ? VERTICAL_ROWS*PLANE_COLUMNS + column/2 : 0 + column/2;
-	}
-}
-
 void render_loadWallPalettes ()
 {
     // palette grey and palette red were already loaded

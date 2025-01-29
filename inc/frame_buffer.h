@@ -10,10 +10,6 @@
 // Removed last (PLANE_COLUMNS-TILEMAP_COLUMNS) non displayed columns (if case applies).
 extern u16 frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)];
 
-// Holds the offset to access the column for a given plane in the framebuffer given 
-// the pixel column currently being rendered.
-extern u16 frame_buffer_pxcolumn[PIXEL_COLUMNS];
-
 void clear_buffer ();
 
 void clear_buffer_sp ();

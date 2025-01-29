@@ -43,7 +43,9 @@ const MAX_U8 = 255;  // Assuming MAX_U8 as 255 since it's an 8-bit value
 const MAX_U16 = 0xFFFF;
 const MAX_U32 = 0xFFFFFFFF;
 
+// ----------------------------------------------------------------------------------------
 // Export all of them
+// ----------------------------------------------------------------------------------------
 exports.FS = FS
 exports.FP = FP
 exports.AP = AP

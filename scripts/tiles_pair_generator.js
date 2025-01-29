@@ -4,8 +4,8 @@ const os = require('os');
 const utils = require('./utils');
 // Check correct values of constants before script execution. See consts.h.
 const {
-    FS, FP, AP, STEP_COUNT_LOOP, PIXEL_COLUMNS, MAP_SIZE, MAP_FRACTION, MIN_POS_XY, MAX_POS_XY, 
-    TILE_ATTR_PALETTE_SFT, PAL0, PAL1 } = require('./consts');
+    FS, FP, AP, STEP_COUNT_LOOP, PIXEL_COLUMNS, TILEMAP_COLUMNS, VERTICAL_ROWS, MAP_SIZE, MAP_FRACTION, 
+    MIN_POS_XY, MAX_POS_XY, TILE_ATTR_PALETTE_SFT, PAL0, PAL1 } = require('./consts');
 
 const tabDeltasFile = '../inc/tab_deltas.h';
 const mapMatrixFile = '../src/map_matrix.c';
@@ -23,9 +23,19 @@ function displayProgress () {
     process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
+function trackTilePairsBetweenPlanes (framebuffer_planeA, framebuffer_planeB, tilePairMap) {
+    for (let i = 0; i < VERTICAL_ROWS*TILEMAP_COLUMNS; i++) {
+        // Construct the key using the bitmask 0x7FF which only keeps the tile index data of the framebuffer plane entry
+        const key = `${framebuffer_planeA[i] & 0x7FF}-${framebuffer_planeB[i] & 0x7FF}`;
+        tilePairMap.set(key, 1);
+    }
+}
+
 // Processing function to be run inside the worker thread
 function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map) {
-    const outputHitMap = new Map();
+    const framebuffer_planeA = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
+    const framebuffer_planeB = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
+    const tilePairMap = new Map();
     const posStepping = 1;
 
     // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
@@ -157,9 +167,9 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                                 if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
                                 else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
 
-                                let framebuffer = frambuffer_planeA;
+                                let framebuffer = framebuffer_planeA;
                                 if ((column % 2) == 1)
-                                    framebuffer = frambuffer_planeB;
+                                    framebuffer = framebuffer_planeB;
                                 utils.write_vline(h2, tileAttrib, framebuffer, column/2);
 
                                 break;
@@ -178,9 +188,9 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                                 if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
                                 else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
 
-                                let framebuffer = frambuffer_planeA;
+                                let framebuffer = framebuffer_planeA;
                                 if ((column % 2) == 1)
-                                    framebuffer = frambuffer_planeB;
+                                    framebuffer = framebuffer_planeB;
                                 utils.write_vline(h2, tileAttrib, framebuffer, column/2);
 
                                 break;
@@ -190,8 +200,8 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                     }
                 }
 
-                // traverse both framebuffers and count the generated pairs between each entry
-                here;
+                // traverse both framebuffers and track the generated pairs between each entry
+                trackTilePairsBetweenPlanes(framebuffer_planeA, framebuffer_planeB, tilePairMap);
             }
 
             //global.gc(false); // Not sure if false sets a Minor GC call but it works fine.
@@ -201,23 +211,32 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
         }
     }
 
-    return outputHitMap;
+    return tilePairMap;
 }
 
-function writeOutputToFile (arr, outputFile) {
-    const lines = [];
+function writeOutputToFile (finalMap, outputFile) {
+    const mapEntries = Array.from(finalMap);
 
-    // Take groups of PIXEL_COLUMNS elems
-    for (let i = 0; i < arr.length; i += PIXEL_COLUMNS) {
-        const limit = Math.min(i + PIXEL_COLUMNS, arr.length);
-        const line = arr.slice(i, limit).join(',');
-        lines.push(line);
+    // Sort the entries by key (numberA-numberB)
+    mapEntries.sort((a, b) => {
+        // Split the keys into numberA and numberB
+        const [aNumA, aNumB] = a[0].split('-').map(Number);
+        const [bNumA, bNumB] = b[0].split('-').map(Number);
+
+        // Compare numberA first
+        if (aNumA !== bNumA) {
+            return aNumA - bNumA; // Sort by numberA ascending
+        }
+        // If numberA is the same, compare numberB
+        return aNumB - bNumB; // Sort by numberB ascending
+    });
+
+    let outputString = '';
+    for (const [key, value] of mapEntries) {
+        outputString += `${key}\n`; // Format: "key"
     }
 
-    // Join lines with newline character
-    const content = lines.join(',\n');
-
-    fs.writeFileSync(outputFile, content);
+    fs.writeFileSync(outputFile, outputString, 'utf8');
 }
 
 // Function to run parallel workers
@@ -320,6 +339,7 @@ function runWorkers () {
 if (isMainThread) {
     runWorkers()
         .then((results) => {
+            // Process all the maps gathered from each execution of processGameChunk()
             const finalMap = new Map();
             results.forEach(resultMap => {
                 for (const [key, value] of resultMap) {
@@ -327,11 +347,8 @@ if (isMainThread) {
                 }
             });
 
-            // Complete the array of values with the missing elements (those unaccessible map regions)
-            const completeOutputArray = convertToFullArray(finalMap);
-
             // Write output to file
-            writeOutputToFile(completeOutputArray, outputFile);
+            writeOutputToFile(finalMap, outputFile);
             console.log('Processing complete. Output saved to ' + outputFile);
 
             let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
