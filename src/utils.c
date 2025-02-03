@@ -30,7 +30,7 @@ FORCE_INLINE void waitHCounter_opt1 (u8 n)
             // bhi is for unsigned comparisons
         :
         : "a" (regA), "d" (n)
-        : "cc"
+        :
     );
 }
 
@@ -45,7 +45,7 @@ FORCE_INLINE void waitHCounter_opt2 (u8 n)
             // bhi is for unsigned comparisons
         : "+a" (regA)
         : "d" (n)
-        : "cc"
+        :
     );
 }
 
@@ -66,7 +66,7 @@ FORCE_INLINE void waitVCounterReg (u16 n)
             // bge/bgt are for signed comparisons in case n comes already smaller than value in VDP_HVCOUNTER_PORT memory
         :
         : "a" (regA), "d" (n << 8) // (n << 8) | 0xFF
-        : "cc"
+        :
     );
 }
 
@@ -77,8 +77,8 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
 /*
     vu16* pw = (vu16*) VDP_CTRL_PORT;
     // Setup DMA length (in word here)
-    *pw = 0x9300 + (len & 0xff);
-    *pw = 0x9400 + ((len >> 8) & 0xff);
+    *pw = 0x9300 + (len & 0xff); // low
+    *pw = 0x9400 + ((len >> 8) & 0xff); // high
     // Setup DMA address
     // fromAddr already comes with >> 1
     *pw = 0x9500 + (fromAddr & 0xff); // low
@@ -110,7 +110,7 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
         "move.w   %[dn],(%[dmaCtrl_ptr])"         // *((vu16*) VDP_CTRL_PORT) = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
         : [dmaCtrl_ptr] "+a" (dmaCtrl_ptr), [dn] "+d" (dn)
         : [fromAddr] "d" (fromAddr), [dmaLen] "id" (dmaLen)
-        : "cc"
+        :
     );
 }
 
@@ -272,7 +272,7 @@ FORCE_INLINE void waitSubTick_ (u32 subtick)
         "dbra   %0, 1b" // dbf/dbra: test if not zero, then decrement register dN and branch back (b) to label 1
         : "+d" (tmp)
         :
-        : "cc"
+        :
 	);
 }
 

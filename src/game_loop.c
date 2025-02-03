@@ -65,9 +65,17 @@ void game_loop ()
 	{
 		// clear the frame buffer
         #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-		clear_buffer_sp();
+        #if RENDER_HALVED_PLANES
+		clear_buffer_halved_sp();
+        #else
+        clear_buffer_sp();
+        #endif
         #elif RENDER_CLEAR_FRAMEBUFFER
-		clear_buffer();
+		#if RENDER_HALVED_PLANES
+		clear_buffer_halved();
+        #else
+        clear_buffer();
+        #endif
         #endif
 
         // ceiling_copy_tilemap(BG_B, angle);
@@ -182,34 +190,10 @@ void game_loop ()
         hud_update();
         spr_eng_update();
 
-		// DDA (Digital Differential Analyzer)
 		dda(posX, posY, delta_a_ptr);
 
-        // DMA frame_buffer Plane A
-        #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
-        // Send first 1/8 of frame_buffer Plane A
-        DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-        // The other 1/8 is sent in HInt
-        // Remaining 6/8 of the frame_buffer Plane A
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
-            ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
-        // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, 
-            ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
-        // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
-            (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #else
-        // All the frame_buffer Plane A
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #endif
-
-        // DMA frame_buffer Plane B
-        DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-
-        //SYS_doVBlankProcessEx(ON_VBLANK);
+        render_DMA_enqueue_framebuffer();
+    
         render_SYS_doVBlankProcessEx_ON_VBLANK();
 	}
 }
@@ -282,42 +266,26 @@ void game_loop_auto ()
 
                 // clear the frame buffer
                 #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
+                #if RENDER_HALVED_PLANES
+                clear_buffer_halved_sp();
+                #else
                 clear_buffer_sp();
+                #endif
                 #elif RENDER_CLEAR_FRAMEBUFFER
+                #if RENDER_HALVED_PLANES
+                clear_buffer_halved();
+                #else
                 clear_buffer();
+                #endif
                 #endif
 
                 u16 a = angle / (1024/AP); // a range is [0, 128)
                 u16* delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
 
-                // DDA (Digital Differential Analyzer)
                 dda(posX, posY, delta_a_ptr);
 
-                // DMA frame_buffer Plane A
-                #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
-                // Send first 1/8 of frame_buffer Plane A
-                DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-                // The other 1/8 is sent in HInt
-                // Remaining 6/8 of the frame_buffer Plane A
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
-                    ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
-                // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, 
-                    ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
-                // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
-                    (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                #else
-                // All the frame_buffer Plane A
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-                #endif
+                render_DMA_enqueue_framebuffer();
 
-                // DMA frame_buffer Plane B
-                DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-
-                //SYS_doVBlankProcessEx(ON_VBLANK);
                 render_SYS_doVBlankProcessEx_ON_VBLANK();
 
                 // handle inputs
@@ -359,7 +327,8 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
     u8 column = 0;
 
     map_hit_setIndexForStartingColumn(column);
-    
+    fb_set_top_entries_column(column);
+
     // reset to the start of frame_buffer
     column_ptr = frame_buffer;
 
@@ -368,6 +337,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         #if RENDER_COLUMNS_UNROLL == 1
 
         process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         if ((column & 1) == 0)
             column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
@@ -377,29 +347,45 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         #elif RENDER_COLUMNS_UNROLL == 2
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+
         #elif RENDER_COLUMNS_UNROLL == 4
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+
         process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+
         process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
+        fb_increment_entries_column();
         map_hit_incrementColumn();
         column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+
         #endif
 
         delta_a_ptr += RENDER_COLUMNS_UNROLL * DELTA_PTR_OFFSET_AMNT;
     }
+
+    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_CPU_RAM
+    fb_mirror_planes_in_RAM();
+    #endif
 }
 
 #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
@@ -553,7 +539,11 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
+    #if RENDER_HALVED_PLANES
+    write_vline_halved(h2, tileAttrib);
+    #else
     write_vline(h2, tileAttrib);
+    #endif
 }
 
 static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
@@ -589,5 +579,9 @@ static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayD
     else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
+    #if RENDER_HALVED_PLANES
+    write_vline_halved(h2, tileAttrib);
+    #else
     write_vline(h2, tileAttrib);
+    #endif
 }

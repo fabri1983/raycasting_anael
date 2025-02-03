@@ -5,59 +5,17 @@
 u16 frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)];
 u16* column_ptr = NULL;
 
-void clear_buffer (u16* frame_buffer_ptr) {
-#if PLANE_COLUMNS == 32
-	// We need to clear all the tilemap
-	__asm volatile (
-		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
-		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-        // Save current SP value in USP
-		"    move.l  %%sp,%%usp\n"
-        // Makes a0 points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer_ptr + TOTAL_BYTES: buffer end
-		// Clear registers
-		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
-		"    move.l  %%d0,%%d1\n"
-		"    move.l  %%d0,%%d2\n"
-		"    move.l  %%d0,%%d3\n"
-		"    move.l  %%d0,%%d4\n"
-		"    move.l  %%d0,%%d5\n"
-		"    move.l  %%d0,%%d6\n"
-		"    move.l  %%d0,%%d7\n"
-		"    move.l  %%d0,%%a1\n"
-		"    move.l  %%d0,%%a2\n"
-		"    move.l  %%d0,%%a3\n"
-		"    move.l  %%d0,%%a4\n"
-		"    move.l  %%d0,%%a5\n"
-		"    move.l  %%d0,%%a6\n"
-        "    move.l  %%d0,%%a7\n"
-		// Clear all the bytes by using 15 registers with long word access.
-		"    .rept (%c[TOTAL_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n"
-    	"    .endr\n"
-		// NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TOTAL_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
-        // Restore SP
-		"    move.l  %%usp,%%sp\n"
-		// Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		:
-		: "a" (frame_buffer_ptr), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		: "cc", "memory"
-	);
-#elif PLANE_COLUMNS == 64
-	// We need to clear only first PIXEL_COLUMNS columns of each row from the tilemap
-	// 9842 cycles according Blastem cycle counter
+void clear_buffer ()
+{
+	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
+	// 9842 cycles according Blastem cycle counter.
 	__asm volatile (
 		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
         // Save current SP value in USP
 		"    move.l  %%sp,%%usp\n"
 		// Makes a0 points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer_ptr + TOTAL_BYTES: buffer end
+		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -99,18 +57,19 @@ void clear_buffer (u16* frame_buffer_ptr) {
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: "a" (frame_buffer_ptr), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
-		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
-		: "cc", "memory"
+		: "a" (frame_buffer), 
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
+		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
+		: "memory"
 	);
-#endif
 }
 
-void clear_buffer_sp () {
-#if PLANE_COLUMNS == 32
-	// We need to clear all the tilemap
+void clear_buffer_sp ()
+{
+	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
+	// Here we load the framebuffer address into the SP, previously backed up, to gain 1 more register.
+	// 9693 cycles according Blastem cycle counter.
 	__asm volatile (
         // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
@@ -135,50 +94,7 @@ void clear_buffer_sp () {
 		"    move.l  %%d0,%%a4\n"
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
-		// Clear all the bytes by using 15 registers with long word (4 bytes) access.
-		"    .rept (%c[TOTAL_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
-    	"    .endr\n"
-		// NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TOTAL_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%sp)\n"
-		"    .endr\n"
-		// Restore SP
-		"    move.l  %%usp,%%sp\n"
-        // Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		: [frame_buffer] "+m" (frame_buffer)
-		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16))
-		: "cc", "memory"
-	);
-#elif PLANE_COLUMNS == 64
-	// We need to clear the tilemap following the addresses loaded into the SP
-	// 9693 cycles according Blastem cycle counter
-	__asm volatile (
-        // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
-		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Save current SP value in USP
-		"    move.l  %%sp,%%usp\n"
-		// Makes SP points to the memory location of the framebuffer's end 
-        "    lea     (%[frame_buffer]),%%sp\n"
-		"    lea     %c[TOTAL_BYTES](%%sp),%%sp\n" // frame_buffer + TOTAL_BYTES: buffer end
-		// Clear registers
-		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
-		"    move.l  %%d0,%%d1\n"
-		"    move.l  %%d0,%%d2\n"
-		"    move.l  %%d0,%%d3\n"
-		"    move.l  %%d0,%%d4\n"
-		"    move.l  %%d0,%%d5\n"
-		"    move.l  %%d0,%%d6\n"
-		"    move.l  %%d0,%%d7\n"
-		"    move.l  %%d0,%%a0\n"
-		"    move.l  %%d0,%%a1\n"
-		"    move.l  %%d0,%%a2\n"
-		"    move.l  %%d0,%%a3\n"
-		"    move.l  %%d0,%%a4\n"
-		"    move.l  %%d0,%%a5\n"
-		"    move.l  %%d0,%%a6\n"
-        // Iterate over all rows - 1
+        // Iterate over all rows (both planes) - 1
 		".rept (%c[_VERTICAL_ROWS]*2 - 1)\n"
 		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
 		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
@@ -202,13 +118,12 @@ void clear_buffer_sp () {
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		: [frame_buffer] "+m" (frame_buffer)
-		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*sizeof(u16)), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*sizeof(u16)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
-		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*sizeof(u16))
-		: "cc", "memory"
+		: [frame_buffer] "=m" (frame_buffer)
+		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
+		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
+		:
 	);
-#endif
 }
 
 void write_vline (u16 h2, u16 tileAttrib)
@@ -227,12 +142,12 @@ void write_vline (u16 h2, u16 tileAttrib)
 			".set off,0\n"
 			".rept %c[_VERTICAL_ROWS]\n"
 			"    move.w  %[tileAttrib],off(%[tilemap])\n"
-			"    .set off,off+%c[_PLANE_COLUMNS]*2\n"
+			"    .set off,off+%c[_PLANE_COLUMNS]*2\n" // *2 for byte convertion
 			".endr\n"
 			: [tileAttrib] "+d" (tileAttrib)
 			: [tilemap] "a" (column_ptr), 
               [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
-			: "cc"
+			:
 		);
 
         return;
@@ -314,7 +229,7 @@ void write_vline (u16 h2, u16 tileAttrib)
         : [h2] "+d" (h2_aux1), [tileAttrib_tile0] "+d" (tileAttrib_tile0), [jump] "+d" (jump)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
             [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
-        : "cc"
+        :
     );*/
 
     // C version (for VERTICAL_ROWS = 24).
@@ -390,6 +305,6 @@ void write_vline (u16 h2, u16 tileAttrib)
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), 
           [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1), // +1 due to division by 2
           [h2_bottom] "d" ((VERTICAL_ROWS-1)*PLANE_COLUMNS*2) // *2 for byte convertion
-        : "cc"
+        :
     );
 }

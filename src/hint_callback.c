@@ -146,21 +146,17 @@ HINTERRUPT_CALLBACK hint_callback ()
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	if (vCounterManual == HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
         vCounterManual += HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR;
-		// set background color used for the floor
-        vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
-        vu16* vdpData_ptr_w = (vu16*) VDP_DATA_PORT;
-        const u32 color_cmd = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+		// Set background color used for the floor
 		waitHCounter_opt2(156);
-        *vdpCtrl_ptr_l = color_cmd;
-        *vdpData_ptr_w = 0x0444; //palette_grey[2]; // floor color
+        *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+        *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]; // floor color
 		return;
 	}
     #endif
 
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
-	// Prepare DMA cmd and source address for first palette
-    u32 palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
+	// Prepare DMA source address for first palette
     //waitHCounter_opt2(152);
     //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalA_addrForDMA);
@@ -168,11 +164,11 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     waitHCounter_opt2(152);
     //turnOffVDP(0x74);
-    *vdpCtrl_ptr_l = palCmd; // trigger DMA transfer
+    // Trigger DMA command
+    *vdpCtrl_ptr_l = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // trigger DMA transfer
     //turnOnVDP(0x74);
 
-	// Prepare DMA cmd and source address for second palette
-    palCmd = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
+	// Prepare DMA source address for second palette
     //waitHCounter_opt2(152);
     //turnOffVDP(0x74);
     setupDMAForPals(15, hudPalB_addrForDMA);
@@ -180,15 +176,15 @@ HINTERRUPT_CALLBACK hint_callback ()
 
     waitHCounter_opt2(152);
     //turnOffVDP(0x74);
-    *vdpCtrl_ptr_l = palCmd; // trigger DMA transfer
+    // Trigger DMA command
+    *vdpCtrl_ptr_l = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     //turnOnVDP(0x74);
 
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	// set background color used for the roof
 	//waitHCounter_opt2(156);
-	const u32 color_cmd = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0
-    *vdpCtrl_ptr_l = color_cmd;
-    *((vu16*) VDP_DATA_PORT) = 0x0222; //palette_grey[1]; // roof color
+    *vdpCtrl_ptr_l = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0;
+    *(vu16*)VDP_DATA_PORT = 0x0222; //palette_grey[1]; // roof color
     #endif
 
     #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
@@ -270,7 +266,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     // turnOnVDP(0x74);
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-	// Reload the 2 palettes that were overriden by the HUD palettes
+	// Reload the palettes that were overriden by the HUD palettes
 	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
     setupDMAForPals(15, restorePalA_addrForDMA);
 	waitVCounterReg(224);

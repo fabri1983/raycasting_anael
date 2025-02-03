@@ -78,9 +78,9 @@ void render_loadWallPalettes ()
     // palette grey and palette red were already loaded
 
     // load colors used from green palette into PAL0
-    PAL_setColors(PAL0*16 + 8, palette_green + 1, 7, CPU);
+    PAL_setColors(PAL0*16 + 8, palette_green + 1, 7, DMA);
     // load colors used from blue palette into PAL1
-    PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, CPU);
+    PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, DMA);
 }
 
 FORCE_INLINE void render_Z80_setBusProtection (bool value)
@@ -100,7 +100,7 @@ FORCE_INLINE void render_DMA_flushQueue ()
 	// Z80_requestBus(FALSE);
 
 	// Flush queue. We know is never empty because the framebuffer is always DMAed in 2 chunks.
-    #if RENDER_FRAMEBUFER_DMA_QUEUE_SIZE_ALWAYS_2
+    #if RENDER_FRAMEBUFER_SGDK_DMA_QUEUE_SIZE_ALWAYS_2
     vu16* pw = (u16*) VDP_CTRL_PORT;
     __asm volatile (
         // first queue element
@@ -117,7 +117,7 @@ FORCE_INLINE void render_DMA_flushQueue ()
         "move.w  (%0)+,(%1)\n\t"  // Stef: important to use word write for command triggering DMA (see SEGA notes)
         :
         : "a" (dmaQueues), "a" (pw)
-        : "cc"
+        :
     );
     #else
     u16 queueIndex = DMA_getQueueSize();
@@ -133,7 +133,7 @@ FORCE_INLINE void render_DMA_flushQueue ()
         "dbra    %2,.fq_loop_%=\n\t"
         :
         : "a" (dmaQueues), "a" (pw), "d" (queueIndex)
-        : "cc"
+        :
     );
     #endif
 
@@ -155,7 +155,7 @@ static FORCE_INLINE void render_waitVInt_vtimer ()
         "beq.s   1b"           // loop back if equal
         : "=d" (currVal)
         : "a" (vtimerPtr)
-        : "cc"
+        :
     );
 }
 
@@ -199,4 +199,66 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     showCPULoad(0, 1);
     //showFPS(0, 1);
     #endif
+}
+
+FORCE_INLINE void render_DMA_halved_mirror_planes ()
+{
+    fb_mirror_planes_in_VRAM();
+}
+
+FORCE_INLINE void render_DMA_enqueue_framebuffer ()
+{
+    // DMA frame_buffer Plane A
+    #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
+    // Send first 1/8 of frame_buffer Plane A
+    DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+    // The other 1/8 is sent in HInt
+    // Remaining 6/8 of the frame_buffer Plane A
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET*2, 
+        ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
+    // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET, 
+        ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
+    // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
+        (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #else
+    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_VDP_VRAM
+    // Half bottom frame_buffer Plane A
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET, 
+        (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #else
+    // All the frame_buffer Plane A
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #endif
+    #endif
+
+    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_VDP_VRAM
+    // Half bottom frame_buffer Plane B
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PB_ADDR + HALF_PLANE_ADDR_OFFSET, 
+        (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #else
+    // All the frame_buffer Plane B
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    #endif
+}
+
+void render_DMA_row_by_row_framebuffer ()
+{
+    // Arguments must be in byte addressing mode
+
+    /*vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+    u32 fromAddr = (u32)frame_buffer;
+
+    #pragma GCC unroll 24 // Always set the max number since it does not accept defines
+    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+        // Plane A row
+        setupDMA_fixed_args(fromAddr + i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2);
+        *vdpCtrl_ptr_l = VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2);
+        // Plane B row
+        setupDMA_fixed_args(fromAddr + (VERTICAL_ROWS*PLANE_COLUMNS)*2 + i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2);
+        *vdpCtrl_ptr_l = VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2);
+    }*/
 }

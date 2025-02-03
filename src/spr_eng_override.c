@@ -286,7 +286,7 @@ void NO_INLINE spr_eng_update()
     // VDP sprite index (for link field)
     u8 vdpSpriteInd = 1;
 
-    // fabri1983: we don't use this method for showing the frame load.
+    // fabri1983: we don't use this method to show the frame load.
     // first sprite used by CPU load monitor
     /*if (SYS_getShowFrameLoad())
     {
@@ -485,8 +485,9 @@ void NO_INLINE spr_eng_update()
     // remove 1 to get number of hard sprite used
     vdpSpriteInd--;
 
+    // fabri1983: there is always something to display.
     // something to display ?
-    if (vdpSpriteInd > 0)
+    //if (vdpSpriteInd > 0)
     {
         // get back to last sprite
         vdpSprite--;
@@ -504,7 +505,7 @@ void NO_INLINE spr_eng_update()
         #endif
     }
     // no sprite to display
-    else
+    /*else
     {
         // set 1st sprite off screen and mark as end
         vdpSprite->y = 0;
@@ -519,5 +520,5 @@ void NO_INLINE spr_eng_update()
         render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
         #endif
-    }
+    }*/
 }

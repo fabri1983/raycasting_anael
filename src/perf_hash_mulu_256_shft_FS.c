@@ -304,7 +304,7 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     //     "move.w  (%[table_ptr],%[index].w),%[result]"  // result = table_ptr[index]
     //     : [result] "=d" (result), [table_ptr] "+a" (table_ptr)
     //     : [rowStride] "d" (op1_rowStride), [index] "d" (op2_index)
-    //     : "cc"
+    //     :
     // );
     // return result;
 }

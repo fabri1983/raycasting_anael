@@ -47,7 +47,8 @@
     "vdp_bg.h": "c",
     "config.h": "c",
     "title.h": "c",
-    "title_res.h": "c"
+    "title_res.h": "c",
+    "vram.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

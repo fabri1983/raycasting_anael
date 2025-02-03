@@ -102,10 +102,10 @@ int main (bool hardReset)
     // Restart DMA with this settings
     DMA_initEx(20, 8192, 8192);
 
-	VDP_setEnable(FALSE);
-
 	// Basic game setup
 
+    // Do not use clear_buffer() here because it doesn't save registers in the stack
+    memsetU32((u32*)frame_buffer, 0, VERTICAL_ROWS*PLANE_COLUMNS/2);
     render_loadWallPalettes();
     vint_reset();
     hint_reset();
@@ -133,14 +133,14 @@ int main (bool hardReset)
 	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
     VDP_setWindowHPos(FALSE, HUD_XP);
     VDP_setWindowVPos(TRUE, HUD_YP);
-	//VDP_setBackgroundColor(1); // this set grey as bg color so floor and roof are the same color
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	PAL_setColor(0, 0x0222); //palette_grey[1] // roof color
     #else
     PAL_setColor(0, 0x0444); //palette_grey[2] // roof color
     #endif
 
-    VDP_setEnable(TRUE);
+    // Load something to DMA, otherwise render_DMA_flushQueue() called by VInt may fail
+    render_DMA_enqueue_framebuffer();
 
 	SYS_disableInts();
 
@@ -161,14 +161,6 @@ int main (bool hardReset)
 	SYS_enableInts();
 
 	game_loop();
-
-	SYS_disableInts();
-
-    SYS_setVBlankCallback(NULL);
-    VDP_setHInterrupt(FALSE);
-    SYS_setHIntCallback(NULL);
-
-	SYS_enableInts();
 
 	return 0;
 }

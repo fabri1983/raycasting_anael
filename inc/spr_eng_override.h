@@ -35,7 +35,6 @@ typedef struct
     u16 paletteId;
 } FrameVDPSpriteWithPal;
 
-
 void spr_eng_update ();
 
 #endif // _SPRITE_ENGINE_OVERRIDE_H_

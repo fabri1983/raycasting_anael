@@ -6,10 +6,18 @@
 
 #define RENDER_SHOW_TEXCOORD FALSE // Show texture coords? Is not optimized though
 
+#define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror the bottom half of planes into the top half, by using CPU and RAM
+#define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror the bottom half of planes into the top half, by using VRAM to VRAM copy
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT FALSE // 
+// Render only half bottom region of both planes to later mirror them using VRAM to VRAM copy
+#define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+
+// Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER FALSE
+// Slightly faster. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 
-#define RENDER_FRAMEBUFER_DMA_QUEUE_SIZE_ALWAYS_2 TRUE
+#define RENDER_FRAMEBUFER_SGDK_DMA_QUEUE_SIZE_ALWAYS_2 TRUE
 
 #define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED TRUE
 #define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
@@ -50,11 +58,11 @@
 #define PLANE_COLUMNS 64
 
 // 320/4=80. 256/4=64.
-#define PIXEL_COLUMNS 80
+#define PIXEL_COLUMNS TILEMAP_COLUMNS*2
 
 #define PB_ADDR 0xC000 // Default Plane B address set in VDP_setPlaneSize(), and starting at 0,0
 #define PA_ADDR 0xE000 // Default Plane A address set in VDP_setPlaneSize(), and starting at 0,0
-#define PW_ADDR PLANE_COLUMNS == 64 ? 0xD000 + 0x0C00 : 0xC800 + 0x0E00 // As set in VDP_setPlaneSize() depending on the chosen plane size, plus HUD_BASE_XP and HUD_BASE_YP
+#define PW_ADDR (PLANE_COLUMNS == 64 ? 0xD000 + 0x0C00 : 0xC800 + 0x0E00) // As set in VDP_setPlaneSize() depending on the chosen plane size, plus HUD_BASE_XP and HUD_BASE_YP
 #define HALF_PLANE_ADDR_OFFSET 0x0600 // In case we split in 2 chunks the DMA of any plane we need to use appropriate offset
 #define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 chunks the DMA of any plane we need to use the appropriate offset
 #define EIGHTH_PLANE_ADDR_OFFSET 0x0180 // In case we split in 8 chunks the DMA of any plane we need to use the appropriate offset

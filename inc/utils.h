@@ -71,8 +71,56 @@ void waitHCounter_opt2 (u8 n);
 */
 void waitVCounterReg (u16 n);
 
+// Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address), and triggers the DMA command.
+// Assumes the three parameters are known values at compile time, and the VDP stepping was already set.
+// You have to previously define vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+// Parameters:
+// fromAddr: source VRAM address.
+// cmd: one of the next: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR. With the target address.
+// len: How many colors to move.
+#define doDMA_fixed_args(fromAddr,cmd,len) \
+    __asm volatile ( \
+        /* Setup DMA length (in long word here) */ \
+        "move.l   %[_len_low_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
+        /* Setup DMA address low and mid */ \
+        "move.l   %[_addr_low_mid],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
+        /* Setup DMA address high */ \
+        "move.w   %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
+        /* Trigger DMA */ \
+        "move.l   %[_cmd],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmd; */ \
+        : [_vdpCtrl_ptr_l] "+a" (vdpCtrl_ptr_l) \
+        : [_len_low_high] "i" (((0x9300 | ((len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff))), \
+          [_addr_low_mid] "i" (((0x9500 | (((fromAddr) >> 1) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 9) & 0xff))), \
+          [_addr_high] "i" ((0x9700 | (((fromAddr) >> 17) & 0x7f))), /* VRAM COPY operation with high address */ \
+          /* If you want to add VDP stepping then use: ((0x9700 | (((fromAddr) >> 17) & 0x7f)) << 16) | (0x8F00 | ((step) & 0xff)) \ */ \
+          [_cmd] "i" (cmd) \
+        : \
+    )
+
+// Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address).
+// Assumes the three parameters are known values at compile time, and the VDP stepping was already set.
+// You have to previously define vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+// Parameters:
+// fromAddr: source VRAM address in u32 format.
+// len: How many colors to move.
+#define setupDMA_fixed_args(fromAddr,len) \
+    __asm volatile ( \
+        /* Setup DMA length (in long word here) */ \
+        "move.l   %[_len_low_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
+        /* Setup DMA address low and mid */ \
+        "move.l   %[_addr_low_mid],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
+        /* Setup DMA address high */ \
+        "move.w   %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
+        : [_vdpCtrl_ptr_l] "+a" (vdpCtrl_ptr_l) \
+        : [_len_low_high] "i" (((0x9300 | ((len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff))), \
+          [_addr_low_mid] "i" (((0x9500 | (((fromAddr) >> 1) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 9) & 0xff))), \
+          [_addr_high] "i" ((0x9700 | (((fromAddr) >> 17) & 0x7f))) /* VRAM COPY operation with high address */ \
+          /* If you want to add VDP stepping then use: ((0x9700 | (((fromAddr) >> 17) & 0x7f)) << 16) | (0x8F00 | ((step) & 0xff)) \ */ \
+        : \
+    )
+
 /**
- * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address).
+ * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). Assumes fromAddr is a dynamic var.
  * \param len How many colors to move.
  * \param fromAddr Must come >> 1 (shifted to right) already.
 */

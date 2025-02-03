@@ -106,21 +106,18 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
-    resetVCounterManual();
-
 	turnOffVDP(0x74);
 
     render_Z80_setBusProtection(TRUE);
 	//waitSubTick_(10); // Z80 delay --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
 
-	//DMA_flushQueue();
     render_DMA_flushQueue();
 
 	render_Z80_setBusProtection(FALSE);
 
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
-	// Reload the 2 palettes that were overriden by the HUD palettes
+	// Reload the palettes that were overriden by the HUD palettes
     setupDMAForPals(15, restorePalA_addrForDMA);
 	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
     *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
@@ -165,5 +162,16 @@ void vint_callback ()
     }
     #endif
 
+    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_VDP_VRAM
+    render_DMA_halved_mirror_planes();
+    #endif
+
     turnOnVDP(0x74);
+
+    resetVCounterManual();
+
+    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_VDP_VRAM
+    // Do this after the display is turned on, because is CPU and VDP intense
+    render_copy_top_entries_in_VRAM();
+    #endif
 }
