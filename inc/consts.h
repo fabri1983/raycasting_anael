@@ -8,7 +8,7 @@
 
 #define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror the bottom half of planes into the top half, by using CPU and RAM
 #define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror the bottom half of planes into the top half, by using VRAM to VRAM copy
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT FALSE // 
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT FALSE // TODO
 // Render only half bottom region of both planes to later mirror them using VRAM to VRAM copy
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
 
@@ -17,29 +17,29 @@
 // Slightly faster. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 
-#define RENDER_FRAMEBUFER_SGDK_DMA_QUEUE_SIZE_ALWAYS_2 TRUE
-
 #define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED TRUE
 #define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
 #define RENDER_USE_MAP_HIT_COMPRESSED FALSE
 #define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
 #define RENDER_ENABLE_FRAME_LOAD_CALCULATION TRUE
 
+#define DMA_FRAMEBUFFER_ROW_BY_ROW TRUE // TRUE: DMA row by row. FALSE: normal DMA enqueue and DMA flush.
+
 #define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT FALSE
 #define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT FALSE
 #define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT FALSE
 
-#define DMA_ALLOW_BUFFERED_TILES FALSE // Set to TRUE if you have compressed sprites, otherwise FALSE.
+#define DMA_ALLOW_BUFFERED_SPRITE_TILES FALSE // Set to TRUE if you have compressed sprites, otherwise FALSE.
 #define DMA_MAX_QUEUE_CAPACITY 8 // How many objects we can hold without crashing the system due to array out of bound access.
 #define DMA_TILES_THRESHOLD_FOR_HINT 384 // when this number of tiles is exceeded we move tiles to VInt queue.
 #define DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT ((DMA_TILES_THRESHOLD_FOR_HINT * 32) / 2)
 
-#define DMA_ENQUEUE_HUD_TILEMPS_IN_HINT TRUE
-#define DMA_ENQUEUE_HUD_TILEMPS_IN_VINT FALSE
-#define DMA_ENQUEUE_HUD_TILEMPS FALSE
+#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT TRUE
+#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT FALSE
+#define DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE FALSE
 
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT TRUE
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT FALSE
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT TRUE
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT FALSE
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision
@@ -63,9 +63,9 @@
 #define PB_ADDR 0xC000 // Default Plane B address set in VDP_setPlaneSize(), and starting at 0,0
 #define PA_ADDR 0xE000 // Default Plane A address set in VDP_setPlaneSize(), and starting at 0,0
 #define PW_ADDR (PLANE_COLUMNS == 64 ? 0xD000 + 0x0C00 : 0xC800 + 0x0E00) // As set in VDP_setPlaneSize() depending on the chosen plane size, plus HUD_BASE_XP and HUD_BASE_YP
-#define HALF_PLANE_ADDR_OFFSET 0x0600 // In case we split in 2 chunks the DMA of any plane we need to use appropriate offset
-#define QUARTER_PLANE_ADDR_OFFSET 0x0300 // In case we split in 4 chunks the DMA of any plane we need to use the appropriate offset
-#define EIGHTH_PLANE_ADDR_OFFSET 0x0180 // In case we split in 8 chunks the DMA of any plane we need to use the appropriate offset
+#define HALF_PLANE_ADDR_OFFSET_BYTES (VERTICAL_ROWS*PLANE_COLUMNS) // In case we split in 2 chunks the DMA of any plane we need to use appropriate offset
+#define QUARTER_PLANE_ADDR_OFFSET_BYTES (HALF_PLANE_ADDR_OFFSET/2) // In case we split in 4 chunks the DMA of any plane we need to use the appropriate offset
+#define EIGHTH_PLANE_ADDR_OFFSET (HALF_PLANE_ADDR_OFFSET/4) // In case we split in 8 chunks the DMA of any plane we need to use the appropriate offset
 
 #define MAP_SIZE 16
 #define MAP_FRACTION 32 // How much we allow the player to be close to any wall

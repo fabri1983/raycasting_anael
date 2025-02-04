@@ -25,7 +25,7 @@ static void decompressTilemap ()
 static u16* hud_tilemap_src;
 #endif
 
-u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
+static u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
 
 static u8 weaponInventoryBits;
 static u8 keyInventoryBits;
@@ -526,18 +526,21 @@ FORCE_INLINE void hud_update ()
             setHUDFace();
     
         updateFlags = 0;
-        #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
+        #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
         hint_enqueueHudTilemap();
-        #elif DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+        #elif DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
         vint_enqueueHudTilemap();
-        #elif DMA_ENQUEUE_HUD_TILEMPS
+        #elif DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE
         // PW_ADDR comes with the correct base position in screen
-        // enqueue in sprite's queue
-        render_hud_queueDmaFast(hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS));
-        //DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #else
         // PW_ADDR comes with the correct base position in screen
-        DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+        //DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+        u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
+        #pragma GCC unroll 4 // Always set the max number since it does not accept defines
+        for (u8 i=0; i < HUD_BG_H; ++i) {
+            doDMAfast_fixed_args(fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        }
         #endif
     }
 }

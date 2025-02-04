@@ -383,7 +383,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
         delta_a_ptr += RENDER_COLUMNS_UNROLL * DELTA_PTR_OFFSET_AMNT;
     }
 
-    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_CPU_RAM
+    #if RENDER_MIRROR_PLANES_USING_CPU_RAM
     fb_mirror_planes_in_RAM();
     #endif
 }

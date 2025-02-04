@@ -4,6 +4,9 @@
 #include <types.h>
 #include "consts.h"
 
+// This is the address of the frame_buffer array, harcoded until I find out a way to expose it at compile time.
+#define FRAME_BUFFER_ADDRESS 0xE0FF00A4
+
 // 224 px display height, but only VERTICAL_ROWS height for the frame buffer (tilemap).
 // PLANE_COLUMNS is the width of the tilemap on screen.
 // Multiplied by 2 because is shared between the 2 planes BG_A and BG_B.
@@ -30,5 +33,7 @@ void fb_mirror_planes_in_RAM ();
 /// @brief Mirrors in inverted fashion the bottom half region of frame_buffer's Plane A and B into their respective top half region.
 /// Uses VDP's VRAM to VRAM copy operation. Then set the correct top tilemap entries so they are not inverted.
 void fb_mirror_planes_in_VRAM ();
+/// @brief Set the top entries to VRAM locations one by one. This must be called once the other half planes were effectively DMAed into VRAM.
+void fb_copy_top_entries_in_VRAM ();
 
 #endif // _FRAME_BUFFER_H_

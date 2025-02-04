@@ -16,8 +16,8 @@ u32 restorePalA_addrForDMA;
 u32 restorePalB_addrForDMA;
 #endif
 
-#if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
-u8 hud_tilemaps;
+#if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
+u8 hud_tilemap;
 #endif
 
 static u8 tiles_elems;
@@ -25,14 +25,14 @@ static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
-#if DMA_ALLOW_BUFFERED_TILES
+#if DMA_ALLOW_BUFFERED_SPRITE_TILES
 static u8 tiles_buf_elems;
 static u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16* tiles_buf_dmaBufPtr;
 #endif
 
-#if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+#if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
 static u16 vdpSpriteCache_lenInWord;
 #endif
 
@@ -43,8 +43,8 @@ void vint_reset ()
     restorePalB_addrForDMA = 0;
     #endif
 
-    #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
-    hud_tilemaps = 0;
+    #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
+    hud_tilemap = 0;
     #endif
 
     memset(tiles_from, 0, DMA_MAX_QUEUE_CAPACITY);
@@ -52,22 +52,22 @@ void vint_reset ()
     memsetU16(tiles_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_elems = 0;
 
-    #if DMA_ALLOW_BUFFERED_TILES
+    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
     memsetU16(tiles_buf_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
     memsetU16(tiles_buf_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_buf_elems = 0;
     tiles_buf_dmaBufPtr = dmaDataBuffer;
     #endif
 
-    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     vdpSpriteCache_lenInWord = 0;
     #endif
 }
 
 FORCE_INLINE void vint_enqueueHudTilemap ()
 {
-    #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
-    hud_tilemaps = 1;
+    #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
+    hud_tilemap = 1;
     #endif
 }
 
@@ -89,7 +89,7 @@ void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 
 void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
-    #if DMA_ALLOW_BUFFERED_TILES
+    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
     tiles_buf_lenInWord[tiles_buf_elems] = lenInWord;
     ++tiles_buf_elems;
@@ -99,7 +99,7 @@ void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 
 void vint_enqueueVdpSpriteCache (u16 lenInWord)
 {
-    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     vdpSpriteCache_lenInWord = lenInWord;
     #endif
 }
@@ -112,6 +112,10 @@ void vint_callback ()
 	//waitSubTick_(10); // Z80 delay --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
 
     render_DMA_flushQueue();
+
+    #if DMA_FRAMEBUFFER_ROW_BY_ROW
+    render_DMA_row_by_row_framebuffer();
+    #endif
 
 	render_Z80_setBusProtection(FALSE);
 
@@ -126,12 +130,17 @@ void vint_callback ()
     // *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
     #endif
 
-    #if DMA_ENQUEUE_HUD_TILEMPS_IN_VINT
+    #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     // Have any hud tilemaps to DMA?
-    if (hud_tilemaps) {
+    if (hud_tilemap) {
+        hud_tilemap = 0;
         // PW_ADDR comes with the correct base position in screen
-        DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-        hud_tilemaps = 0;
+        //DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+        u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
+        #pragma GCC unroll 4 // Always set the max number since it does not accept defines
+        for (u8 i=0; i < HUD_BG_H; ++i) {
+            doDMAfast_fixed_args(fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        }
     }
     #endif
 
@@ -142,7 +151,7 @@ void vint_callback ()
         DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 
-    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
         DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, -1);
@@ -150,7 +159,7 @@ void vint_callback ()
     }
     #endif
 
-    #if DMA_ALLOW_BUFFERED_TILES
+    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
     // Have any buffered tiles to DMA?
     while (tiles_buf_elems) {
         --tiles_buf_elems;
@@ -162,16 +171,17 @@ void vint_callback ()
     }
     #endif
 
-    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_VDP_VRAM
+    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
     render_DMA_halved_mirror_planes();
     #endif
 
     turnOnVDP(0x74);
 
-    resetVCounterManual();
-
-    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_VDP_VRAM
-    // Do this after the display is turned on, because is CPU and VDP intense
+    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
+    // Called once the other half planes were effectively DMAed into VRAM.
+    // Do this after the display is turned on, because is CPU and VDP intense and we don't want any black scanlines leak into active display.
     render_copy_top_entries_in_VRAM();
     #endif
+
+    resetVCounterManual();
 }

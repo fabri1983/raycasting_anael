@@ -230,7 +230,7 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
         // TODO: separate tileset per VDP sprite and only unpack/upload visible VDP sprite (using visibility) to VRAM
 
         // need unpacking ?
-        #if DMA_ALLOW_BUFFERED_TILES
+        #if DMA_ALLOW_BUFFERED_SPRITE_TILES
         u16 compression = tileset->compression;
         if (compression != COMPRESSION_NONE)
         {
@@ -494,9 +494,9 @@ void NO_INLINE spr_eng_update()
         // mark as end
         vdpSprite->link = 0;
         // send sprites to VRAM
-        #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+        #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
         hint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
-        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
         vint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #else
         // enqueue in sprite's queue
@@ -511,14 +511,14 @@ void NO_INLINE spr_eng_update()
         vdpSprite->y = 0;
         vdpSprite->link = 0;
         // send sprites to VRAM
-        #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+        #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
         hint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
-        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_VINT
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
         vint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
         #else
         // enqueue in sprite's queue
         render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
-        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
         #endif
     }*/
 }

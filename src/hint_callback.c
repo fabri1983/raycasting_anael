@@ -20,8 +20,8 @@ u32 restorePalA_addrForDMA;
 u32 restorePalB_addrForDMA;
 #endif
 
-#if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
-u8 hud_tilemaps;
+#if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
+u8 hud_tilemap;
 #endif
 
 u16 tilesLenInWordTotalToDMA;
@@ -31,14 +31,14 @@ static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
-#if DMA_ALLOW_BUFFERED_TILES
+#if DMA_ALLOW_BUFFERED_SPRITE_TILES
 static u8 tiles_buf_elems;
 static u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16* tiles_buf_dmaBufPtr;
 #endif
 
-#if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+#if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
 static u16 vdpSpriteCache_lenInWord;
 #endif
 
@@ -54,8 +54,8 @@ void hint_reset ()
     restorePalB_addrForDMA = 0;
     #endif
 
-    #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
-    hud_tilemaps = 0;
+    #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
+    hud_tilemap = 0;
     #endif
 
     tilesLenInWordTotalToDMA = 0;
@@ -65,14 +65,14 @@ void hint_reset ()
     memsetU16(tiles_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_elems = 0;
 
-    #if DMA_ALLOW_BUFFERED_TILES
+    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
     memsetU16(tiles_buf_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
     memsetU16(tiles_buf_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_buf_elems = 0;
     tiles_buf_dmaBufPtr = dmaDataBuffer;
     #endif
 
-    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
     vdpSpriteCache_lenInWord = 0;
     #endif
 }
@@ -102,8 +102,8 @@ FORCE_INLINE void hint_setPalToRestore (u16* pal)
 
 FORCE_INLINE void hint_enqueueHudTilemap ()
 {
-    #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
-    hud_tilemaps = 1;
+    #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
+    hud_tilemap = 1;
     #endif
 }
 
@@ -118,7 +118,7 @@ void hint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 
 void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
-    #if DMA_ALLOW_BUFFERED_TILES
+    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
     tiles_buf_lenInWord[tiles_buf_elems] = lenInWord;
     ++tiles_buf_elems;
@@ -129,7 +129,7 @@ void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 
 void hint_enqueueVdpSpriteCache (u16 lenInWord)
 {
-    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
     vdpSpriteCache_lenInWord = lenInWord;
     #endif
 }
@@ -187,12 +187,18 @@ HINTERRUPT_CALLBACK hint_callback ()
     *(vu16*)VDP_DATA_PORT = 0x0222; //palette_grey[1]; // roof color
     #endif
 
-    #if DMA_ENQUEUE_HUD_TILEMPS_IN_HINT
+    #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
     // Have any hud tilemaps to DMA?
-    if (hud_tilemaps) {
+    if (hud_tilemap) {
+        hud_tilemap = 0;
         // PW_ADDR comes with the correct base position in screen
         DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-        hud_tilemaps = 0;
+        // The next makes the VDP to fail when initiating the game
+        // u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
+        // #pragma GCC unroll 4 // Always set the max number since it does not accept defines
+        // for (u8 i=0; i < HUD_BG_H; ++i) {
+        //     doDMAfast_fixed_args(fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        // }
     }
     #endif
 
@@ -204,7 +210,7 @@ HINTERRUPT_CALLBACK hint_callback ()
         DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 
-    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_IN_HINT
+    #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
         DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, -1);
@@ -212,7 +218,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     }
     #endif
 
-    #if DMA_ALLOW_BUFFERED_TILES
+    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
     // Have any buffered tiles to DMA?
     while (tiles_buf_elems) {
         --tiles_buf_elems;
@@ -247,14 +253,14 @@ HINTERRUPT_CALLBACK hint_callback ()
         weaponPalA_addrForDMA = NULL;
     }*/
 
-    #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT
+    #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
     // Send next 1/8 of frame_buffer Plane A
-    DMA_doDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/8, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET, 
+    DMA_doDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/8, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET_BYTES, 
         (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-    #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT
+    #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
 	// Send first 1/4 of frame_buffer Plane A
 	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-    #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT
+    #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
 	// Send first 1/2 of frame_buffer Plane A
 	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
     #else

@@ -380,22 +380,23 @@ void fb_mirror_planes_in_RAM ()
     copy_top_entries_in_RAM();
 }
 
-#define doDMA_VRAM_COPY_fixed_args(fromAddr,cmd,len) \
+#define doDMA_VRAM_COPY_fixed_args(fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
-        "move.l   %[_len_low_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
+        "move.l  %[_len_low_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
         /* Setup DMA address low and mid */ \
-        "move.l   %[_addr_low_mid],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
+        "move.l  %[_addr_low_mid],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
         /* Setup DMA address high */ \
-        "move.w   %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x9700; */ \
+        "move.w  %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
         /* Trigger DMA */ \
-        "move.l   %[_cmd],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmd; */ \
+        /* NOTE: this should be done as Stef does with two .w writes from memory */ \
+        "move.l  %[_cmdAddr],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : [_vdpCtrl_ptr_l] "+a" (vdpCtrl_ptr_l) \
-        : [_len_low_high] "i" (((0x9300 | ((len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff))), \
-          [_addr_low_mid] "i" (((0x9500 | ((fromAddr) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 8) & 0xff))), \
+        : [_len_low_high] "i" (((0x9300 | ( (len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
+          [_addr_low_mid] "i" (((0x9500 | ( (fromAddr) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 8) & 0xff)) ), \
           [_addr_high] "i" (0x97C0), /* VRAM COPY operation */ \
           /* If you want to add VDP stepping then use: u16 addr_high_step = (0x97C0 << 16) | (0x8F00 | ((step) & 0xff)); \ */ \
-          [_cmd] "i" (cmd) \
+          [_cmdAddr] "i" ((cmdAddr)) \
         : \
     )
 
@@ -407,8 +408,8 @@ void fb_mirror_planes_in_VRAM ()
     // C version
     // #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     // for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
-    //     DMA_doVRamCopy(PA_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) + i*PLANE_COLUMNS*2, PA_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, 1);
-    //     DMA_doVRamCopy(PB_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) + i*PLANE_COLUMNS*2, PB_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, 1);
+    //     DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, 1);
+    //     DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, 1);
     // }
     // VDP_setAutoInc(2);
 
@@ -417,13 +418,15 @@ void fb_mirror_planes_in_VRAM ()
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
-        doDMA_VRAM_COPY_fixed_args(PA_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) + i*PLANE_COLUMNS*2, VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
-        doDMA_VRAM_COPY_fixed_args(PB_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) + i*PLANE_COLUMNS*2, VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + (VERTICAL_ROWS*PLANE_COLUMNS) - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
+        doDMA_VRAM_COPY_fixed_args(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
+            VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
+        doDMA_VRAM_COPY_fixed_args(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
+            VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
     }
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2; // Set VDP stepping back to 2
 }
 
-void render_copy_top_entries_in_VRAM ()
+void fb_copy_top_entries_in_VRAM ()
 {
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
 

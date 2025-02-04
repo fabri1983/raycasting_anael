@@ -21,6 +21,7 @@
 // * write_vline(): exposing globally the column pointer instead of sending it as an argument. This made the 
 //   frame_buffer_pxcolumn[] useless, so no need for render_loadPlaneDisplacements() neither offset before 
 //   write_vline() => ~1% saved in cpu usage depending on the inline ASM constraints.
+// * DMA framebuffer row by row using ASM -> 3% saved in cpu usage.
 // * Replaced   if ((joy & BUTTON_LEFT) || (joy & BUTTON_RIGHT))
 //   by         if (joy & (BUTTON_LEFT | BUTTON_RIGHT))
 //   Same with BUTTON_UP and BUTTON_DOWN.
