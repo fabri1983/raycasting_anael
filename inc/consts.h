@@ -67,6 +67,17 @@
 #define QUARTER_PLANE_ADDR_OFFSET_BYTES (HALF_PLANE_ADDR_OFFSET/2) // In case we split in 4 chunks the DMA of any plane we need to use the appropriate offset
 #define EIGHTH_PLANE_ADDR_OFFSET (HALF_PLANE_ADDR_OFFSET/4) // In case we split in 8 chunks the DMA of any plane we need to use the appropriate offset
 
+#include <memory_base.h>
+// This is the fixed address of the frame_buffer array, before the end of the heap.
+#define FRAME_BUFFER_ADDRESS (MEMORY_HIGH - VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
+#if PLANE_COLUMNS == 64
+#include "hud_320.h"
+#else
+#include "hud_256.h"
+#endif
+// This is the fixed address of the hud_tilemap_dst array, before the frame_buffer.
+#define HUD_TILEMAP_DST_ADDRESS (FRAME_BUFFER_ADDRESS - (PLANE_COLUMNS*HUD_BG_H)*2)
+
 #define MAP_SIZE 16
 #define MAP_FRACTION 32 // How much we allow the player to be close to any wall
 #define MIN_POS_XY (FP + MAP_FRACTION)

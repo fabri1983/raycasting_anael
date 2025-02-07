@@ -101,12 +101,10 @@ int main (bool hardReset)
     #endif
 
     // Restart DMA with this settings
-    DMA_initEx(20, 8192, 8192);
+    DMA_initEx(DMA_QUEUE_SIZE_MIN, 7168, 7168);
 
 	// Basic game setup
-
-    // Do not use clear_buffer() here because it doesn't save registers in the stack
-    memsetU32((u32*)frame_buffer, 0, VERTICAL_ROWS*PLANE_COLUMNS/2);
+    fb_allocate_frame_buffer();
     render_loadWallPalettes();
     vint_reset();
     hint_reset();
@@ -122,8 +120,6 @@ int main (bool hardReset)
     weapon_select(WEAPON_PISTOL);
     weapon_addAmmo(WEAPON_PISTOL, 50);
     weapon_addAmmo(WEAPON_SHOTGUN, 50);
-
-	MEM_pack();
 
 	// Setup VDP
 
@@ -162,6 +158,9 @@ int main (bool hardReset)
 	SYS_enableInts();
 
 	game_loop();
+
+    fb_free_frame_buffer();
+    hud_free_dst_buffer();
 
 	return 0;
 }

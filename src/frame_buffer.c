@@ -1,9 +1,23 @@
 #include "frame_buffer.h"
 #include "utils.h"
 #include <vdp_tile.h>
+#include <memory.h>
 
-u16 frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)];
-u16* column_ptr = NULL;
+u16* frame_buffer;
+u16* column_ptr;
+
+void fb_allocate_frame_buffer ()
+{
+    frame_buffer = (u16*) FRAME_BUFFER_ADDRESS;
+
+    // Do not use clear_buffer() here because it doesn't save registers in the stack and at this moment in the execution they are actually being used
+    memsetU32((u32*)frame_buffer, 0, (VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))/2);
+}
+
+void fb_free_frame_buffer ()
+{
+    memsetU32((u32*)frame_buffer, 0, (VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))/2);
+}
 
 void clear_buffer ()
 {
@@ -76,8 +90,7 @@ void clear_buffer_sp ()
 		// Save current SP value in USP
 		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location of the framebuffer's end 
-        "    lea     (%[frame_buffer]),%%sp\n"
-		"    lea     %c[TOTAL_BYTES](%%sp),%%sp\n" // frame_buffer + TOTAL_BYTES: buffer end
+        "    move.l  %[frame_buffer_end],%%sp\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -118,8 +131,8 @@ void clear_buffer_sp ()
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		: [frame_buffer] "=m" (frame_buffer)
-		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		:
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
 		:

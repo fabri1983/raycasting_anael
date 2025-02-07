@@ -5,10 +5,14 @@
 #include <dma.h>
 #include <memory.h>
 #include <mapper.h>
-#include "hud.h"
-#include "hud_320.h"
-#include "hud_res.h"
 #include "consts.h"
+#include "hud.h"
+#if PLANE_COLUMNS == 64
+#include "hud_320.h"
+#else
+#include "hud_256.h"
+#endif
+#include "hud_res.h"
 #include "utils.h"
 #include "hint_callback.h"
 #include "vint_callback.h"
@@ -25,7 +29,8 @@ static void decompressTilemap ()
 static u16* hud_tilemap_src;
 #endif
 
-static u16 hud_tilemap_dst[PLANE_COLUMNS * HUD_BG_H];
+/// @brief Destination buffer where all the hud tilemap entries are correctly placed. Size is PLANE_COLUMNS*HUD_BG_H.
+static u16* hud_tilemap_dst;
 
 static u8 weaponInventoryBits;
 static u8 keyInventoryBits;
@@ -258,6 +263,8 @@ FORCE_INLINE bool hud_isDead ()
 
 static void setHUDBg ()
 {
+    hud_tilemap_dst = (u16*) HUD_TILEMAP_DST_ADDRESS;
+
     // This sets the entire HUD BG tilemap
     u16* from = hud_tilemap_src + (HUD_BG_Y*HUD_SOURCE_IMAGE_W + HUD_BG_X);
     u16* to = hud_tilemap_dst + (HUD_BG_YP*PLANE_COLUMNS + HUD_BG_XP);
@@ -483,6 +490,10 @@ u16 hud_loadInitialState (u16 currentTileIndex)
     hud_resetFaceExpression(); // default face
 
     return currentTileIndex;
+}
+
+void hud_free_dst_buffer () {
+    memsetU32((u32*)hud_tilemap_dst, 0, (PLANE_COLUMNS*HUD_BG_H)/2);
 }
 
 void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr)

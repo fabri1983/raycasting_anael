@@ -4,9 +4,6 @@
 #include <types.h>
 #include <vdp_bg.h>
 
-// This is the address of the hud_tilemap_dst array, harcoded until I find out a way to expose it at compile time
-#define HUD_TILEMAP_DST_ADDRESS 0xE0FF187C
-
 #define HUD_HINT_SCANLINE_START_PAL_SWAP (224-32)
 
 #define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT FALSE // If TRUE then reload happens at HInt, otherwise at VInt.
@@ -63,6 +60,7 @@ typedef struct {
 } Digits;
 
 u16 hud_loadInitialState (u16 currentTileIndex);
+void hud_free_dst_buffer();
 void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr);
 u16* hud_getTilemap ();
 

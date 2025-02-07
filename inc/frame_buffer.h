@@ -4,21 +4,21 @@
 #include <types.h>
 #include "consts.h"
 
-// This is the address of the frame_buffer array, harcoded until I find out a way to expose it at compile time.
-#define FRAME_BUFFER_ADDRESS 0xE0FF00A4
-
 // 224 px display height, but only VERTICAL_ROWS height for the frame buffer (tilemap).
 // PLANE_COLUMNS is the width of the tilemap on screen.
 // Multiplied by 2 because is shared between the 2 planes BG_A and BG_B.
 // Removed last (PLANE_COLUMNS-TILEMAP_COLUMNS) non displayed columns (if case applies).
-extern u16 frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)];
+extern u16* frame_buffer;
+
+void fb_allocate_frame_buffer ();
+void fb_free_frame_buffer ();
 
 void clear_buffer ();
 void clear_buffer_sp ();
 void clear_buffer_halved ();
 void clear_buffer_halved_sp ();
 
-// Points to the start of the column in first display row for each cycle of the for-loop of columns
+// Points to the first row of the column in each cycle of the for-loop of columns.
 extern u16* column_ptr;
 
 void write_vline (u16 h2, u16 tileAttrib);

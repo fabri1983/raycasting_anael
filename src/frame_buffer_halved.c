@@ -98,8 +98,7 @@ void clear_buffer_halved_sp ()
 		// Save current SP value in USP. Make sure no interrupt happen during the time of this snippet
 		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location of the framebuffer's end 
-        "    lea     (%[frame_buffer]),%%sp\n"
-		"    lea     %c[TOTAL_BYTES](%%sp),%%sp\n" // frame_buffer + TOTAL_BYTES: buffer end
+        "    move.l  %[frame_buffer_end],%%sp\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -164,8 +163,8 @@ void clear_buffer_halved_sp ()
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		: [frame_buffer] "=m" (frame_buffer)
-		: [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		: 
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
           [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
@@ -272,63 +271,59 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
     );
 }
 
-static FORCE_INLINE void copy_bottom_half_into_top_half (u16* src, u16* dst)
-{
-    __asm volatile (
-        // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the end of DDA algorithm
-		//"movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n\t"
-		// Save current SP value in USP. Make sure no interrupt happen during the time of this snippet
-		"move.l  %%sp,%%usp\n\t"
-
-        // Iterate VERTICAL_ROWS/2 - 1 so we can ommit last lea instructions
-        ".rept %c[_VERTICAL_ROWS]/2 - 1\n\t"
-
-            // Copy long words to 14 registers, then copy them into target
-            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n\t"
-            "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t"
-            "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t"
-            "lea     14*4(%%a1),%%a1\n\t"
-            ".endr\n\t"
-            // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n\t"
-            "move.l  (%%a0)+,(%%a1)+\n\t"
-            ".endr\n\t"
-
-            "lea     2*(%c[_PLANE_COLUMNS]-%c[_TILEMAP_COLUMNS])(%%a0),%%a0\n\t"
-            "lea     -2*(%c[_PLANE_COLUMNS]+%c[_TILEMAP_COLUMNS])(%%a1),%%a1\n\t"
-
-        ".endr\n\t"
-
-        // One last iteration without the lea instructions
-
-            // Copy long words to 14 registers, then copy them into target
-            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n\t"
-            "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t"
-            "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t"
-            "lea     14*4(%%a1),%%a1\n\t"
-            ".endr\n\t"
-            // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n\t"
-            "move.l  (%%a0)+,(%%a1)+\n\t"
-            ".endr\n\t"
-
-        // Restore SP
-		"move.l  %%usp,%%sp\n\t"
-		// Restore all saved registers
-		//"movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6"
-        : "+a" (src), "+a" (dst)
-        : [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS), 
-          [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2)
-        :
-    );
-}
+#define copy_bottom_half_into_top_half(srcAddr,dstAddr) \
+    __asm volatile ( \
+        /* Save all registers (except scratch pad) */ \
+		"movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n\t" \
+        /* Save current SP value in USP. Make sure no interrupt happen during the time of this snippet */ \
+		"move.l  %%sp,%%usp\n\t" \
+        /* Load source and destiny addresses */ \
+        "move.l  %[_srcAddr],%%a0\n\t" \
+        "move.l  %[_dstAddr],%%a1\n\t" \
+        /* Iterate VERTICAL_ROWS/2 - 1 so we can ommit last lea instructions */ \
+        ".rept %c[_VERTICAL_ROWS]/2 - 1\n\t" \
+            /* Copy long words to 14 registers, then copy them into target */ \
+            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n\t" \
+            "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t" \
+            "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t" \
+            "lea     14*4(%%a1),%%a1\n\t" \
+            ".endr\n\t" \
+            /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
+            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n\t" \
+            "move.l  (%%a0)+,(%%a1)+\n\t" \
+            ".endr\n\t" \
+            /* Re accommodate for next iteration */ \
+            "lea     2*(%c[_PLANE_COLUMNS]-%c[_TILEMAP_COLUMNS])(%%a0),%%a0\n\t" \
+            "lea     -2*(%c[_PLANE_COLUMNS]+%c[_TILEMAP_COLUMNS])(%%a1),%%a1\n\t" \
+        ".endr\n\t" \
+        /* One last iteration without the lea instructions */ \
+            /* Copy long words to 14 registers, then copy them into target */ \
+            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n\t" \
+            "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t" \
+            "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t" \
+            "lea     14*4(%%a1),%%a1\n\t" \
+            ".endr\n\t" \
+            /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
+            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n\t" \
+            "move.l  (%%a0)+,(%%a1)+\n\t" \
+            ".endr\n\t" \
+        /* Restore SP */ \
+		"move.l  %%usp,%%sp\n\t" \
+		/* Restore all saved registers */ \
+		"movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6" \
+        : \
+        : [_srcAddr] "i" (srcAddr), [_dstAddr] "i" (dstAddr), \
+          [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS), \
+          [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2) \
+        : \
+    )
 
 static FORCE_INLINE void copy_top_entries_in_RAM ()
 {
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM
 
     // C version: set tilemap top entries (not inverted)
-    u16* entries_ptr = top_entries;
+    /*u16* entries_ptr = top_entries;
     #pragma GCC unroll 80 // Always set the max number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = (*entries_ptr++);
@@ -337,10 +332,10 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
         val = (*entries_ptr++);
         h2 = (*entries_ptr++);
         frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS + i + h2/2] = val; // h2/2 because it was saved in byte addressing
-    }
+    }*/
 
     // ASM version: set tilemap top entries (not inverted)
-    /*u16* entries_ptr = top_entries;
+    u16* entries_ptr = top_entries;
     u32 entry; // h2 in higher word, and val in lower word
     u16 offset;
     __asm volatile (
@@ -362,19 +357,19 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
         : [fb] "a" (frame_buffer),
           [_PIXEL_COLUMNS] "i" (PIXEL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
         :
-    );*/
+    );
 
     #endif
 }
 
 void fb_mirror_planes_in_RAM ()
 {
-    u16* pA_bottom_half_start = frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2;
-    u16* pA_top_half_end = frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2 - PLANE_COLUMNS;
+    u32 pA_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS)/2)*2;
+    u32 pA_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS)/2 - PLANE_COLUMNS)*2;
     copy_bottom_half_into_top_half(pA_bottom_half_start, pA_top_half_end);
 
-    u16* pB_bottom_half_start = frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2;
-    u16* pB_top_half_end = frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2 - PLANE_COLUMNS;
+    u32 pB_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2)*2;
+    u32 pB_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2 - PLANE_COLUMNS)*2;
     copy_bottom_half_into_top_half(pB_bottom_half_start, pB_top_half_end);
 
     copy_top_entries_in_RAM();
