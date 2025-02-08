@@ -21,6 +21,7 @@ void fb_free_frame_buffer ()
 
 void clear_buffer ()
 {
+    STOPWATCH_68K_CYCLES_START();
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	// 9842 cycles according Blastem cycle counter.
 	__asm volatile (
@@ -77,6 +78,7 @@ void clear_buffer ()
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
 		: "memory"
 	);
+    STOPWATCH_68K_CYCLES_STOP();
 }
 
 void clear_buffer_sp ()

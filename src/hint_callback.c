@@ -4,6 +4,7 @@
 #include <vdp_spr.h>
 #include <pal.h>
 #include <memory.h>
+#include <sys.h>
 #include "hud.h"
 #include "hud_320.h"
 #include "weapons.h"
@@ -136,13 +137,14 @@ void hint_enqueueVdpSpriteCache (u16 lenInWord)
 
 static u16 vCounterManual = 0;
 
-FORCE_INLINE void resetVCounterManual ()
+FORCE_INLINE void hint_reset_vCounterManual ()
 {
     vCounterManual = HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR;
 }
 
 HINTERRUPT_CALLBACK hint_callback ()
 {
+    // If case applies, change BG color to floor color
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	if (vCounterManual == HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
         vCounterManual += HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR;
@@ -180,6 +182,7 @@ HINTERRUPT_CALLBACK hint_callback ()
     *vdpCtrl_ptr_l = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     //turnOnVDP(0x74);
 
+    // If case applies, change BG color to ceiling color
     #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
 	// set background color used for the roof
 	//waitHCounter_opt2(156);
@@ -282,4 +285,47 @@ HINTERRUPT_CALLBACK hint_callback ()
     // *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
 	turnOnVDP(0x74);
     #endif
+}
+
+static u16 mirror_offset_rows;
+
+FORCE_INLINE void hint_reset_mirror_planes_state ()
+{
+    mirror_offset_rows = VERTICAL_ROWS*8 - HUD_HEIGHT*8 - 1;
+    vCounterManual = 0;
+}
+
+HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
+{
+    vu16* data_w = (u16 *) VDP_DATA_PORT;
+    vu32* ctrl_l = (u32 *) VDP_CTRL_PORT;
+
+    *ctrl_l = VDP_WRITE_VSRAM_ADDR((u32) 0); // 0: Plane A
+    *data_w = mirror_offset_rows;
+    *ctrl_l = VDP_WRITE_VSRAM_ADDR((u32) 2); // 0: Plane B
+    *data_w = mirror_offset_rows;
+
+    if (vCounterManual == (HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR - 1)) {
+        // Change the HInt counter to the normal configuration. This takes effect next callback, not immediatelly.
+        VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of HUD palettes
+        // Change the hint callback to the normal one. This takes effect next callback, not immediatelly.
+        SYS_setHIntCallback(hint_callback);
+    }
+    else if (vCounterManual == HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR) {
+        // Change the HInt counter to 0. This takes effect next callback, not immediatelly.
+        VDP_setHIntCounter(0);
+        // Change the hint callback to the one with mirror plane logic. This takes effect next callback, not immediatelly.
+        SYS_setHIntCallback(hint_mirror_planes_callback);
+
+        // If case applies, change BG color to floor color
+        #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
+        // Set background color used for the floor
+		waitHCounter_opt2(156);
+        *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+        *data_w = 0x0444; //palette_grey[2]; // floor color
+        #endif
+    }
+
+    ++vCounterManual;
+    mirror_offset_rows++; // positive numbers move planes upward
 }

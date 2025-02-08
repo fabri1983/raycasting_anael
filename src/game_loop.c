@@ -65,17 +65,17 @@ void game_loop ()
 	{
 		// clear the frame buffer
         #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-        #if RENDER_HALVED_PLANES
-		clear_buffer_halved_sp();
-        #else
-        clear_buffer_sp();
-        #endif
+            #if RENDER_HALVED_PLANES
+            clear_buffer_halved_sp();
+            #else
+            clear_buffer_sp();
+            #endif
         #elif RENDER_CLEAR_FRAMEBUFFER
-		#if RENDER_HALVED_PLANES
-		clear_buffer_halved();
-        #else
-        clear_buffer();
-        #endif
+            #if RENDER_HALVED_PLANES
+            clear_buffer_halved();
+            #else
+            clear_buffer();
+            #endif
         #endif
 
         // ceiling_copy_tilemap(BG_B, angle);
@@ -266,17 +266,17 @@ void game_loop_auto ()
 
                 // clear the frame buffer
                 #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-                #if RENDER_HALVED_PLANES
-                clear_buffer_halved_sp();
-                #else
-                clear_buffer_sp();
-                #endif
+                    #if RENDER_HALVED_PLANES
+                    clear_buffer_halved_sp();
+                    #else
+                    clear_buffer_sp();
+                    #endif
                 #elif RENDER_CLEAR_FRAMEBUFFER
-                #if RENDER_HALVED_PLANES
-                clear_buffer_halved();
-                #else
-                clear_buffer();
-                #endif
+                    #if RENDER_HALVED_PLANES
+                    clear_buffer_halved();
+                    #else
+                    clear_buffer();
+                    #endif
                 #endif
 
                 u16 a = angle / (1024/AP); // a range is [0, 128)

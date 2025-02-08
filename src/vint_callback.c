@@ -183,5 +183,9 @@ void vint_callback ()
     render_copy_top_entries_in_VRAM();
     #endif
 
-    resetVCounterManual();
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    hint_reset_mirror_planes_state();
+    #else
+    hint_reset_vCounterManual();
+    #endif
 }
