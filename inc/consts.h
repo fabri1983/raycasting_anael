@@ -8,7 +8,7 @@
 
 #define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror the bottom half of planes into the top half, by using CPU and RAM
 #define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror the bottom half of planes into the top half, by using VRAM to VRAM copy
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT FALSE // TODO
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT TRUE // Mirror the bottom half of planes into the top half, by using VSCROLL table manipulation at HINT
 // Render only half bottom region of both planes to later mirror them using VRAM to VRAM copy
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
 

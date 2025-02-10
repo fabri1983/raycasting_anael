@@ -172,7 +172,7 @@ void clear_buffer_halved_sp ()
 	);
 }
 
-#if RENDER_HALVED_PLANES
+#if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
 // Stores top tilemap entry value followed by h2 row value, for evey processed column.
 static u16 top_entries[2*PIXEL_COLUMNS];
 // Keep track of current column this way, otherwise the code breaks.
@@ -181,7 +181,7 @@ static u8 top_entries_current_col;
 
 FORCE_INLINE void fb_set_top_entries_column (u8 pixel_column)
 {
-    #if RENDER_HALVED_PLANES
+    #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     top_entries_current_col = pixel_column;
     #endif
 }
@@ -189,7 +189,7 @@ FORCE_INLINE void fb_set_top_entries_column (u8 pixel_column)
 FORCE_INLINE void fb_increment_entries_column ()
 {
     // NOTE: we must do this here otherwise if done in write_vline_halved() it breaks the system
-    #if RENDER_HALVED_PLANES
+    #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     top_entries_current_col += 2; // we advance 2 positions since we store val and he together
     #endif
 }

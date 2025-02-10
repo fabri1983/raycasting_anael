@@ -9,8 +9,9 @@
 #define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT FALSE // If TRUE then reload happens at HInt, otherwise at VInt.
 
 #define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT TRUE // If TRUE then it will change from floor to roof bg color at HInt. If FALSE then we use single bg color.
-#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR 95 // Only valid if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT is set to TRUE
-#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE FALSE // This is not implemented yet!
+
+// ((224-32)-2)/2 = 95. Is -2 scanlines due to the setup of dma and its transfer time for the HUD palettes into VRAM.
+#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR ((HUD_HINT_SCANLINE_START_PAL_SWAP-2)/2)
 
 #define HUD_VRAM_START_INDEX (1 + 8*8 + 8*8) // If change this value you'll have to update map_base parameter in resource file
 #define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file

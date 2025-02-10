@@ -24,9 +24,9 @@ FORCE_INLINE void waitHCounter_opt1 (u8 n)
 {
     u32 regA = VDP_HVCOUNTER_PORT + 1; // HCounter address is 0xC00009
     __asm volatile (
-        "1:\n" 
+        "1:\n"
         "    cmp.b     (%0),%1\n"         // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "    bhi.s     1b\n"              // loop back if n is higher than (0xC00009)
+        "    bhi.s     1b"              // loop back if n is higher than (0xC00009)
             // bhi is for unsigned comparisons
         :
         : "a" (regA), "d" (n)
@@ -41,7 +41,7 @@ FORCE_INLINE void waitHCounter_opt2 (u8 n)
         "    move.l    #0xC00009,%0\n"    // Load HCounter (VDP_HVCOUNTER_PORT + 1 = 0xC00009) into an An register
         "1:\n" 
         "    cmp.b     (%0),%1\n"         // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "    bhi.s     1b\n"              // loop back if n is higher than (0xC00009)
+        "    bhi.s     1b"              // loop back if n is higher than (0xC00009)
             // bhi is for unsigned comparisons
         : "+a" (regA)
         : "d" (n)
@@ -61,7 +61,7 @@ FORCE_INLINE void waitVCounterReg (u16 n)
     __asm volatile (
         "1:\n"
         "    cmp.w     (%0),%1\n"         // cmp: n - (0xC00008)
-        "    bgt.s     1b\n"              // loop back if n is higher than (0xC00008)
+        "    bgt.s     1b"              // loop back if n is higher than (0xC00008)
             // bhi is for unsigned comparisons, 
             // bge/bgt are for signed comparisons in case n comes already smaller than value in VDP_HVCOUNTER_PORT memory
         :
@@ -72,8 +72,6 @@ FORCE_INLINE void waitVCounterReg (u16 n)
 
 FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
 {
-    // Uncomment if you previously change it to 1 (CPU access to VRAM is 1 byte length, and 2 bytes length for CRAM and VSRAM)
-    //VDP_setAutoInc(2);
 /*
     vu16* pw = (vu16*) VDP_CTRL_PORT;
     // Setup DMA length (in word here)
@@ -117,8 +115,8 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2)
 {
     __asm volatile (
-        "mulu.w  %1, %0\n\t"     // mulu.w op2,op1
-        "lsr.l   %[_FS], %0\n\t" // lsr.l FS, op1
+        "mulu.w  %1, %0\n\t" // mulu.w op2,op1
+        "lsr.l   %[_FS], %0" // lsr.l FS, op1
         : "+d" (op1)
         : "d" (op2), [_FS] "i" (FS)
         :
@@ -223,8 +221,7 @@ void showCPULoad (u16 xPos, u16 yPos)
     str_cpu_load[2] = mod_10[num];
     str_cpu_load[3] = '%'; // overrides garbage data from mod_10[num] when num > 255
     str_cpu_load[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
-	VDP_clearText(xPos, yPos, 3);
-	VDP_drawTextBG(BG_A, str_cpu_load, xPos, yPos);
+	VDP_drawTextBG(WINDOW, str_cpu_load, xPos, yPos);
     //VDP_drawTextEx(BG_A, str_cpu_load, TILE_ATTR_FULL(0, 1, FALSE, FALSE, TILE_FONT_INDEX), xPos, yPos, DMA_QUEUE);
 }
 
@@ -238,8 +235,7 @@ void showFPS (u16 xPos, u16 yPos)
     str_fps[2] = mod_10[num];
     str_fps[3] = ' '; // overrides garbage data from mod_10[num] when num > 255
     str_fps[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
-    VDP_clearText(xPos, yPos, 3);
-	VDP_drawTextBG(BG_A, str_fps, xPos, yPos);
+	VDP_drawTextBG(WINDOW, str_fps, xPos, yPos);
 }
 
 void waitMs_ (u32 ms)

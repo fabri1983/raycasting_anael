@@ -106,6 +106,12 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    hint_reset_mirror_planes_state();
+    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    hint_reset_change_bg_state();
+    #endif
+
 	turnOffVDP(0x74);
 
     render_Z80_setBusProtection(TRUE);
@@ -181,11 +187,5 @@ void vint_callback ()
     // Called once the other half planes were effectively DMAed into VRAM.
     // Do this after the display is turned on, because is CPU and VDP intense and we don't want any black scanlines leak into active display.
     render_copy_top_entries_in_VRAM();
-    #endif
-
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
-    hint_reset_mirror_planes_state();
-    #else
-    hint_reset_vCounterManual();
     #endif
 }

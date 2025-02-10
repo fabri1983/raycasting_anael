@@ -21,9 +21,11 @@ void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord);
 
 void hint_enqueueVdpSpriteCache (u16 lenInWord);
 
-void hint_reset_vCounterManual ();
+void hint_reset_change_bg_state ();
 
-HINTERRUPT_CALLBACK hint_callback ();
+HINTERRUPT_CALLBACK hint_change_bg_callback ();
+
+HINTERRUPT_CALLBACK hint_load_hud_pals_callback ();
 
 void hint_reset_mirror_planes_state ();
 

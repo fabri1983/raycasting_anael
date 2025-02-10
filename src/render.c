@@ -177,8 +177,8 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     render_calculateFrameLoad();
-    showCPULoad(0, 1);
-    //showFPS(0, 1);
+    showCPULoad(0, 24); // is shown on WINDOW plane
+    //showFPS(0, 24);
     #endif
 }
 
@@ -193,11 +193,11 @@ FORCE_INLINE void render_DMA_enqueue_framebuffer ()
     DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET_BYTES*2, 
         ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
     #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_callback()
+    // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_load_hud_pals_callback()
     DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET_BYTES, 
         ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
     #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_callback()
+    // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_load_hud_pals_callback()
     DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES, 
         (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
     #else
@@ -229,7 +229,7 @@ void render_DMA_row_by_row_framebuffer ()
 
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
-    #if RENDER_HALVED_PLANES && RENDER_MIRROR_PLANES_USING_CPU_RAM == FALSE
+    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row

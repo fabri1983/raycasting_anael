@@ -130,10 +130,10 @@ int main (bool hardReset)
 	VDP_setHorizontalScroll(BG_B, 4); // offset second plane by 4 pixels
     VDP_setWindowHPos(FALSE, HUD_XP);
     VDP_setWindowVPos(TRUE, HUD_YP);
-    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
 	PAL_setColor(0, 0x0222); //palette_grey[1] // roof color
     #else
-    PAL_setColor(0, 0x0444); //palette_grey[2] // roof color
+    PAL_setColor(0, 0x0444); //palette_grey[2] // floor color
     #endif
 
     // Load something to DMA, otherwise render_DMA_flushQueue() called by VInt may fail
@@ -143,23 +143,23 @@ int main (bool hardReset)
 
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     hint_reset_mirror_planes_state();
-    #else
-    hint_reset_vCounterManual();
+    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    hint_reset_change_bg_state();
     #endif
     SYS_setVIntCallback(vint_callback);
 
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);
-    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !HUD_SET_FLOOR_AND_ROOF_COLORS_ON_WRITE_VLINE
+    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the HUD palettes load into VRAM).
     // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
     // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
     VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR-1); // -1 since hintcounter is 0 based
-    SYS_setHIntCallback(hint_callback);
+    SYS_setHIntCallback(hint_change_bg_callback);
     #else
     VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of HUD palettes
-    SYS_setHIntCallback(hint_callback);
+    SYS_setHIntCallback(hint_load_hud_pals_callback);
     #endif
     VDP_setHInterrupt(TRUE);
 

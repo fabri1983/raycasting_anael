@@ -55,6 +55,16 @@ void turnOffVDP (u8 reg01);
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOnVDP (u8 reg01);
 
+#define waitHCounter_imm(n) \
+    __asm volatile ( \
+        "1:\n\t" \
+        "cmpi.b  %[_n],%c[_HCOUNTER_PORT]\n\t" /* cmpi: (0xC00009) - n. Compares byte because hcLimit won't be > 160 for our practical cases */ \
+        "blo.s   1b"                           /* loop back if n is lower than (0xC00009) */ \
+        : \
+        : [_n] "i" (n), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1) /* HCounter address is 0xC00009 */ \
+        : \
+    )
+
 /**
  * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
 */
@@ -90,12 +100,13 @@ void waitVCounterReg (u16 n);
         /* Trigger DMA */ \
         /* NOTE: this should be done as Stef does with two .w writes from memory */ \
         "move.l  %[_cmdAddr],(%[_vdpCtrl_ptr_l])" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
-        : [_vdpCtrl_ptr_l] "+a" (vdpCtrl_ptr_l) \
-        : [_len_low_high] "i" ( ((0x9300 | ((len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
+        : \
+        : [_vdpCtrl_ptr_l] "a" (vdpCtrl_ptr_l), \
+          [_len_low_high] "i" ( ((0x9300 | ((len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
           [_addr_low_mid] "i" ( ((0x9500 | (((fromAddr) >> 1) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 9) & 0xff)) ), \
           [_addr_high] "i" ( (0x9700 | (((fromAddr) >> 17) & 0x7f)) ), /* VRAM COPY operation with high address */ \
           /* If you want to add VDP stepping then use: ((0x9700 | (((fromAddr) >> 17) & 0x7f)) << 16) | (0x8F00 | ((step) & 0xff)) \ */ \
-          [_cmdAddr] "i" ((cmdAddr)) \
+          [_cmdAddr] "i" ((u32)(cmdAddr)) \
         : \
     )
 
