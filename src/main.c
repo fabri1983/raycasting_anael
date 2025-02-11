@@ -148,14 +148,17 @@ int main (bool hardReset)
     #endif
     SYS_setVIntCallback(vint_callback);
 
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT && RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
+    VDP_setHIntCounter(0); // every scanline
+    SYS_setHIntCallback(hint_mirror_planes_callback_0);
+    #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT && RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS == FALSE
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);
     #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the HUD palettes load into VRAM).
     // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
     // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-    VDP_setHIntCounter(HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR-1); // -1 since hintcounter is 0 based
+    VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-1); // -1 since hintcounter is 0 based
     SYS_setHIntCallback(hint_change_bg_callback);
     #else
     VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of HUD palettes

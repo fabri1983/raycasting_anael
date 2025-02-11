@@ -198,19 +198,19 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
 
-	// Draw HALF a solid vertical line
+	// Draw HALF a solid vertical line: from BOTTOM to TOP
 	if (h2 == 0) {
 		// C version
 		//for (u16 y = 0; y < VERTICAL_ROWS*PLANE_COLUMNS/2; y+=PLANE_COLUMNS) {
 		// 	column_ptr[y] = tileAttrib;
 		//}
 
-		// Inline ASM version
+		// ASM version
 		__asm volatile (
-			".set off,(%c[_VERTICAL_ROWS]/2)*(%c[_PLANE_COLUMNS]*2)\n" // *2 for byte convertion
+			".set off,(%c[_VERTICAL_ROWS]/2)*(%c[_PLANE_COLUMNS]*2)\n" // *2 for byte addressing
 			".rept %c[_VERTICAL_ROWS]/2\n"
 			"    move.w  %[tileAttrib],off(%[tilemap])\n"
-			"    .set off,off+%c[_PLANE_COLUMNS]*2\n" // *2 for byte convertion
+			"    .set off,off+%c[_PLANE_COLUMNS]*2\n" // *2 for byte addressing
 			".endr\n"
 			: [tileAttrib] "+d" (tileAttrib)
 			: [tilemap] "a" (column_ptr), 
@@ -221,9 +221,9 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         return;
 	}
 
-    // Inline ASM version.
+    // ASM version.
     // This block of code sets tileAttrib which points to a colored tile.
-    // This block of code sets top and bottom tilemap entries.
+    // This block of code sets bottom tilemap entry and save the top value into an array for later use.
     u16 h2_aux2 = h2;
     //u16* top_entries_ptr = top_entries + top_entries_current_col;
     __asm volatile (
@@ -384,7 +384,6 @@ void fb_mirror_planes_in_RAM ()
         /* Setup DMA address high */ \
         "move.w  %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
         /* Trigger DMA */ \
-        /* NOTE: this should be done as Stef does with two .w writes from memory */ \
         "move.l  %[_cmdAddr],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : [_vdpCtrl_ptr_l] "+a" (vdpCtrl_ptr_l) \
         : [_len_low_high] "i" (((0x9300 | ( (len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \

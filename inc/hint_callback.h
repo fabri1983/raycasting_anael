@@ -31,4 +31,6 @@ void hint_reset_mirror_planes_state ();
 
 HINTERRUPT_CALLBACK hint_mirror_planes_callback ();
 
+HINTERRUPT_CALLBACK hint_mirror_planes_callback_0 ();
+
 #endif // _HINT_CALLBACK_H_

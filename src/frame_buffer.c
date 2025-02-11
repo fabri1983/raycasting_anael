@@ -152,12 +152,12 @@ void write_vline (u16 h2, u16 tileAttrib)
 		// 	column_ptr[y] = tileAttrib;
 		//}
 
-		// Inline ASM version
+		// ASM version
 		__asm volatile (
 			".set off,0\n"
 			".rept %c[_VERTICAL_ROWS]\n"
 			"    move.w  %[tileAttrib],off(%[tilemap])\n"
-			"    .set off,off+%c[_PLANE_COLUMNS]*2\n" // *2 for byte convertion
+			"    .set off,off+%c[_PLANE_COLUMNS]*2\n" // *2 for byte addressing
 			".endr\n"
 			: [tileAttrib] "+d" (tileAttrib)
 			: [tilemap] "a" (column_ptr), 
@@ -215,7 +215,7 @@ void write_vline (u16 h2, u16 tileAttrib)
     }*/
 
     // HERE WE TRY TO CLEAR THE TILEMAP ENTRIES FOR THE CURRENT COLUMN. THIS IS SLOWER THAN USING clear_buffer().
-    // Inline ASM version.
+    // ASM version.
     // This block sets tileAttrib_tile0 which points to tile 0.
     /*u16 jump = ((VERTICAL_ROWS-2)/2) * 8; // (multiplied by jump block size)
     u16 h2_aux1 = h2;
@@ -243,7 +243,7 @@ void write_vline (u16 h2, u16 tileAttrib)
         // Case 0 (the complement to (VERTICAL_ROWS-2)/2) falls here
         : [h2] "+d" (h2_aux1), [tileAttrib_tile0] "+d" (tileAttrib_tile0), [jump] "+d" (jump)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
-            [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
+          [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
         :
     );*/
 
@@ -275,7 +275,7 @@ void write_vline (u16 h2, u16 tileAttrib)
                     break;
     }*/
 
-    // Inline ASM version.
+    // ASM version.
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets top and bottom tilemap entries.
     u16 h2_aux2 = h2;

@@ -98,7 +98,7 @@ void waitVCounterReg (u16 n);
         /* Setup DMA address high */ \
         "move.w  %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
         /* Trigger DMA */ \
-        /* NOTE: this should be done as Stef does with two .w writes from memory */ \
+        /* NOTE: this should be done as Stef does with two .w writes from memory. See DMA_doDmaFast() */ \
         "move.l  %[_cmdAddr],(%[_vdpCtrl_ptr_l])" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : \
         : [_vdpCtrl_ptr_l] "a" (vdpCtrl_ptr_l), \

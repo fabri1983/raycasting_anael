@@ -11,7 +11,7 @@
 #define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT TRUE // If TRUE then it will change from floor to roof bg color at HInt. If FALSE then we use single bg color.
 
 // ((224-32)-2)/2 = 95. Is -2 scanlines due to the setup of dma and its transfer time for the HUD palettes into VRAM.
-#define HUD_HINT_SCANLINE_CHANGE_ROOF_BG_COLOR ((HUD_HINT_SCANLINE_START_PAL_SWAP-2)/2)
+#define HUD_HINT_SCANLINE_MID_SCREEN ((HUD_HINT_SCANLINE_START_PAL_SWAP-2)/2)
 
 #define HUD_VRAM_START_INDEX (1 + 8*8 + 8*8) // If change this value you'll have to update map_base parameter in resource file
 #define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file

@@ -9,12 +9,13 @@
 #define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror the bottom half of planes into the top half, by using CPU and RAM
 #define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror the bottom half of planes into the top half, by using VRAM to VRAM copy
 #define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT TRUE // Mirror the bottom half of planes into the top half, by using VSCROLL table manipulation at HINT
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS FALSE
 // Render only half bottom region of both planes to later mirror them using VRAM to VRAM copy
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
 
 // Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER FALSE
-// Slightly faster. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
+// Slightly faster with the use of SP as pointer. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
 
 #define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED TRUE
