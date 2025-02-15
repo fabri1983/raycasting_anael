@@ -499,9 +499,9 @@ void NO_INLINE spr_eng_update()
         hint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
         vint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
-        #else
-        // enqueue in sprite's queue
-        //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), 2);
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE
+        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), 2);
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE
         render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #endif
     }
@@ -516,9 +516,9 @@ void NO_INLINE spr_eng_update()
         hint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
         vint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
-        #else
-        // enqueue in sprite's queue
-        //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE
+        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE
         render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #endif
     }*/

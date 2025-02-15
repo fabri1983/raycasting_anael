@@ -6,8 +6,13 @@
 #include <memory.h>
 #include <sys.h>
 #include "consts.h"
+#include "consts_ext.h"
 #include "hud.h"
+#if PLANE_COLUMNS == 64
 #include "hud_320.h"
+#else
+#include "hud_256.h"
+#endif
 #include "weapons.h"
 #include "frame_buffer.h"
 
@@ -151,10 +156,12 @@ extern InterruptCaller hintCaller;
 FORCE_INLINE void hint_reset_change_bg_state ()
 {
     // C version
+    // Change the hint callback to the one that changes the BG color. This takes effect immediatelly.
     //hintCaller.addr = hint_change_bg_callback; //SYS_setHIntCallback(hint_change_bg_callback);
 
     // ASM version
     __asm volatile (
+        // Change the hint callback to the one that changes the BG color. This takes effect immediatelly.
         "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_change_bg_callback);
         :
         : [hint_callback] "s" (hint_change_bg_callback), [hintCaller] "m" (hintCaller)
@@ -182,8 +189,8 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
         "1:\n\t"
         "cmp.b   %c[_HCOUNTER_PORT],%[hcLimit]\n\t" // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
         "bhi.s   1b\n\t"                            // loop back if n is lower than (0xC00009)
-        "move.l  %[_CRAM_CMD],(0xC00004)\n\t" // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)"   // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]; // floor color
+        "move.l  %[_CRAM_CMD],(0xC00004)\n\t"       // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+        "move.w  %[floor_color],(0xC00000)"         // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]; // floor color
         :
         : [hcLimit] "d" (156), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1), // HCounter address is 0xC00009
           [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
@@ -194,9 +201,8 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
 
 HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
 {
-    // IMPORTANT: this must be called here (or any place inside this hint callback), 
-    // otherwise it breaks the sprite system when firing, and also corrupts the VDP in the HUD region of the screen.
-    // REMOVE THIS WHEN SPRITE ENGINE CPU USAGE DOESN'T LEAK INTO THE HUD REGION IN ACTIVE DISPLAY PERIOD.
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
     hintCaller.addr = hint_mirror_planes_callback_0; //SYS_setHIntCallback(hint_mirror_planes_callback_0);
@@ -204,8 +210,6 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
     hintCaller.addr = hint_mirror_planes_callback; //SYS_setHIntCallback(hint_mirror_planes_callback);
     #endif
-
-    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
 	// Prepare DMA source address for first palette
     //waitHCounter_opt3(vdpCtrl_ptr_l, 152);
@@ -347,18 +351,16 @@ FORCE_INLINE void hint_reset_mirror_planes_state ()
         "move.l  %[_VSRAM_CMD],(0xC00004)\n\t" // VDP_CTRL_PORT: 0: Plane A, 2: Plane B
         "move.l  %[_ROW_OFFSET],(0xC00000)\n\t" // VDP_DATA_PORT: writes on both planes
         :
-        : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_ROW_OFFSET] "i" (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8))
+        : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_ROW_OFFSET] "i" ((((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - 1*((2 << 16) | 2))
         : "cc", "memory"
     );*/
-
+    
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
-    // ENABLE NEXT WHEN SPRITE ENGINE CPU USAGE DOESN'T LEAK INTO THE HUD REGION IN ACTIVE DISPLAY PERIOD.
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
     //hintCaller.addr = hint_mirror_planes_callback_0; //SYS_setHIntCallback(hint_mirror_planes_callback_0);
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
-    mirror_offset_rows = ((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8);
-    vCounterManual = HUD_HINT_SCANLINE_MID_SCREEN + 1;
-    // ENABLE NEXT WHEN SPRITE ENGINE CPU USAGE DOESN'T LEAK INTO THE HUD REGION IN ACTIVE DISPLAY PERIOD.
+    mirror_offset_rows = (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - 2*((2 << 16) | 2);
+    vCounterManual = HUD_HINT_SCANLINE_MID_SCREEN + 1; // +1 because we do --vCounterManual before condition check
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
     //hintCaller.addr = hint_mirror_planes_callback; //SYS_setHIntCallback(hint_mirror_planes_callback);
     #endif
@@ -379,7 +381,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
     --vCounterManual;
     if (vCounterManual == 0) {
         // Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next callback, not immediatelly.
-        *(vu16*)ctrl_l = 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN-2); //VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-2);
+        *(vu16*)ctrl_l = 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN); //VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN);
         // Change to the hint callback with last operations
         hintCaller.addr = hint_mirror_planes_last_scanline_callback; //SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
     }
@@ -394,12 +396,12 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
         "subq.w  #1,%[vCounterManual]\n\t" // --vCounterManual;
         "bne.s   1f\n\t"
         // Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next callback, not immediatelly.
-        "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-2);
+        "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN);
         "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
         "1:"
         : [mirror_offset_rows] "+m" (mirror_offset_rows), [vCounterManual] "+m" (vCounterManual)
         : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [NEXT_ROW_OFFSET] "i" ((2 << 16) | 2),
-          [_HINT_COUNTER] "i" (0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN-2)),
+          [_HINT_COUNTER] "i" (0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN)),
           [hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [hintCaller] "m" (hintCaller)
         : "cc", "memory"
     );
@@ -416,7 +418,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
     *ctrl_l = VDP_WRITE_VSRAM_ADDR(0); // 0: Plane A, 2: Plane B
     *data_l = 0; // writes on both planes
 
-    // Change the HInt counter to 0. This takes effect next callback, not immediatelly.
+    // Change the HInt counter to start from every scanline again. This takes effect next callback, not immediatelly.
     *(vu16*)ctrl_l = 0x8A00 | 0; //VDP_setHIntCounter(0);
     // Change the hint callback to the normal one. This takes effect immediatelly.
     hintCaller.addr = hint_load_hud_pals_callback; //SYS_setHIntCallback(hint_load_hud_pals_callback);
@@ -434,7 +436,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         // Restore VSCROLL to 0 on both planes (writing in one go on both planes)
         "move.l  %[_VSRAM_CMD],(0xC00004)\n\t" // VDP_CTRL_PORT: 0: Plane A, 2: Plane B
         "move.l  #0,(0xC00000)\n\t" // VDP_DATA_PORT: writes on both planes
-        // Change the hint callback to the normal one. This takes effect immediatelly.
+        // Change the HInt counter to start from every scanline again. This takes effect next callback, not immediatelly.
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(0);
         "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         // If case applies, change BG color to floor color

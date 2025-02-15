@@ -545,7 +545,7 @@ FORCE_INLINE void hud_update ()
         #elif DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE
         // PW_ADDR comes with the correct base position in screen
         DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-        #else
+        #elif DMA_HUD_TILEMAP_IMMEDIATELY
         // PW_ADDR comes with the correct base position in screen
         //DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;

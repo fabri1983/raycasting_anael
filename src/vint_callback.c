@@ -7,7 +7,11 @@
 #include "consts.h"
 #include "consts_ext.h"
 #include "hud.h"
+#if PLANE_COLUMNS == 64
 #include "hud_320.h"
+#else
+#include "hud_256.h"
+#endif
 #include "weapons.h"
 #include "utils.h"
 #include "render.h"
@@ -110,8 +114,6 @@ void vint_callback ()
 {
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
-    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
-    hint_reset_change_bg_state();
     #endif
 
 	turnOffVDP(0x74);
@@ -189,5 +191,9 @@ void vint_callback ()
     // Called once the other half planes were effectively DMAed into VRAM.
     // Do this after the display is turned on, because is CPU and VDP intense and we don't want any black scanlines leak into active display.
     render_copy_top_entries_in_VRAM();
+    #endif
+
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    hint_reset_change_bg_state();
     #endif
 }
