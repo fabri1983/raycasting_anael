@@ -3,7 +3,6 @@
 
 #include <types.h>
 #include "consts.h"
-#include "hud.h"
 
 #define WEAPON_BASE_PAL PAL3 // Use always PAL0 because the modified Sprite Engine now supports a palette per VDP Sprite.
 

@@ -25,8 +25,8 @@ FORCE_INLINE void waitHCounter_opt1 (u8 n)
     u32 regA = VDP_HVCOUNTER_PORT + 1; // HCounter address is 0xC00009
     __asm volatile (
         "1:\n"
-        "    cmp.b     (%0),%1\n"         // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "    bhi.s     1b"              // loop back if n is higher than (0xC00009)
+        "    cmp.b     (%0),%1\n" // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
+        "    bhi.s     1b"        // loop back if n is higher than (0xC00009)
             // bhi is for unsigned comparisons
         :
         : "a" (regA), "d" (n)
@@ -36,14 +36,14 @@ FORCE_INLINE void waitHCounter_opt1 (u8 n)
 
 FORCE_INLINE void waitHCounter_opt2 (u8 n)
 {
-    u32* regA=0; // placeholder used to indicate the use of an An register
+    u32* regA; // placeholder used to indicate the use of an An register
     __asm volatile (
-        "    move.l    #0xC00009,%0\n"    // Load HCounter (VDP_HVCOUNTER_PORT + 1 = 0xC00009) into an An register
+        "    move.l    #0xC00009,%0\n" // Load HCounter (VDP_HVCOUNTER_PORT + 1 = 0xC00009) into an An register
         "1:\n" 
-        "    cmp.b     (%0),%1\n"         // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "    bhi.s     1b"              // loop back if n is higher than (0xC00009)
+        "    cmp.b     (%0),%1\n"      // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
+        "    bhi.s     1b"             // loop back if n is higher than (0xC00009)
             // bhi is for unsigned comparisons
-        : "+a" (regA)
+        : "=a" (regA)
         : "d" (n)
         :
     );
@@ -60,8 +60,8 @@ FORCE_INLINE void waitVCounterReg (u16 n)
     u32 regA = VDP_HVCOUNTER_PORT; // VCounter address is 0xC00008
     __asm volatile (
         "1:\n"
-        "    cmp.w     (%0),%1\n"         // cmp: n - (0xC00008)
-        "    bgt.s     1b"              // loop back if n is higher than (0xC00008)
+        "    cmp.w     (%0),%1\n"  // cmp: n - (0xC00008)
+        "    bgt.s     1b"         // loop back if n is higher than (0xC00008)
             // bhi is for unsigned comparisons, 
             // bge/bgt are for signed comparisons in case n comes already smaller than value in VDP_HVCOUNTER_PORT memory
         :
@@ -106,8 +106,8 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
         "andi.w   #0x007f,%[dn]\n\t"              // dn: (fromAddr >> 16) & 0x7f
         "ori.w    #0x9700,%[dn]\n\t"              // dn: 0x9700 | ((fromAddr >> 16) & 0x7f)
         "move.w   %[dn],(%[dmaCtrl_ptr])"         // *((vu16*) VDP_CTRL_PORT) = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
-        : [dmaCtrl_ptr] "+a" (dmaCtrl_ptr), [dn] "+d" (dn)
-        : [fromAddr] "d" (fromAddr), [dmaLen] "id" (dmaLen)
+        : [dn] "+d" (dn)
+        : [dmaCtrl_ptr] "a" (dmaCtrl_ptr), [fromAddr] "d" (fromAddr), [dmaLen] "id" (dmaLen)
         :
     );
 }

@@ -2,7 +2,6 @@
 #define _RENDER_H_
 
 #include <types.h>
-#include "consts.h"
 
 /// @brief Loads render tiles in VRAM. 
 /// 8 set of 8 tiles each plus 1 empty tile => 73 tiles in total.

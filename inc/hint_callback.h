@@ -2,7 +2,6 @@
 #define _HINT_CALLBACK_H_
 
 #include <types.h>
-#include "consts.h"
 #include "utils.h"
 
 void hint_reset ();
@@ -31,6 +30,10 @@ void hint_reset_mirror_planes_state ();
 
 HINTERRUPT_CALLBACK hint_mirror_planes_callback ();
 
+HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ();
+
 HINTERRUPT_CALLBACK hint_mirror_planes_callback_0 ();
+
+extern HINTERRUPT_CALLBACK hint_mirror_planes_callback_asm_0 ();
 
 #endif // _HINT_CALLBACK_H_

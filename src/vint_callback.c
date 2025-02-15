@@ -4,6 +4,8 @@
 #include <vdp_spr.h>
 #include <pal.h>
 #include <memory.h>
+#include "consts.h"
+#include "consts_ext.h"
 #include "hud.h"
 #include "hud_320.h"
 #include "weapons.h"
@@ -106,7 +108,7 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
     #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     hint_reset_change_bg_state();
@@ -145,7 +147,7 @@ void vint_callback ()
         u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif

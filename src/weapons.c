@@ -6,6 +6,7 @@
 #include "weapons_res.h"
 #include "hint_callback.h"
 #include "vint_callback.h"
+#include "hud.h"
 
 static u8 resetToIdle_timer;
 static u8 fire_coolDown_timer;
@@ -32,11 +33,11 @@ bool isMoving = FALSE;
 
 u16 weapon_biggerAnimTileNum ()
 {
-    // u16 maxTileNum = sprDef_weapon_fist_anim.maxNumTile;
-    // maxTileNum = max(maxTileNum, sprDef_weapon_pistol_anim.maxNumTile);
-    // maxTileNum = max(maxTileNum, sprDef_weapon_shotgun_anim.maxNumTile);
-    // return maxTileNum;
-    return 144;
+    u16 maxTileNum = sprDef_weapon_fist_anim.maxNumTile;
+    maxTileNum = max(maxTileNum, sprDef_weapon_pistol_anim.maxNumTile);
+    maxTileNum = max(maxTileNum, sprDef_weapon_shotgun_anim.maxNumTile);
+    return maxTileNum;
+    //return 144;
 }
 
 u16 weapon_getVRAMLocation ()

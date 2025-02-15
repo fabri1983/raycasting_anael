@@ -46,6 +46,23 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
+static FORCE_INLINE void clearBuffer ()
+{
+    #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
+        #if RENDER_HALVED_PLANES
+        clear_buffer_halved_sp();
+        #else
+        clear_buffer_sp();
+        #endif
+    #elif RENDER_CLEAR_FRAMEBUFFER
+        #if RENDER_HALVED_PLANES
+        clear_buffer_halved();
+        #else
+        clear_buffer();
+        #endif
+    #endif
+}
+
 void game_loop ()
 {
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
@@ -64,19 +81,7 @@ void game_loop ()
 	for (;;)
 	{
 		// clear the frame buffer
-        #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-            #if RENDER_HALVED_PLANES
-            clear_buffer_halved_sp();
-            #else
-            clear_buffer_sp();
-            #endif
-        #elif RENDER_CLEAR_FRAMEBUFFER
-            #if RENDER_HALVED_PLANES
-            clear_buffer_halved();
-            #else
-            clear_buffer();
-            #endif
-        #endif
+        clearBuffer();
 
         // ceiling_copy_tilemap(BG_B, angle);
         // floor_copy_tilemap(BG_B, angle);
@@ -265,19 +270,7 @@ void game_loop_auto ()
             for (u16 angle = 0; angle < 1024; angle += (1024/AP)) {
 
                 // clear the frame buffer
-                #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-                    #if RENDER_HALVED_PLANES
-                    clear_buffer_halved_sp();
-                    #else
-                    clear_buffer_sp();
-                    #endif
-                #elif RENDER_CLEAR_FRAMEBUFFER
-                    #if RENDER_HALVED_PLANES
-                    clear_buffer_halved();
-                    #else
-                    clear_buffer();
-                    #endif
-                #endif
+                clearBuffer();
 
                 u16 a = angle / (1024/AP); // a range is [0, 128)
                 u16* delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);

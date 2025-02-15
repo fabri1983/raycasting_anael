@@ -48,6 +48,28 @@
 #define STOPWATCH_68K_CYCLES_STOP() __asm volatile ("move.w  #0x9F00, (0xC00004).l\n" :::"memory")
 
 /// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
+/// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
+/// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
+#define turnOffVDP_m(ctrl_port,reg01) \
+    __asm volatile ( \
+        "move.w  %[_reg01],(%[_ctrl_port])" \
+        : \
+        : [_ctrl_port] "a" (ctrl_port), [_reg01] "i" (0x8100 | (reg01 & ~0x40)) \
+        : \
+    )
+
+/// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
+/// @param ctrl_port a variable defines as (vu32*)VDP_CTRL_PORT.
+/// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
+#define turnOnVDP_m(ctrl_port,reg01) \
+__asm volatile ( \
+    "move.w  %[_reg01],(%[_ctrl_port])" \
+    : \
+    : [_ctrl_port] "a" (ctrl_port), [_reg01] "i" (0x8100 | (reg01 | 0x40)) \
+    : \
+)
+
+/// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOffVDP (u8 reg01);
 
@@ -55,6 +77,9 @@ void turnOffVDP (u8 reg01);
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOnVDP (u8 reg01);
 
+/// @brief Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
+/// This implementation is register free, uses 0xC00009 as immediate for accessing its memory location.
+/// @param n
 #define waitHCounter_imm(n) \
     __asm volatile ( \
         "1:\n\t" \
@@ -75,33 +100,45 @@ void waitHCounter_opt1 (u8 n);
 */
 void waitHCounter_opt2 (u8 n);
 
+/// @brief Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
+/// This implementation depends on already existing ctrl_port variable to address 0xC00004 + 5 = 0xC00009.
+/// @param ctrl_port a variable defines as (vu32*)VDP_CTRL_PORT.
+/// @param n
+#define waitHCounter_opt3(ctrl_port,n) \
+    __asm volatile ( \
+        "1:\n\t" \
+        "cmpi.b  %[_n],5(%[_ctrl_port])\n\t" /* cmpi: (0xC00009) - n. Compares byte because hcLimit won't be > 160 for our practical cases */ \
+        "blo.s   1b"                         /* loop back if n is lower than (0xC00009) */ \
+        : \
+        : [_n] "i" (n), [_ctrl_port] "a" (ctrl_port) \
+        : \
+    )
+
 /**
  * Wait until VCounter 0xC00008 reaches nth scanline position. Parameter n is loaded into a register.
  * The docs straight up say to not trust the value of the V counter during vblank, in that case use VDP_getAdjustedVCounter().
 */
 void waitVCounterReg (u16 n);
 
-// Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address) and writes the command too.
-// Assumes the three parameters are known values at compile time, and the VDP stepping was already set.
-// You have to define previously: vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
-// Assumes VDP's stepping is already 2.
-// Parameters:
-// fromAddr: source VRAM address in u32 format.
-// cmdAddr: destinaiton address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
-// len: words to move (DMA RAM/ROM to VRAM copies 2 bytes).
-#define doDMAfast_fixed_args(fromAddr,cmdAddr,len) \
+/// @brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address) and writes the command too.
+/// Assumes the 4 arguments are known values at compile time, and the VDP stepping was already set.
+/// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
+/// @param fromAddr source VRAM address in u32 format.
+/// @param cmdAddr destinaiton address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
+/// @param len words to move (DMA RAM/ROM to VRAM copies 2 bytes).
+#define doDMAfast_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
-        "move.l  %[_len_low_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
+        "move.l  %[_len_low_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
         /* Setup DMA address low and mid */ \
-        "move.l  %[_addr_low_mid],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
+        "move.l  %[_addr_low_mid],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
         /* Setup DMA address high */ \
-        "move.w  %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
+        "move.w  %[_addr_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
         /* Trigger DMA */ \
         /* NOTE: this should be done as Stef does with two .w writes from memory. See DMA_doDmaFast() */ \
-        "move.l  %[_cmdAddr],(%[_vdpCtrl_ptr_l])" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
+        "move.l  %[_cmdAddr],(%[_ctrl_port])" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : \
-        : [_vdpCtrl_ptr_l] "a" (vdpCtrl_ptr_l), \
+        : [_ctrl_port] "a" (ctrl_port), \
           [_len_low_high] "i" ( ((0x9300 | ((len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
           [_addr_low_mid] "i" ( ((0x9500 | (((fromAddr) >> 1) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 9) & 0xff)) ), \
           [_addr_high] "i" ( (0x9700 | (((fromAddr) >> 17) & 0x7f)) ), /* VRAM COPY operation with high address */ \

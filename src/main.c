@@ -110,13 +110,13 @@ int main (bool hardReset)
     hint_reset();
 	u16 currentTileIndex = render_loadTiles();
 	currentTileIndex = hud_loadInitialState(currentTileIndex);
-    SPR_initEx(weapon_biggerAnimTileNum()); // + others xxx_biggerAnimTileNum()
+    SPR_initEx(weapon_biggerAnimTileNum()); // NOTE: + others xxx_biggerAnimTileNum()
     weapon_resetState();
 
     hud_addWeapon(WEAPON_FIST);
     hud_addWeapon(WEAPON_PISTOL);
     hud_addWeapon(WEAPON_SHOTGUN);
-    hud_addHealthUnits(100); // replace by health_add(100), from which it will call hud_addHealthUnits(100)
+    hud_addHealthUnits(100); // NOTE: needs to be replaced by health_add(100), from which it will call hud_addHealthUnits(100)
     weapon_select(WEAPON_PISTOL);
     weapon_addAmmo(WEAPON_PISTOL, 50);
     weapon_addAmmo(WEAPON_SHOTGUN, 50);
@@ -141,17 +141,17 @@ int main (bool hardReset)
 
 	SYS_disableInts();
 
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
     #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     hint_reset_change_bg_state();
     #endif
     SYS_setVIntCallback(vint_callback);
 
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT && RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback_0);
-    #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT && RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS == FALSE
+    #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);
     #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT

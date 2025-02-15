@@ -1,17 +1,30 @@
 #ifndef _CONSTS_H_
 #define _CONSTS_H_
 
+#ifndef FALSE
+#define FALSE   0
+#endif
+#ifndef TRUE
+#define TRUE    1
+#endif
+
 #define DISPLAY_LOGOS_AT_START FALSE
 #define DISPLAY_TITLE_SCREEN FALSE
 
 #define RENDER_SHOW_TEXCOORD FALSE // Show texture coords? Is not optimized though
 
-#define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror the bottom half of planes into the top half, by using CPU and RAM
-#define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror the bottom half of planes into the top half, by using VRAM to VRAM copy
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT TRUE // Mirror the bottom half of planes into the top half, by using VSCROLL table manipulation at HINT
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS FALSE
-// Render only half bottom region of both planes to later mirror them using VRAM to VRAM copy
-#define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+#define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror bottom half of planes into top hal, by using CPU and RAM
+#define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror bottom half of planes into top hal, by using VRAM to VRAM copy
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT TRUE // Mirror bottom half of planes into top hal, by using VSCROLL table manipulation at HINT
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS FALSE // Mirror bottom half of planes into top half, by using VSCROLL table manipulation at multiple HINTs (fully optimized)
+// Render only half bottom region of both planes to later mirror them using one of the many available strategies.
+#define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
+
+#define DMA_FRAMEBUFFER_ROW_BY_ROW TRUE // TRUE: DMA row by row. FALSE: normal DMA enqueue and DMA flush.
+
+#define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT FALSE
+#define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT FALSE
+#define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT FALSE
 
 // Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER FALSE
@@ -24,23 +37,17 @@
 #define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
 #define RENDER_ENABLE_FRAME_LOAD_CALCULATION TRUE
 
-#define DMA_FRAMEBUFFER_ROW_BY_ROW TRUE // TRUE: DMA row by row. FALSE: normal DMA enqueue and DMA flush.
-
-#define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT FALSE
-#define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT FALSE
-#define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT FALSE
-
 #define DMA_ALLOW_BUFFERED_SPRITE_TILES FALSE // Set to TRUE if you have compressed sprites, otherwise FALSE.
 #define DMA_MAX_QUEUE_CAPACITY 8 // How many objects we can hold without crashing the system due to array out of bound access.
-#define DMA_TILES_THRESHOLD_FOR_HINT 384 // when this number of tiles is exceeded we move tiles to VInt queue.
+#define DMA_TILES_THRESHOLD_FOR_HINT 200 // when this number of tiles is exceeded we move the exceeding tiles to VInt queue.
 #define DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT ((DMA_TILES_THRESHOLD_FOR_HINT * 32) / 2)
 
-#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT TRUE
-#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT FALSE
+#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT FALSE
+#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT TRUE
 #define DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE FALSE
 
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT TRUE
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT FALSE
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT FALSE
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT TRUE
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision
@@ -67,17 +74,6 @@
 #define HALF_PLANE_ADDR_OFFSET_BYTES (VERTICAL_ROWS*PLANE_COLUMNS) // In case we split in 2 chunks the DMA of any plane we need to use appropriate offset
 #define QUARTER_PLANE_ADDR_OFFSET_BYTES (HALF_PLANE_ADDR_OFFSET/2) // In case we split in 4 chunks the DMA of any plane we need to use the appropriate offset
 #define EIGHTH_PLANE_ADDR_OFFSET (HALF_PLANE_ADDR_OFFSET/4) // In case we split in 8 chunks the DMA of any plane we need to use the appropriate offset
-
-#include <memory_base.h>
-// This is the fixed address of the frame_buffer array, before the end of the heap.
-#define FRAME_BUFFER_ADDRESS (MEMORY_HIGH - VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
-#if PLANE_COLUMNS == 64
-#include "hud_320.h"
-#else
-#include "hud_256.h"
-#endif
-// This is the fixed address of the hud_tilemap_dst array, before the frame_buffer.
-#define HUD_TILEMAP_DST_ADDRESS (FRAME_BUFFER_ADDRESS - (PLANE_COLUMNS*HUD_BG_H)*2)
 
 #define MAP_SIZE 16
 #define MAP_FRACTION 32 // How much we allow the player to be close to any wall

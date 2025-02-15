@@ -2,7 +2,6 @@
 #define _TITLE_H_
 
 #include <types.h>
-#include "consts.h"
 
 void title_show ();
 

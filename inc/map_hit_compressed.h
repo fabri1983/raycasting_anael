@@ -2,8 +2,6 @@
 #define _TAB_MAP_HIT_H_
 
 #include <types.h>
-#include "consts.h"
-#include "utils.h"
 
 /**
  * First you need to generate the hit map with script tab_map_hit_generator.js. Check correct values of constants before script execution.

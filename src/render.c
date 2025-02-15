@@ -5,6 +5,8 @@
 #include <dma.h>
 #include <sys.h>
 #include <memory.h>
+#include "consts.h"
+#include "consts_ext.h"
 //#include <joy.h>
 #include "joy_6btn.h"
 #include "hud.h"
@@ -229,23 +231,23 @@ void render_DMA_row_by_row_framebuffer ()
 
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
-    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS/2 + i*PLANE_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS/2 + i*PLANE_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         // Plane B row
-        doDMAfast_fixed_args(FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS + VERTICAL_ROWS*PLANE_COLUMNS/2 + i*PLANE_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS + VERTICAL_ROWS*PLANE_COLUMNS/2 + i*PLANE_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
     #else
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(FRAME_BUFFER_ADDRESS + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         // Plane B row
-        doDMAfast_fixed_args(FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS + i*PLANE_COLUMNS)*2, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS + i*PLANE_COLUMNS)*2, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
     #endif
 }

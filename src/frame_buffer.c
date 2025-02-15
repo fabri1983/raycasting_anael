@@ -1,4 +1,6 @@
 #include "frame_buffer.h"
+#include "consts.h"
+#include "consts_ext.h"
 #include "utils.h"
 #include <vdp_tile.h>
 #include <memory.h>
@@ -19,15 +21,68 @@ void fb_free_frame_buffer ()
     memsetU32((u32*)frame_buffer, 0, (VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))/2);
 }
 
+void clear_buffer_no_usp ()
+{
+	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
+	__asm volatile (
+		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
+		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
+		// Makes a0 points to the memory location of the framebuffer's end 
+		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
+		// Clear registers
+		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
+		"    move.l  %%d0,%%d1\n"
+		"    move.l  %%d0,%%d2\n"
+		"    move.l  %%d0,%%d3\n"
+		"    move.l  %%d0,%%d4\n"
+		"    move.l  %%d0,%%d5\n"
+		"    move.l  %%d0,%%d6\n"
+		"    move.l  %%d0,%%d7\n"
+		"    move.l  %%d0,%%a1\n"
+		"    move.l  %%d0,%%a2\n"
+		"    move.l  %%d0,%%a3\n"
+		"    move.l  %%d0,%%a4\n"
+		"    move.l  %%d0,%%a5\n"
+		"    move.l  %%d0,%%a6\n"
+        // Iterate over all rows - 1
+		".rept (%c[_VERTICAL_ROWS]*2 - 1)\n"
+		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
+		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
+    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
+    	"    .endr\n"
+		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
+		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
+		"    move.l  %%d0,-(%%a0)\n"
+		"    .endr\n"
+		    // Skip the non displayed data
+		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
+		".endr\n"
+		// One more iteration without the last lea instruction
+		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
+    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
+    	"    .endr\n"
+		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
+		"    move.l  %%d0,-(%%a0)\n"
+		"    .endr\n"
+		// Restore all saved registers
+		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
+		:
+		: "a" (frame_buffer), 
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
+		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
+		: "memory"
+	);
+}
+
 void clear_buffer ()
 {
-    STOPWATCH_68K_CYCLES_START();
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	// 9842 cycles according Blastem cycle counter.
 	__asm volatile (
 		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-        // Save current SP value in USP
+        // Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
 		// Makes a0 points to the memory location of the framebuffer's end 
 		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
@@ -78,7 +133,6 @@ void clear_buffer ()
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
 		: "memory"
 	);
-    STOPWATCH_68K_CYCLES_STOP();
 }
 
 void clear_buffer_sp ()
@@ -89,7 +143,7 @@ void clear_buffer_sp ()
 	__asm volatile (
         // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Save current SP value in USP
+		// Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location of the framebuffer's end 
         "    move.l  %[frame_buffer_end],%%sp\n" // frame_buffer end address

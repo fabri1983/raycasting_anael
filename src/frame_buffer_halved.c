@@ -1,6 +1,88 @@
 #include "frame_buffer.h"
+#include "consts.h"
+#include "consts_ext.h"
 #include "utils.h"
 #include <vdp_tile.h>
+
+void clear_buffer_halved_no_usp ()
+{
+    // We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
+    // Only half Plane A and half Plane B.
+	__asm volatile (
+		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
+		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
+		// Makes a0 points to the memory location of the framebuffer's end 
+		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
+		// Clear registers
+		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
+		"    move.l  %%d0,%%d1\n"
+		"    move.l  %%d0,%%d2\n"
+		"    move.l  %%d0,%%d3\n"
+		"    move.l  %%d0,%%d4\n"
+		"    move.l  %%d0,%%d5\n"
+		"    move.l  %%d0,%%d6\n"
+		"    move.l  %%d0,%%d7\n"
+		"    move.l  %%d0,%%a1\n"
+		"    move.l  %%d0,%%a2\n"
+		"    move.l  %%d0,%%a3\n"
+		"    move.l  %%d0,%%a4\n"
+		"    move.l  %%d0,%%a5\n"
+		"    move.l  %%d0,%%a6\n"
+        // frame_buffer's Plane B region (actually at the end)
+        // Iterate over bottom half rows - 1
+		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
+		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
+    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
+    	"    .endr\n"
+		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
+		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
+		"    move.l  %%d0,-(%%a0)\n"
+		"    .endr\n"
+		    // Skip the non displayed data
+		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
+		".endr\n"
+		// One more iteration without the last lea instruction
+		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
+    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
+    	"    .endr\n"
+		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
+		"    move.l  %%d0,-(%%a0)\n"
+		"    .endr\n"
+        // Accomodate to locate at the end of frame_buffer's Plane A region
+        "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
+        // frame_buffer's Plane A region (actually at the end)
+        // Iterate over bottom half rows - 1
+        ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
+		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
+    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
+    	"    .endr\n"
+		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
+		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
+		"    move.l  %%d0,-(%%a0)\n"
+		"    .endr\n"
+		    // Skip the non displayed data
+		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
+		".endr\n"
+		// One more iteration without the last lea instruction
+		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
+    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
+    	"    .endr\n"
+		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
+		"    move.l  %%d0,-(%%a0)\n"
+		"    .endr\n"
+		// Restore all saved registers
+		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
+		:
+		: "a" (frame_buffer), 
+		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
+		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
+          [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
+		: "memory"
+	);
+}
 
 void clear_buffer_halved ()
 {
@@ -9,7 +91,7 @@ void clear_buffer_halved ()
 	__asm volatile (
 		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-        // Save current SP value in USP. Make sure no interrupt happen during the time of this snippet
+        // Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
 		// Makes a0 points to the memory location of the framebuffer's end 
 		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
@@ -95,7 +177,7 @@ void clear_buffer_halved_sp ()
 	__asm volatile (
         // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Save current SP value in USP. Make sure no interrupt happen during the time of this snippet
+		// Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location of the framebuffer's end 
         "    move.l  %[frame_buffer_end],%%sp\n" // frame_buffer end address
@@ -275,7 +357,7 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
     __asm volatile ( \
         /* Save all registers (except scratch pad) */ \
 		"movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n\t" \
-        /* Save current SP value in USP. Make sure no interrupt happen during the time of this snippet */ \
+        /* Save current SP value in USP. Make sure you are not using SGDK's multitasking feature */ \
 		"move.l  %%sp,%%usp\n\t" \
         /* Load source and destiny addresses */ \
         "move.l  %[_srcAddr],%%a0\n\t" \
@@ -375,17 +457,17 @@ void fb_mirror_planes_in_RAM ()
     copy_top_entries_in_RAM();
 }
 
-#define doDMA_VRAM_COPY_fixed_args(fromAddr,cmdAddr,len) \
+#define doDMA_VRAM_COPY_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
-        "move.l  %[_len_low_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
+        "move.l  %[_len_low_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
         /* Setup DMA address low and mid */ \
-        "move.l  %[_addr_low_mid],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
+        "move.l  %[_addr_low_mid],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
         /* Setup DMA address high */ \
-        "move.w  %[_addr_high],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
+        "move.w  %[_addr_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
         /* Trigger DMA */ \
-        "move.l  %[_cmdAddr],(%[_vdpCtrl_ptr_l])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
-        : [_vdpCtrl_ptr_l] "+a" (vdpCtrl_ptr_l) \
+        "move.l  %[_cmdAddr],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
+        : [_ctrl_port] "+a" (ctrl_port) \
         : [_len_low_high] "i" (((0x9300 | ( (len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
           [_addr_low_mid] "i" (((0x9500 | ( (fromAddr) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 8) & 0xff)) ), \
           [_addr_high] "i" (0x97C0), /* VRAM COPY operation */ \
@@ -412,9 +494,9 @@ void fb_mirror_planes_in_VRAM ()
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
-        doDMA_VRAM_COPY_fixed_args(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
+        doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
-        doDMA_VRAM_COPY_fixed_args(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
+        doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
     }
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2; // Set VDP stepping back to 2

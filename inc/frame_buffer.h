@@ -2,7 +2,6 @@
 #define _FRAME_BUFFER_H_
 
 #include <types.h>
-#include "consts.h"
 
 // 224 px display height, but only VERTICAL_ROWS height for the frame buffer (tilemap).
 // PLANE_COLUMNS is the width of the tilemap on screen.
@@ -13,8 +12,11 @@ extern u16* frame_buffer;
 void fb_allocate_frame_buffer ();
 void fb_free_frame_buffer ();
 
+void clear_buffer_no_usp ();
 void clear_buffer ();
 void clear_buffer_sp ();
+
+void clear_buffer_halved_no_usp ();
 void clear_buffer_halved ();
 void clear_buffer_halved_sp ();
 

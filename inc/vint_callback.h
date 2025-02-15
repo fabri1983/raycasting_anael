@@ -2,7 +2,6 @@
 #define _VINT_CALLBACK_H_
 
 #include <types.h>
-#include "consts.h"
 
 void vint_reset ();
 

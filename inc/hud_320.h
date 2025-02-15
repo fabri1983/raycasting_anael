@@ -1,11 +1,10 @@
 #ifndef _HUD_320_H_
 #define _HUD_320_H_
 
-#include <types.h>
-#include "utils.h"
+#include "consts.h"
 
-#define HUD_SOURCE_IMAGE_W 42 // In tile units
-#define HUD_SOURCE_IMAGE_H 20 // In tile units
+#define HUD_SOURCE_IMAGE_W 42 // In tiles units
+#define HUD_SOURCE_IMAGE_H 20 // In tiles units
 
 #define HUD_BG_X 0
 #define HUD_BG_Y 0

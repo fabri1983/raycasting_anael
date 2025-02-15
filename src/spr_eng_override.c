@@ -3,6 +3,7 @@
 #include <tools.h>
 #include <mapper.h>
 #include <sys.h>
+#include "consts.h"
 #include "hint_callback.h"
 #include "vint_callback.h"
 #include "utils.h"
@@ -500,8 +501,8 @@ void NO_INLINE spr_eng_update()
         vint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #else
         // enqueue in sprite's queue
-        render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), 2);
+        render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #endif
     }
     // no sprite to display
@@ -517,8 +518,8 @@ void NO_INLINE spr_eng_update()
         vint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
         #else
         // enqueue in sprite's queue
-        render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         //DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #endif
     }*/
 }

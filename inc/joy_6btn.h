@@ -2,7 +2,6 @@
 #define _JOY_6BTN_H_
 
 #include <types.h>
-#include "consts.h"
 
 // Call this method whenever a joy button is pressed on logo screen.
 void joy_setRandomSeed ();
