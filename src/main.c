@@ -158,10 +158,10 @@ int main (bool hardReset)
     // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the HUD palettes load into VRAM).
     // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
     // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-    VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-1); // -1 since hintcounter is 0 based
+    VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN);
     SYS_setHIntCallback(hint_change_bg_callback);
     #else
-    VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-2); // 2 scanlines earlier so we have enough time for the DMA of HUD palettes
+    VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-1); // additional -1 to account for DMA setup and so
     SYS_setHIntCallback(hint_load_hud_pals_callback);
     #endif
     VDP_setHInterrupt(TRUE);

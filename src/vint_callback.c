@@ -17,7 +17,7 @@
 #include "render.h"
 #include "hint_callback.h"
 
-#if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+#if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
 u32 restorePalA_addrForDMA;
 u32 restorePalB_addrForDMA;
 #endif
@@ -44,7 +44,7 @@ static u16 vdpSpriteCache_lenInWord;
 
 void vint_reset ()
 {
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
     restorePalA_addrForDMA = 0;
     restorePalB_addrForDMA = 0;
     #endif
@@ -79,7 +79,7 @@ FORCE_INLINE void vint_enqueueHudTilemap ()
 
 FORCE_INLINE void vint_setPalToRestore (u16* pal)
 {
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
     restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
     //restorePalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
     #endif
@@ -129,7 +129,7 @@ void vint_callback ()
 
 	render_Z80_setBusProtection(FALSE);
 
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT == FALSE
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 	// Reload the palettes that were overriden by the HUD palettes
     setupDMAForPals(15, restorePalA_addrForDMA);

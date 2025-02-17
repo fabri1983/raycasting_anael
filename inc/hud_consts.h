@@ -5,14 +5,15 @@
 
 #define HUD_HEIGHT 4 // In tiles unit
 
-#define HUD_HINT_SCANLINE_START_PAL_SWAP (224-(HUD_HEIGHT*8))
+#define HUD_HINT_SCANLINE_START_PAL_SWAP (224 - (HUD_HEIGHT*8) - 2) // -1 because hintCounter is 0 based, and additional -1 for the time taken by DMA of hud palettes
 
-#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT FALSE // If TRUE then reload happens at HInt, otherwise at VInt.
+#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT FALSE
+#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT TRUE
 
 #define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT TRUE // If TRUE then it will change from floor to roof bg color at HInt. If FALSE then we use single bg color.
 
-// ((224-32)-2)/2 = 95. Is -2 scanlines due to the setup of dma and its transfer time for the HUD palettes into VRAM.
-#define HUD_HINT_SCANLINE_MID_SCREEN ((HUD_HINT_SCANLINE_START_PAL_SWAP-2)/2)
+// ((224-32)-2)/2 = 95. And additional -1 because hintCounter is 0 based
+#define HUD_HINT_SCANLINE_MID_SCREEN (HUD_HINT_SCANLINE_START_PAL_SWAP/2 - 1)
 
 #define HUD_VRAM_START_INDEX (1 + 8*8 + 8*8) // If change this value you'll have to update map_base parameter in resource file
 #define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file

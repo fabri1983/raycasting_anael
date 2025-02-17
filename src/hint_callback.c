@@ -211,28 +211,16 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     hintCaller.addr = hint_mirror_planes_callback; //SYS_setHIntCallback(hint_mirror_planes_callback);
     #endif
 
-	// Prepare DMA source address for first palette
+	// Prepare DMA source address for the 2 HUD palettes
     //waitHCounter_opt3(vdpCtrl_ptr_l, 152);
     //turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-    setupDMAForPals(15, hudPalA_addrForDMA);
+    setupDMAForPals(15 + 15 + 1, hudPalA_addrForDMA);
     //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
 
     waitHCounter_opt3(vdpCtrl_ptr_l, 152);
     //turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
     // Trigger DMA command
     *vdpCtrl_ptr_l = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // trigger DMA transfer
-    //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
-
-	// Prepare DMA source address for second palette
-    //waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-    //turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-    setupDMAForPals(15, hudPalB_addrForDMA);
-    //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
-
-    waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-    //turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-    // Trigger DMA command
-    *vdpCtrl_ptr_l = VDP_DMA_CRAM_ADDR(((HUD_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
     //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
 
     // If case applies, change BG color to ceiling color
