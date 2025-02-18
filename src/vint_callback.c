@@ -193,7 +193,7 @@ void vint_callback ()
     render_copy_top_entries_in_VRAM();
     #endif
 
-    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !(RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS)
     hint_reset_change_bg_state();
     #endif
 }

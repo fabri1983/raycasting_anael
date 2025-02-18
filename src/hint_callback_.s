@@ -5,23 +5,22 @@
 
 #define VDP_WRITE_VSRAM_ADDR(adr) (((0x4000 + ((adr) & 0x7F)) << 16) + 0x10)
 #define _VSRAM_CMD VDP_WRITE_VSRAM_ADDR(0)
-#define _HINT_COUNTER 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN-2)
+#define _HINT_COUNTER 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN - 1)
 
 .macro macro_hint_callback_LABEL n, m
 hint_mirror_planes_callback_asm_LABEL_\n:
     ;// Apply VSCROLL on both planes (writing in one go on both planes)
     move.l  #_VSRAM_CMD,(0xC00004)    ;// VDP_CTRL_PORT: 0: Plane A, 2: Plane B
-    .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - \n*((2 << 16) | 2)
+    .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - (HMC_START_OFFSET_FACTOR + \n)*((2 << 16) | 2)
     move.l  #_ROW_OFFSET,(0xC00000)   ;// VDP_DATA_PORT: writes on both planes
-    move.w  hint_mirror_planes_callback_asm_LABEL_\m,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_callback_asm_n);
-    *addi.w  #30,hintCaller+4          ;// This function block weighs 30 bytes
+    move.w  #hint_mirror_planes_callback_asm_LABEL_\m,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_callback_asm_M);
     rte
 .endm
 
 ;// Entry point defined as a function. It matches with the first LABEL definition
 func hint_mirror_planes_callback_asm_0
 
-;// Addressed as labels: from 0 to HUD_HINT_SCANLINE_MID_SCREEN-1
+;// Hint callbacks addressed as labels: from 0 up to (HUD_HINT_SCANLINE_MID_SCREEN - 1)
 macro_hint_callback_LABEL 0,1
 macro_hint_callback_LABEL 1,2
 macro_hint_callback_LABEL 2,3
@@ -118,15 +117,15 @@ macro_hint_callback_LABEL 92,93
 macro_hint_callback_LABEL 93,94
 macro_hint_callback_LABEL 94,95
 
-;// Addressed as labels
+;// Last hint callback addressed as label
 .irep n, 95
 hint_mirror_planes_callback_asm_LABEL_\n:
     ;// Apply VSCROLL on both planes (writing in one go on both planes)
     move.l  #_VSRAM_CMD,(0xC00004)     ;// VDP_CTRL_PORT: 0: Plane A, 2: Plane B
-    .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - \n*((2 << 16) | 2)
+    .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - (HMC_START_OFFSET_FACTOR + \n)*((2 << 16) | 2)
     move.l  #_ROW_OFFSET,(0xC00000)    ;// VDP_DATA_PORT: writes on both planes
     ;// Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next callback, not immediatelly.
     move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-2);
-    move.w  hint_mirror_planes_last_scanline_callback,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
+    move.w  #hint_mirror_planes_last_scanline_callback,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
     rte
 .endr

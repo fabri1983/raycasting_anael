@@ -16,7 +16,8 @@
 #define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror bottom half of planes into top hal, by using CPU and RAM
 #define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror bottom half of planes into top hal, by using VRAM to VRAM copy
 #define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT FALSE // Mirror bottom half of planes into top hal, by using VSCROLL table manipulation at HINT
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS FALSE // Mirror bottom half of planes into top half, by using VSCROLL table manipulation at multiple HINTs (fully optimized)
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS TRUE // Mirror bottom half of planes into top half, by using VSCROLL table manipulation at multiple HINTs (fully optimized)
+#define HMC_START_OFFSET_FACTOR 1 // Only for hints using VSCroll, this marks the initial offset factor
 // Render only half bottom region of both planes to later mirror them using one of the many available strategies.
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
 
