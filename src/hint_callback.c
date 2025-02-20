@@ -327,7 +327,11 @@ FORCE_INLINE void hint_reset_mirror_planes_state ()
 {
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
+    #if HMC_USE_ASM_UNIT
+    hintCaller.addr = hint_mirror_planes_callback_asm_0; //SYS_setHIntCallback(hint_mirror_planes_callback_asm_0);
+    #else
     hintCaller.addr = hint_mirror_planes_callback_0; //SYS_setHIntCallback(hint_mirror_planes_callback_0);
+    #endif
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     mirror_offset_rows = (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - HMC_START_OFFSET_FACTOR*((2 << 16) | 2);
     vCounterManual = HUD_HINT_SCANLINE_MID_SCREEN + 1; // +1 because we do --vCounterManual before condition check

@@ -14,6 +14,8 @@
 #include "title_res.h"
 #include "utils.h"
 
+#define LOGO_HEIGHT_TILES 19
+
 #define TITLE_256C_STRIPS_COUNT 28
 #define TITLE_256C_WIDTH 320 // In pixels
 #define TITLE_256C_HEIGHT 224 // In pixels
@@ -22,30 +24,55 @@
 // in case you were to split any calculation over the colors of strip by an odd divisor
 #define TITLE_256C_COLORS_PER_STRIP_REMAINDER(n) (TITLE_256C_COLORS_PER_STRIP % n)
 
-// Clears a VDPPlane only the region where the DOOM logo appears, and width extended to 64 columns so only one DMA command is issued.
-static void clearPlaneFromLogo (VDPPlane plane)
-{
-    const u16 doomLogoHeightTiles = 19;
-    u16* planeAllWithTile0 = (u16*) MEM_alloc(doomLogoHeightTiles * 64 * sizeof(u16));
-    memsetU32((u32*) planeAllWithTile0, 0, (doomLogoHeightTiles * 64 * sizeof(u16)) / 4);
+#define MELTING_OFFSET_STEPPING 4
 
-    // Enqueue a tilemap with only 0's (tile 0) of size same as plane dimensions 64*28 (columns x rows) in tiles.
+#define PLANE_B_ADDR 0xC000 // SGDK's default Plane B location for a screen size 64*32
+#define PLANE_A_ADDR 0xE000 // SGDK's default Plane A location for a screen size 64*32
+
+#define USE_HALVED_TILEMAPS FALSE
+
+#include <memory_base.h>
+// Interleaved half Tilemap A fixed address (in bytes), just before the end of the heap.
+#define HALVED_TILEMAP_A_ADDRESS (MEMORY_HIGH - ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2))
+// Interleaved half Tilemap B fixed address (in bytes), just before the end of the first halved tilemap.
+#define HALVED_TILEMAP_B_ADDRESS (HALVED_TILEMAP_A_ADDRESS - ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2))
+
+
+#if USE_HALVED_TILEMAPS
+
+// Clears a VDPPlane only the region where the DOOM logo appears, and width extended to 64 columns so only one DMA command is issued.
+static void clearPlaneFromLogoImmediately (VDPPlane plane, u16* logoTilemapWithTile0)
+{
     switch(plane)
     {
         case BG_A:
-            DMA_queueDmaFast(DMA_VRAM, planeAllWithTile0, VDP_BG_A, doomLogoHeightTiles*64 - (64-(320/8)), 2);
+            DMA_doDmaFast(DMA_VRAM, logoTilemapWithTile0, PLANE_A_ADDR, LOGO_HEIGHT_TILES*64 - (64-(320/8)), -1);
             break;
         case BG_B:
-            DMA_queueDmaFast(DMA_VRAM, planeAllWithTile0, VDP_BG_B, doomLogoHeightTiles*64 - (64-(320/8)), 2);
+            DMA_doDmaFast(DMA_VRAM, logoTilemapWithTile0, PLANE_B_ADDR, LOGO_HEIGHT_TILES*64 - (64-(320/8)), -1);
             break;
         default: __builtin_unreachable();
     }
-
-    // Need to wait for VInt so the DMA is fired
-    SYS_doVBlankProcess();
-
-    MEM_free(planeAllWithTile0);
 }
+
+#else
+
+// Clears a VDPPlane only the region where the DOOM logo appears, and width extended to 64 columns so only one DMA command is issued.
+static void clearPlaneFromLogoEnqueued (VDPPlane plane, u16* logoTilemapWithTile0)
+{
+    switch(plane)
+    {
+        case BG_A:
+            DMA_queueDmaFast(DMA_VRAM, logoTilemapWithTile0, PLANE_A_ADDR, LOGO_HEIGHT_TILES*64 - (64-(320/8)), 2);
+            break;
+        case BG_B:
+            DMA_queueDmaFast(DMA_VRAM, logoTilemapWithTile0, PLANE_B_ADDR, LOGO_HEIGHT_TILES*64 - (64-(320/8)), 2);
+            break;
+        default: __builtin_unreachable();
+    }
+}
+
+#endif
 
 static TileSet* allocateTilesetInternal (VOID_OR_CHAR* adr)
 {
@@ -72,17 +99,16 @@ static TileSet* unpackTitle256cTileset ()
         return tileset;
 }
 
-static void loadTitle256cTilesetImmediate (u16 currTileIndex, u16 logoTileIndex, TileSet* tileset)
+static void dmaTitle256cTileset (u16 currTileIndex, u16 logoTileIndex, TileSet* tileset)
 {
     u16 lenImmediate = logoTileIndex - currTileIndex;
     u32* dataImmediate = tileset->tiles;
     if (tileset->compression == COMPRESSION_NONE)
         dataImmediate = FAR_SAFE(tileset->tiles, tileset->numTile * 32);
     VDP_loadTileData(dataImmediate, currTileIndex, lenImmediate, DMA);
-    DMA_waitCompletion();
 }
 
-static void enqueueTitle256cTilesetQueue (u16 currTileIndex, u16 logoTileIndex, TileSet* tileset)
+static void enqueueTitle256cTileset (u16 currTileIndex, u16 logoTileIndex, TileSet* tileset)
 {
     u16 lenImmediate = logoTileIndex - currTileIndex;
     // remaining tiles will be dma queued
@@ -112,24 +138,74 @@ static TileMap* unpackTilemap_custom(TileMap *src)
     return result;
 }
 
+static TileMap* copyTilemap (TileMap *src)
+{
+    TileMap *result = allocateTilemapInternal(MEM_alloc((src->w * src->h * 2) + sizeof(TileMap)));
+    result->w = src->w;
+    result->h = src->h;
+    result->compression = src->compression;
+    memcpy(result->tilemap, src->tilemap, src->w * src->h * 2);
+    return result;
+}
+
 static TileMap* unpackTitle256cTilemap ()
 {
     TileMap* tilemap = img_title_bg_full.tilemap;
     if (tilemap->compression != COMPRESSION_NONE)
         return unpackTilemap_custom(tilemap);
     else
-        return tilemap;
+        return copyTilemap(tilemap);
 }
+
+#if USE_HALVED_TILEMAPS == FALSE
 
 static void enqueueTitle256cTilemap (VDPPlane plane, u16 currTileIndex, TileMap* tilemap)
 {
     u16 baseTileAttribs = TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, currTileIndex);
     const u32 offset = 0;//mulu(y, tilemap->w) + x;
     u16* data = tilemap->tilemap + offset;
-    if (tilemap->compression == COMPRESSION_NONE)
-        data = (u16*) FAR_SAFE(tilemap->tilemap + offset, (TITLE_256C_WIDTH/8) * (TITLE_256C_HEIGHT/8) * 2);
     VDP_setTileMapDataRectEx(plane, data, baseTileAttribs, 0, 0, TITLE_256C_WIDTH/8, TITLE_256C_HEIGHT/8, TITLE_256C_WIDTH/8, DMA_QUEUE);
 }
+#endif
+
+#if USE_HALVED_TILEMAPS
+
+static void copyInterleavedHalvedTilemaps (TileMap* tilemap)
+{
+    u16* src = tilemap->tilemap;
+    u16* dstA = (u16*) HALVED_TILEMAP_A_ADDRESS;
+    u16* dstB = (u16*) HALVED_TILEMAP_B_ADDRESS;
+    for (u16 i = 0; i < ((TITLE_256C_HEIGHT/8)*(TITLE_256C_WIDTH/8))/2; ++i) {
+        *dstA++ = *src++; // halved tilemap A contains even entries from src
+        *dstB++ = *src++; // halved tilemap B contains odd entries from src
+    }
+}
+
+static void dmaRowByRowTitle256cHalvedTilemaps ()
+{
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+
+    // We want to write into VRAM every other tilemap entry
+    *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 4;
+
+    #pragma GCC unroll 28 // Always set the max number since it does not accept defines
+    for (u8 i=0; i < TITLE_256C_HEIGHT/8; ++i) {
+        // Plane A row
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, 
+            HALVED_TILEMAP_A_ADDRESS + i*((TITLE_256C_WIDTH/8)/2)*2, 
+            VDP_DMA_VRAM_ADDR(PLANE_A_ADDR + i*64*2), 
+            ((TITLE_256C_WIDTH/8)/2));
+        // Plane B row
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, 
+            HALVED_TILEMAP_B_ADDRESS + i*((TITLE_256C_WIDTH/8)/2)*2, 
+            VDP_DMA_VRAM_ADDR(PLANE_B_ADDR + 2 + i*64*2), 
+            ((TITLE_256C_WIDTH/8)/2));
+    }
+
+    // Restore VDP Auto Inc
+    *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;
+}
+#endif
 
 static u16* palettesData;
 static u16* palettesDataSwap;
@@ -143,8 +219,8 @@ static void swapPalettesTitle ()
 
 static void unpackPalettesTitle ()
 {
-    palettesData = (u16*) MEM_alloc(TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP * sizeof(u16));
-    palettesDataSwap = (u16*) MEM_alloc(TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP * sizeof(u16));
+    palettesData = (u16*) MEM_alloc(TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP * 2);
+    palettesDataSwap = (u16*) MEM_alloc(TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP * 2);
 
     if (pal_title_bg_full.compression != COMPRESSION_NONE) {
         // No FAR_SAFE() macro needed here. Palette data is always stored at near region.
@@ -175,7 +251,7 @@ static void freePalettesTitle ()
     MEM_free((void*) palettesDataSwap);
 }
 
-static u16 screenRowPos = 0;
+static u16 screenRowPos;
 
 static void enqueueTwoFirstPalsTitle (u16 startingScreenRowPos)
 {
@@ -190,7 +266,7 @@ static u16 vcounterManual;
 static u16* title256cPalsPtr; // 1st and 2nd strip's palette are loaded at the beginning of the display loop, so it points to 3rd strip
 static u8 palIdx; // which pallete the title256cPalsPtr uses
 
-void vertIntOnTitle256cCallback ()
+static void resetVIntOnTitle256c ()
 {
     // On even strips we know we use [PAL0,PAL1] so starts with palIdx=0. On odd strips is [PAL1,PAL2] so starts with palIdx=32.
     palIdx = ((screenRowPos/TITLE_256C_STRIP_HEIGHT) % 2) == 0 ? 0 : TITLE_256C_COLORS_PER_STRIP;
@@ -200,7 +276,12 @@ void vertIntOnTitle256cCallback ()
     title256cPalsPtr = palettesData + (stripN * TITLE_256C_COLORS_PER_STRIP); // 2 first palettes where loaded in display loop
 }
 
-HINTERRUPT_CALLBACK horizIntOnTitle256cCallback_DMA ()
+static void vertIntOnTitle256cCallback ()
+{
+    resetVIntOnTitle256c();
+}
+
+static HINTERRUPT_CALLBACK horizIntOnTitle256cCallback_DMA ()
 {
     if (vcounterManual < screenRowPos)
         return;
@@ -298,76 +379,126 @@ MEMORY_BARRIER();
     turnOnVDP(0x74);
 }
 
-// Current offsets for each column (in pixels)
-static s16* columnOffsets;
+// Current offsets for each column (in pixels) for Plane A
+static s16* columnOffsetsA;
+#if USE_HALVED_TILEMAPS
+// Current offsets for each column (in pixels) for Plane B
+static s16* columnOffsetsB;
+#endif
 
 static void allocateMeltingEffectArrays ()
 {
-    columnOffsets = MEM_alloc((320/16) * sizeof(s16));
+    columnOffsetsA = MEM_alloc((320/16) * 2);
+    #if USE_HALVED_TILEMAPS
+    columnOffsetsB = MEM_alloc((320/16) * 2);
+    #endif
 }
 
 static void initializeMeltingEffectArrays ()
 {
-    columnOffsets[0] = -4;
-    columnOffsets[1] = -20;
-    columnOffsets[2] = -12;
-    columnOffsets[3] = -0;
-    columnOffsets[4] = -20;
-    columnOffsets[5] = -4;
-    columnOffsets[6] = -12;
-    columnOffsets[7] = -16;
-    columnOffsets[8] = -20;
-    columnOffsets[9] = -14;
-    columnOffsets[10] = -8;
-    columnOffsets[11] = -24;
-    columnOffsets[12] = -20;
-    columnOffsets[13] = -4;
-    columnOffsets[14] = -16;
-    columnOffsets[15] = -12;
-    columnOffsets[16] = -0;
-    columnOffsets[17] = -16;
-    columnOffsets[18] = -4;
-    columnOffsets[19] = -12;
+    columnOffsetsA[0] = -4;
+    columnOffsetsA[1] = -20;
+    columnOffsetsA[2] = -12;
+    columnOffsetsA[3] = -0;
+    columnOffsetsA[4] = -20;
+    columnOffsetsA[5] = -4;
+    columnOffsetsA[6] = -12;
+    columnOffsetsA[7] = -16;
+    columnOffsetsA[8] = -20;
+    columnOffsetsA[9] = -14;
+    columnOffsetsA[10] = -8;
+    columnOffsetsA[11] = -24;
+    columnOffsetsA[12] = -20;
+    columnOffsetsA[13] = -4;
+    columnOffsetsA[14] = -16;
+    columnOffsetsA[15] = -12;
+    columnOffsetsA[16] = -0;
+    columnOffsetsA[17] = -16;
+    columnOffsetsA[18] = -4;
+    columnOffsetsA[19] = -12;
+    #if USE_HALVED_TILEMAPS
+    columnOffsetsB[0] = -0;
+    columnOffsetsB[1] = -16;
+    columnOffsetsB[2] = -8;
+    columnOffsetsB[3] = -4;
+    columnOffsetsB[4] = -16;
+    columnOffsetsB[5] = -4;
+    columnOffsetsB[6] = -8;
+    columnOffsetsB[7] = -12;
+    columnOffsetsB[8] = -16;
+    columnOffsetsB[9] = -10;
+    columnOffsetsB[10] = -4;
+    columnOffsetsB[11] = -20;
+    columnOffsetsB[12] = -16;
+    columnOffsetsB[13] = -0;
+    columnOffsetsB[14] = -14;
+    columnOffsetsB[15] = -8;
+    columnOffsetsB[16] = -4;
+    columnOffsetsB[17] = -12;
+    columnOffsetsB[18] = -0;
+    columnOffsetsB[19] = -8;
+    #endif
 }
 
 static void freeMeltingEffectArrays ()
 {
-    MEM_free(columnOffsets);
+    MEM_free(columnOffsetsA);
+    #if USE_HALVED_TILEMAPS
+    MEM_free(columnOffsetsB);
+    #endif
 }
-
-#define MELTING_OFFSET_STEPPING 4
 
 static void updateColumnOffsets (u16 offsetAmnt)
 {
     for (u16 i = 0; i < 320/16; i++) {
-        columnOffsets[i] -= offsetAmnt; // Increase the offset in pixels
+        columnOffsetsA[i] -= offsetAmnt; // Increase the offset in pixels
+        #if USE_HALVED_TILEMAPS
+        columnOffsetsB[i] -= offsetAmnt; // Increase the offset in pixels
+        #endif
     }
 }
 
 static void drawBlackAboveScroll (u16 scanlineEffectPos)
 {
-    // Extend the Windo downwards so it covers with black the tiles that rollover by the VScroll effect
+    // Extend the Window downwards so it covers with black the tiles that rollover by the VScroll effect
     VDP_setWindowVPos(FALSE, scanlineEffectPos/8);
 
     for (u16 i = 0; i < 320/16; i++) {
         // Calculate the number of tiles to overwrite with black
-        u16 tilesToBlack = (-1 * columnOffsets[i]) / 8; // tile height
+        u16 tilesToBlack = (-1 * columnOffsetsA[i]) / 8; // tile height
         // Draw 1 black tile above the scroll
         u16 yTilePos = max(0, scanlineEffectPos/8 - tilesToBlack);
+        #if USE_HALVED_TILEMAPS == FALSE
         VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), i*2, yTilePos, 2, 1);
+        #else
+        VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), i*2, yTilePos, 1, 1);
+        #endif
+
+        #if USE_HALVED_TILEMAPS
+        // Calculate the number of tiles to overwrite with black
+        tilesToBlack = (-1 * columnOffsetsB[i]) / 8; // tile height
+        // Draw 1 black tile above the scroll
+        yTilePos = max(0, scanlineEffectPos/8 - tilesToBlack);
+        VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), (i+1)*2, yTilePos, 1, 1);
+        #endif
     }
 }
 
 void title_show ()
 {
+    // Setup VDP
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_COLUMN);
     VDP_setWindowHPos(FALSE, 0);
     VDP_setWindowVPos(FALSE, 0);
 
+    // Allocate a tilemap with same dimension than the Logo and extended to 64 tiles width, filled with tile 0
+    u16* logoTilemapWithTile0 = (u16*) MEM_alloc(LOGO_HEIGHT_TILES * 64 * 2);
+    memsetU32((u32*) logoTilemapWithTile0, 0, (LOGO_HEIGHT_TILES * 64 * 2) / 4);
+
     // Do the unpack of the Title palettes here to avoid display glitches (unknown reason)
     unpackPalettesTitle();
 
-    PAL_setColors(0, palette_black, 64, CPU);
+    PAL_setColors(0, palette_black, 64, DMA);
 
     // ------------------------------------------------------
     // DOOM LOGO
@@ -376,7 +507,7 @@ void title_show ()
     // Overrides font tiles location
     u16 logoTileIndex = TILE_MAX_NUM - img_title_logo.tileset->numTile;
     // Draw the DOOM logo
-    VDP_drawImageEx(BG_B, (const Image*) &img_title_logo, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, logoTileIndex), 4, 0, FALSE, DMA_QUEUE_COPY);
+    VDP_drawImageEx(BG_B, (const Image*) &img_title_logo, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, logoTileIndex), 4, 0, FALSE, TRUE);
     //currTileIndex += img_title_logo.tileset->numTile;
     // Fade in the DOOM logo
     PAL_fadeInAll(img_title_logo.palette->data, 30, FALSE);
@@ -385,38 +516,66 @@ void title_show ()
     // FULL TITLE SCREEN
     // ------------------------------------------------------
 
+    resetVIntOnTitle256c();
+
     // Unpack resources for the Title screen
     TileSet* tileset = unpackTitle256cTileset();
     TileMap* tilemap = unpackTitle256cTilemap();
-    // DMA immediately the Title's screen tileset up to the start of the Logo's tileset
+    #if USE_HALVED_TILEMAPS
+    copyInterleavedHalvedTilemaps(tilemap);
+    #endif
+
+    // DMA immediately the Title's screen tileset only the region up to the start of the Logo's tileset
     u16 currTileIndex = 1;
-    loadTitle256cTilesetImmediate(currTileIndex, logoTileIndex, tileset);
-    
+    dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset);
+
+    #if USE_HALVED_TILEMAPS
+    // Let's wait to next VInt and then wait until we reach the scanline after the Logo
+    VDP_waitVBlank(FALSE);
+    waitVCounterReg(img_title_logo.tilemap->h*8 - 3*8);
+
+    VDP_setEnable(FALSE);
+
+    // Clear Plane B just the region where the DOOM logo appears
+    clearPlaneFromLogoImmediately(BG_B, logoTilemapWithTile0);
+    // DMA the halved tilemaps
+    dmaRowByRowTitle256cHalvedTilemaps();
+
+    VDP_setEnable(TRUE);
+    #endif
+
     SYS_disableInts();
 
-    SYS_setVBlankCallback(vertIntOnTitle256cCallback);
-    VDP_setHIntCounter(TITLE_256C_STRIP_HEIGHT - 1);
-    SYS_setHIntCallback(horizIntOnTitle256cCallback_DMA);
-    VDP_setHInterrupt(TRUE);
+        SYS_setVBlankCallback(vertIntOnTitle256cCallback);
+        VDP_setHIntCounter(TITLE_256C_STRIP_HEIGHT - 1);
+        SYS_setHIntCallback(horizIntOnTitle256cCallback_DMA);
+        VDP_setHInterrupt(TRUE);
 
-    enqueueTwoFirstPalsTitle(0); // Load 1st and 2nd strip's palette
-    enqueueTitle256cTilemap(BG_A, currTileIndex, tilemap);
+        enqueueTwoFirstPalsTitle(0); // Load 1st and 2nd strip's palette
 
-    // Enqueue the remaining tiles of Title's screen tileset. This done here because it will ovewrite part of the DOOM logo
-    enqueueTitle256cTilesetQueue(currTileIndex, logoTileIndex, tileset);
-    //currTileIndex += img_title_bg_full.tileset->numTile;
+        #if USE_HALVED_TILEMAPS == FALSE
+        enqueueTitle256cTilemap(BG_A, currTileIndex, tilemap);
+        #endif
+
+        // Enqueue the remaining tiles of Title's screen tileset. This done here because it will ovewrite part of the DOOM logo
+        enqueueTitle256cTileset(currTileIndex, logoTileIndex, tileset);
+        //currTileIndex += img_title_bg_full.tileset->numTile;
 
     SYS_enableInts();
 
-    // Force to empty DMA queue. 
-    // NOTE: DMA will leak into next frame's active display, but resources are correctly sorted to dma in an order that no visible leak appears
+    // Force to empty DMA queue.
+    // NOTE: DMA will leak into next frame's active display, but resources are correctly sorted to dma in such an order that no visible glitch is noticeable.
     SYS_doVBlankProcess();
 
-    // Now that resources are in VRAM we can dispose their RAM
+    // Now that resources are in VRAM we can free their RAM
     if (tileset->compression != COMPRESSION_NONE)
         MEM_free(tileset);
-    if (tilemap->compression != COMPRESSION_NONE)
-        MEM_free(tilemap);
+    MEM_free(tilemap);
+    #if USE_HALVED_TILEMAPS
+    // Halved Tilemaps were copied into a fixed RAM location so we have to clean it
+    memsetU32((u32*)HALVED_TILEMAP_B_ADDRESS, 0, (TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)/2);
+    memsetU32((u32*)HALVED_TILEMAP_A_ADDRESS, 0, (TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)/2);
+    #endif
 
     // title screen display loop
     for (;;)
@@ -439,15 +598,19 @@ void title_show ()
     allocateMeltingEffectArrays();
     initializeMeltingEffectArrays();
 
+    #if USE_HALVED_TILEMAPS == FALSE
     // Clear Plane B just the region where the DOOM logo appears
-    clearPlaneFromLogo(BG_B); // it calls SYS_doVBlankProcess()
+    clearPlaneFromLogoEnqueued(BG_B, logoTilemapWithTile0);
+    // Need to wait for VInt so the DMA is fired
+    SYS_doVBlankProcess();
+    #endif
 
     // Makes the palettes from displaced columns the actual one used by the HInt
     //VDP_waitVBlank(FALSE);
     //waitVCounterReg(224-4);
     swapPalettesTitle();
 
-    u8 keyPressDelayPeriod = 8; // Helps to avoid a long pressed button in previous update loop to leek into next update loop
+    u8 keyPressDelayPeriod = 10; // Helps to avoid a long pressed button in previous update loop to leek into next update loop
     u16 scanlineEffectPos = 0;
 
     // melting screen update loop
@@ -456,7 +619,10 @@ void title_show ()
         enqueueTwoFirstPalsTitle(scanlineEffectPos); // Load 1st and 2nd strip's palette
 
         // Enqueue the current column offsets to the VSRAM
-        VDP_setVerticalScrollTile(BG_A, 0, columnOffsets, 320/16, DMA_QUEUE);
+        VDP_setVerticalScrollTile(BG_A, 0, columnOffsetsA, 320/16, DMA_QUEUE);
+        #if USE_HALVED_TILEMAPS
+        VDP_setVerticalScrollTile(BG_B, 0, columnOffsetsB, 320/16, DMA_QUEUE);
+        #endif
         // Draw Black tiles above every column to cover the rolled back tiles of Title Screen due to VScroll effect
         drawBlackAboveScroll(scanlineEffectPos);
         // Advance to the next scanline where the Title Screen will be scrolled to
@@ -465,7 +631,7 @@ void title_show ()
         SYS_doVBlankProcess();
 
         updateColumnOffsets(MELTING_OFFSET_STEPPING);
-        if (scanlineEffectPos >= 224)
+        if (scanlineEffectPos >= (224 + 2*MELTING_OFFSET_STEPPING))
             break;
 
         const u16 joyState = JOY_readJoypad(JOY_1);
@@ -478,18 +644,18 @@ void title_show ()
 
     SYS_disableInts();
 
-    SYS_setVBlankCallback(NULL);
-    VDP_setHInterrupt(FALSE);
-    SYS_setHIntCallback(NULL);
+        SYS_setVBlankCallback(NULL);
+        VDP_setHInterrupt(FALSE);
+        SYS_setHIntCallback(NULL);
 
     SYS_enableInts();
 
     // restore planes and settings
     VDP_clearPlane(BG_A, TRUE);
     VDP_clearPlane(BG_B, TRUE);
-    memsetU32((u32*) columnOffsets, 0, ((320/16) * sizeof(s16)) / 4); // Fill with tile 0
-    VDP_setVerticalScrollTile(BG_A, 0, columnOffsets, 320/16, DMA);
-    VDP_setVerticalScrollTile(BG_B, 0, columnOffsets, 320/16, DMA);
+    memsetU32((u32*) columnOffsetsA, 0, ((320/16)*2) / 4); // Fill with tile 0
+    VDP_setVerticalScrollTile(BG_A, 0, columnOffsetsA, 320/16, DMA);
+    VDP_setVerticalScrollTile(BG_B, 0, columnOffsetsA, 320/16, DMA);
 
     // restore SGDK's default palettes
     PAL_setPalette(PAL0, palette_grey, DMA);
@@ -502,4 +668,5 @@ void title_show ()
 
     freeMeltingEffectArrays();
     freePalettesTitle();
+    MEM_free(logoTilemapWithTile0);
 }

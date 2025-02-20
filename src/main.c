@@ -100,8 +100,12 @@ int main (bool hardReset)
     title_show();
     #endif
 
+    #if DISPLAY_LOGOS_AT_START || DISPLAY_TITLE_SCREEN
+    VDP_resetScreen();
+    #endif
+
     // Restart DMA with this settings
-    DMA_initEx(DMA_QUEUE_SIZE_MIN, 7168, 7168);
+    DMA_initEx(DMA_QUEUE_SIZE_MIN, 0, 0);
 
 	// Basic game setup
     fb_allocate_frame_buffer();
@@ -150,7 +154,11 @@ int main (bool hardReset)
 
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     VDP_setHIntCounter(0); // every scanline
+    #if HMC_USE_ASM_UNIT
+    SYS_setHIntCallback(hint_mirror_planes_callback_asm_0);
+    #else
     SYS_setHIntCallback(hint_mirror_planes_callback_0);
+    #endif
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);

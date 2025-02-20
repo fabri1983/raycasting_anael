@@ -2,56 +2,63 @@
 #define _CONSTS_H_
 
 #ifndef FALSE
-#define FALSE   0
+#define FALSE 0
 #endif
 #ifndef TRUE
-#define TRUE    1
+#define TRUE 1
+#endif
+#ifndef F
+#define F 0
+#endif
+#ifndef T
+#define T 1
 #endif
 
-#define DISPLAY_LOGOS_AT_START FALSE
-#define DISPLAY_TITLE_SCREEN FALSE
+#define DISPLAY_LOGOS_AT_START F
+#define DISPLAY_TITLE_SCREEN F
 
-#define RENDER_SHOW_TEXCOORD FALSE // Show texture coords? Is not optimized though
+#define RENDER_SHOW_TEXCOORD F // Show texture coords? Is not optimized though
 
-#define RENDER_MIRROR_PLANES_USING_CPU_RAM FALSE // Mirror bottom half of planes into top hal, by using CPU and RAM
-#define RENDER_MIRROR_PLANES_USING_VDP_VRAM FALSE // Mirror bottom half of planes into top hal, by using VRAM to VRAM copy
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT FALSE // Mirror bottom half of planes into top hal, by using VSCROLL table manipulation at HINT
-#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS TRUE // Mirror bottom half of planes into top half, by using VSCROLL table manipulation at multiple HINTs (fully optimized)
+#define RENDER_MIRROR_PLANES_USING_CPU_RAM F // Mirror bottom half of planes into top hal, by using CPU and RAM
+#define RENDER_MIRROR_PLANES_USING_VDP_VRAM F // Mirror bottom half of planes into top hal, by using VRAM to VRAM copy
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT F // Mirror bottom half of planes into top hal, by using VSCROLL table manipulation at HINT
+#define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS T // Mirror bottom half of planes into top half, by using VSCROLL table manipulation at multiple HINTs (fully optimized)
+#define HMC_USE_ASM_UNIT F // If TRUE then it will use the functions defined in hint_callback_.s file.
 #define HMC_START_OFFSET_FACTOR 1 // Only for hints using VSCroll, this marks the initial offset factor
 // Render only half bottom region of both planes to later mirror them using one of the many available strategies.
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
 
-#define DMA_FRAMEBUFFER_ROW_BY_ROW TRUE // TRUE: DMA row by row. FALSE: normal DMA enqueue and DMA flush.
+#define DMA_FRAMEBUFFER_ROW_BY_ROW T // TRUE: DMA row by row. FALSE: normal DMA enqueue and DMA flush.
 
-#define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT FALSE
-#define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT FALSE
-#define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT FALSE
+#define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT F
+#define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT F
+#define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT F
 
 // Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
-#define RENDER_CLEAR_FRAMEBUFFER FALSE
+#define RENDER_CLEAR_FRAMEBUFFER F
 // Slightly faster with the use of SP as pointer. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
-#define RENDER_CLEAR_FRAMEBUFFER_WITH_SP TRUE
+#define RENDER_CLEAR_FRAMEBUFFER_WITH_SP T
 
-#define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED TRUE
-#define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS TRUE
-#define RENDER_USE_MAP_HIT_COMPRESSED FALSE
+#define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED T
+#define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS T
+#define RENDER_USE_MAP_HIT_COMPRESSED F
 #define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
-#define RENDER_ENABLE_FRAME_LOAD_CALCULATION TRUE
+#define RENDER_ENABLE_FRAME_LOAD_CALCULATION T
 
-#define DMA_ALLOW_BUFFERED_SPRITE_TILES FALSE // Set to TRUE if you have compressed sprites, otherwise FALSE.
+#define DMA_ALLOW_BUFFERED_SPRITE_TILES F // Set to TRUE if you have compressed sprites, otherwise FALSE.
 #define DMA_MAX_QUEUE_CAPACITY 8 // How many objects we can hold without crashing the system due to array out of bound access.
 #define DMA_TILES_THRESHOLD_FOR_HINT 200 // when this number of tiles is exceeded we move the exceeding tiles to VInt queue.
 #define DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT ((DMA_TILES_THRESHOLD_FOR_HINT * 32) / 2)
 
-#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT FALSE
-#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT TRUE
-#define DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE FALSE
-#define DMA_HUD_TILEMAP_IMMEDIATELY FALSE
+#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT F
+#define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT T
+#define DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE F
+#define DMA_HUD_TILEMAP_IMMEDIATELY F
 
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT FALSE
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT TRUE
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE FALSE
-#define DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE FALSE
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT F
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT T
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE F
+#define DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE F
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision

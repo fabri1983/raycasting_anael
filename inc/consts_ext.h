@@ -5,7 +5,7 @@
 
 #include <memory_base.h>
 // This is the fixed address of the frame_buffer array, before the end of the heap.
-#define FRAME_BUFFER_ADDRESS (MEMORY_HIGH - VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
+#define FRAME_BUFFER_ADDRESS (MEMORY_HIGH - (VERTICAL_ROWS*PLANE_COLUMNS*2)*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
 #if PLANE_COLUMNS == 64
 #include "hud_320.h"
 #else

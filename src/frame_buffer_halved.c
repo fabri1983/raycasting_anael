@@ -307,7 +307,9 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets bottom tilemap entry and save the top value into an array for later use.
     u16 h2_aux2 = h2;
+    #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     //u16* top_entries_ptr = top_entries + top_entries_current_col;
+    #endif
     __asm volatile (
         // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
         // we can use it as a multiple of the block size (4 bytes) we'll jump into
@@ -334,16 +336,21 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
 
         // Top tilemap entry (here we only care that the TILE_ATTR_VFLIP_MASK is set)
         "    lsl.w   %[_SHIFT_TOP_COLUMN_BYTES],%[h2]\n" // h2 = (h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))
+        #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         //"    move.w  %[tileAttrib],(%[tilemap],%[h2])\n" // WE DON'T NEED THIS IN THIS SCENARIO, NOW THAT WE STORE IT IN top_entries ARRAY
         //"    move.w  %[tileAttrib],(%[top_entries_ptr])\n" // Stores the value for top tilemap entry
         //"    move.w  %[h2],2(%[top_entries_ptr])\n" // Stores the row for top tilemap entry
+        #endif
 
         // Bottom tilemap entry
         "    or.w    %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
         "    sub.w   %[h2],%[h2_bottom]\n" // h2_bottom = (VERTICAL_ROWS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))
         "    move.w  %[tileAttrib],(%[tilemap],%[h2_bottom])\n"
 
-        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)//, [top_entries_ptr] "+a" (top_entries_ptr)
+        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
+          #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
+          //, [top_entries_ptr] "+a" (top_entries_ptr)
+          #endif
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), 
           [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1 + 1), // +1 due to division by 2, +1 due to initial lsr.w #1
@@ -482,16 +489,18 @@ void fb_mirror_planes_in_VRAM ()
     // Arguments must be in byte addressing mode
 
     // C version
-    // #pragma GCC unroll 24 // Always set the max number since it does not accept defines
-    // for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
-    //     DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, 1);
-    //     DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, 1);
-    // }
-    // VDP_setAutoInc(2);
+    /*VDP_setAutoInc(1);
+    #pragma GCC unroll 24 // Always set the max number since it does not accept defines
+    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+        DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
+        DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
+    }
+    VDP_setAutoInc(2);*/
 
     // ASM version
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
+
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
@@ -499,6 +508,7 @@ void fb_mirror_planes_in_VRAM ()
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
     }
+
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2; // Set VDP stepping back to 2
 }
 
@@ -511,6 +521,7 @@ void fb_copy_top_entries_in_VRAM ()
 
     // C version: set tilemap top entries (not inverted)
     u16* entries_ptr = top_entries;
+
     #pragma GCC unroll 80 // Always set the max number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = (*entries_ptr++);

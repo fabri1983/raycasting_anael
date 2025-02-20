@@ -4,6 +4,7 @@
 #include <vdp_spr.h>
 #include <pal.h>
 #include <memory.h>
+#include <z80_ctrl.h>
 #include "consts.h"
 #include "consts_ext.h"
 #include "hud.h"
@@ -119,7 +120,9 @@ void vint_callback ()
 	turnOffVDP(0x74);
 
     render_Z80_setBusProtection(TRUE);
-	//waitSubTick_(10); // Z80 delay --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
+    // delay enabled ? --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
+    if (Z80_getForceDelayDMA())
+	    waitSubTick_(10);
 
     render_DMA_flushQueue();
 

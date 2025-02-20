@@ -125,7 +125,7 @@ void waitVCounterReg (u16 n);
 /// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
 /// @param fromAddr source VRAM address in u32 format.
 /// @param cmdAddr destinaiton address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
-/// @param len words to move (DMA RAM/ROM to VRAM copies 2 bytes).
+/// @param len words to move (is words bcause DMA RAM/ROM to VRAM move 2 bytes per cycle op).
 #define doDMAfast_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
