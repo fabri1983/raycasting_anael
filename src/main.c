@@ -100,10 +100,6 @@ int main (bool hardReset)
     title_show();
     #endif
 
-    #if DISPLAY_LOGOS_AT_START || DISPLAY_TITLE_SCREEN
-    VDP_resetScreen();
-    #endif
-
     // Restart DMA with this settings
     DMA_initEx(DMA_QUEUE_SIZE_MIN, 0, 0);
 
