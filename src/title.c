@@ -28,7 +28,7 @@
 #define PLANE_B_ADDR 0xC000 // SGDK's default Plane B location for a screen size 64*32
 #define PLANE_A_ADDR 0xE000 // SGDK's default Plane A location for a screen size 64*32
 
-#define USE_HALVED_TILEMAPS TRUE
+#define USE_HALVED_TILEMAPS FALSE
 
 #include <memory_base.h>
 // Interleaved half Tilemap A fixed address (in bytes), just before the end of the heap.
@@ -385,7 +385,7 @@ static void initializeMeltingEffectArrays ()
     columnOffsetsA[6] = -12;
     columnOffsetsA[7] = -16;
     columnOffsetsA[8] = -20;
-    columnOffsetsA[9] = -14;
+    columnOffsetsA[9] = -12;
     columnOffsetsA[10] = -8;
     columnOffsetsA[11] = -24;
     columnOffsetsA[12] = -20;
@@ -397,26 +397,26 @@ static void initializeMeltingEffectArrays ()
     columnOffsetsA[18] = -4;
     columnOffsetsA[19] = -12;
     #if USE_HALVED_TILEMAPS
-    columnOffsetsB[0] = -0;
+    columnOffsetsB[0] = -8;
     columnOffsetsB[1] = -16;
     columnOffsetsB[2] = -8;
     columnOffsetsB[3] = -4;
-    columnOffsetsB[4] = -16;
-    columnOffsetsB[5] = -4;
+    columnOffsetsB[4] = -24;
+    columnOffsetsB[5] = -16;
     columnOffsetsB[6] = -8;
-    columnOffsetsB[7] = -12;
-    columnOffsetsB[8] = -16;
-    columnOffsetsB[9] = -10;
+    columnOffsetsB[7] = -20;
+    columnOffsetsB[8] = -24;
+    columnOffsetsB[9] = -16;
     columnOffsetsB[10] = -4;
     columnOffsetsB[11] = -20;
     columnOffsetsB[12] = -16;
     columnOffsetsB[13] = -0;
-    columnOffsetsB[14] = -14;
+    columnOffsetsB[14] = -12;
     columnOffsetsB[15] = -8;
     columnOffsetsB[16] = -4;
     columnOffsetsB[17] = -12;
-    columnOffsetsB[18] = -0;
-    columnOffsetsB[19] = -8;
+    columnOffsetsB[18] = -8;
+    columnOffsetsB[19] = -16;
     #endif
 }
 
@@ -430,42 +430,41 @@ static void freeMeltingEffectArrays ()
 
 static void updateColumnOffsets (u16 offsetAmnt)
 {
-    for (u16 i = 0; i < 320/16; i++) {
-        columnOffsetsA[i] -= offsetAmnt; // Increase the offset in pixels
+    u32* colA_ptr_l = (u32*) columnOffsetsA;
+    #if USE_HALVED_TILEMAPS
+    u32* colB_ptr_l = (u32*) columnOffsetsB;
+    #endif
+
+    u32 offsetAmnt_l = offsetAmnt;
+    __asm volatile (
+        "swap    %0\n\t"
+        "move.w  %1,%0"
+        : "+d" (offsetAmnt_l)
+        : "d" (offsetAmnt)
+        :
+    );
+
+    for (u16 i = 0; i < (320/16)/2; i++) {
+        colA_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
         #if USE_HALVED_TILEMAPS
-        columnOffsetsB[i] -= offsetAmnt; // Increase the offset in pixels
+        colB_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
         #endif
     }
 }
 
 static void drawBlackAboveScroll (u16 scanlineEffectPos)
 {
-    // Extend the Window downwards so it covers with black the tiles that rollover by the VScroll effect
-    VDP_setWindowVPos(FALSE, scanlineEffectPos/8);
-
-    for (u16 i = 0; i < 320/16; i++) {
-        // Calculate the number of tiles to overwrite with black
-        u16 tilesToBlack = -1 * columnOffsetsA[i] / 8; // tile height
-        // Draw 1 black tile above the scroll
-        u16 yTilePos = max(0, scanlineEffectPos/8 - tilesToBlack);
-        VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), i*2, yTilePos, 2, 1);
-
-        #if USE_HALVED_TILEMAPS
-        // Calculate the number of tiles to overwrite with black
-        tilesToBlack = -1 * columnOffsetsB[i] / 8; // tile height
-        // Draw 1 black tile above the scroll
-        yTilePos = max(0, scanlineEffectPos/8 - tilesToBlack);
-        VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), (i+1)*2, yTilePos, 2, 1);
-        #endif
-    }
+    // Draw a row of black tiles above the scroll
+    VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
+    #if USE_HALVED_TILEMAPS
+    VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
+    #endif
 }
 
 void title_show ()
 {
     // Setup VDP
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_COLUMN);
-    VDP_setWindowHPos(FALSE, 0);
-    VDP_setWindowVPos(FALSE, 0);
 
     // Clean mem region where fixed buffers are located
     memsetU32((u32*)HALVED_TILEMAP_B_ADDRESS, 0, ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2) / 4);
@@ -508,20 +507,20 @@ void title_show ()
     dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset);
 
     #if USE_HALVED_TILEMAPS
-    // Let's wait to next VInt  then wait until we reach the scanline after the Logo
-    VDP_waitVBlank(FALSE);
-    // Wait until we reach the scanline of Logo's end, actually some scanlines earlier
-    waitVCounterReg(LOGO_HEIGHT_TILES*8 - 25);
+        // Let's wait to next VInt  then wait until we reach the scanline after the Logo
+        VDP_waitVBlank(FALSE);
+        // Wait until we reach the scanline of Logo's end, actually some scanlines earlier
+        waitVCounterReg(LOGO_HEIGHT_TILES*8 - 25); // -24 doesn't give enought time to DMA what's next, so -25 is just fine
 
-    VDP_setEnable(FALSE);
+        VDP_setEnable(FALSE);
 
-    // Clear Plane B unused gaps along the region where the DOOM logo appears
-    //clearPlaneBForUnusedGapsInHalvedTilemapB();
-    clearPlaneBFromLogoImmediately();
-    // DMA what remains of halved tilemaps
-    dmaRowByRowTitle256cHalvedTilemaps();
+        // Clear Plane B unused gaps along the region where the DOOM logo appears
+        //clearPlaneBForUnusedGapsInHalvedTilemapB();
+        clearPlaneBFromLogoImmediately();
+        // DMA what remains of halved tilemaps
+        dmaRowByRowTitle256cHalvedTilemaps();
 
-    VDP_setEnable(TRUE);
+        VDP_setEnable(TRUE);
     #endif
 
     SYS_disableInts();
