@@ -28,8 +28,6 @@
 #define PLANE_B_ADDR 0xC000 // SGDK's default Plane B location for a screen size 64*32
 #define PLANE_A_ADDR 0xE000 // SGDK's default Plane A location for a screen size 64*32
 
-#define USE_HALVED_TILEMAPS FALSE
-
 #include <memory_base.h>
 // Interleaved half Tilemap A fixed address (in bytes), just before the end of the heap.
 #define HALVED_TILEMAP_A_ADDRESS (MEMORY_HIGH - ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2))
@@ -120,8 +118,6 @@ static TileMap* unpackTitle256cTilemap ()
         return copyTilemap(tilemap);
 }
 
-#if USE_HALVED_TILEMAPS == FALSE
-
 static void enqueueTitle256cTilemap (VDPPlane plane, u16 currTileIndex, TileMap* tilemap)
 {
     u16 baseTileAttribs = TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, currTileIndex);
@@ -129,9 +125,6 @@ static void enqueueTitle256cTilemap (VDPPlane plane, u16 currTileIndex, TileMap*
     u16* data = tilemap->tilemap + offset;
     VDP_setTileMapDataRectEx(plane, data, baseTileAttribs, 0, 0, TITLE_256C_WIDTH/8, TITLE_256C_HEIGHT/8, TITLE_256C_WIDTH/8, DMA_QUEUE);
 }
-#endif
-
-#if USE_HALVED_TILEMAPS
 
 static void copyInterleavedHalvedTilemaps (TileMap* tilemap, u16 currTileIndex)
 {
@@ -178,7 +171,6 @@ static void dmaRowByRowTitle256cHalvedTilemaps ()
     // Restore VDP Auto Inc
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;
 }
-#endif
 
 static u16* palettesData;
 static u16* palettesDataSwap;
@@ -361,17 +353,13 @@ MEMORY_BARRIER();
 
 // Current offsets for each column (in pixels) for Plane A
 static s16* columnOffsetsA;
-#if USE_HALVED_TILEMAPS
 // Current offsets for each column (in pixels) for Plane B
 static s16* columnOffsetsB;
-#endif
 
 static void allocateMeltingEffectArrays ()
 {
     columnOffsetsA = MEM_alloc((320/16) * 2);
-    #if USE_HALVED_TILEMAPS
     columnOffsetsB = MEM_alloc((320/16) * 2);
-    #endif
 }
 
 static void initializeMeltingEffectArrays ()
@@ -396,7 +384,7 @@ static void initializeMeltingEffectArrays ()
     columnOffsetsA[17] = -16;
     columnOffsetsA[18] = -4;
     columnOffsetsA[19] = -12;
-    #if USE_HALVED_TILEMAPS
+
     columnOffsetsB[0] = -8;
     columnOffsetsB[1] = -16;
     columnOffsetsB[2] = -8;
@@ -417,23 +405,18 @@ static void initializeMeltingEffectArrays ()
     columnOffsetsB[17] = -12;
     columnOffsetsB[18] = -8;
     columnOffsetsB[19] = -16;
-    #endif
 }
 
 static void freeMeltingEffectArrays ()
 {
     MEM_free(columnOffsetsA);
-    #if USE_HALVED_TILEMAPS
     MEM_free(columnOffsetsB);
-    #endif
 }
 
 static void updateColumnOffsets (u16 offsetAmnt)
 {
     u32* colA_ptr_l = (u32*) columnOffsetsA;
-    #if USE_HALVED_TILEMAPS
     u32* colB_ptr_l = (u32*) columnOffsetsB;
-    #endif
 
     u32 offsetAmnt_l = offsetAmnt;
     __asm volatile (
@@ -446,19 +429,16 @@ static void updateColumnOffsets (u16 offsetAmnt)
 
     for (u16 i = 0; i < (320/16)/2; i++) {
         colA_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
-        #if USE_HALVED_TILEMAPS
         colB_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
-        #endif
     }
 }
 
 static void drawBlackAboveScroll (u16 scanlineEffectPos)
 {
-    // Draw a row of black tiles above the scroll
+    // Draw a row of black tiles above the applied scroll. 
+    // This is applied at the end of screen since the VSCroll direction is downwards and we need to compensate the vertical offset.
     VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
-    #if USE_HALVED_TILEMAPS
     VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
-    #endif
 }
 
 void title_show ()
@@ -499,29 +479,25 @@ void title_show ()
     // Unpack resources for the Title screen
     TileSet* tileset = unpackTitle256cTileset();
     TileMap* tilemap = unpackTitle256cTilemap();
-    #if USE_HALVED_TILEMAPS
     copyInterleavedHalvedTilemaps(tilemap, currTileIndex);
-    #endif
 
     // DMA immediately the Title's screen tileset only the region up to the start of the Logo's tileset
     dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset);
 
-    #if USE_HALVED_TILEMAPS
-        // Let's wait to next VInt  then wait until we reach the scanline after the Logo
-        VDP_waitVBlank(FALSE);
-        // Wait until we reach the scanline of Logo's end, actually some scanlines earlier
-        waitVCounterReg(LOGO_HEIGHT_TILES*8 - 25); // -24 doesn't give enought time to DMA what's next, so -25 is just fine
+    // Let's wait to next VInt  then wait until we reach the scanline after the Logo
+    VDP_waitVBlank(FALSE);
+    // Wait until we reach the scanline of Logo's end, actually some scanlines earlier
+    waitVCounterReg(LOGO_HEIGHT_TILES*8 - 25); // -24 doesn't give enought time to DMA what's next, so -25 is just fine
 
-        VDP_setEnable(FALSE);
+    VDP_setEnable(FALSE);
 
-        // Clear Plane B unused gaps along the region where the DOOM logo appears
-        //clearPlaneBForUnusedGapsInHalvedTilemapB();
-        clearPlaneBFromLogoImmediately();
-        // DMA what remains of halved tilemaps
-        dmaRowByRowTitle256cHalvedTilemaps();
+    // Clear Plane B unused gaps along the region where the DOOM logo appears
+    //clearPlaneBForUnusedGapsInHalvedTilemapB();
+    clearPlaneBFromLogoImmediately();
+    // DMA what remains of halved tilemaps
+    dmaRowByRowTitle256cHalvedTilemaps();
 
-        VDP_setEnable(TRUE);
-    #endif
+    VDP_setEnable(TRUE);
 
     SYS_disableInts();
 
@@ -531,10 +507,6 @@ void title_show ()
         VDP_setHInterrupt(TRUE);
 
         enqueueTwoFirstPalsTitle(0); // Load 1st and 2nd strip's palette
-
-        #if USE_HALVED_TILEMAPS == FALSE
-        enqueueTitle256cTilemap(BG_A, currTileIndex, tilemap);
-        #endif
 
         // Enqueue the remaining tiles of Title's screen tileset. This done here because it will ovewrite part of the DOOM logo
         enqueueTitle256cTileset(currTileIndex, logoTileIndex, tileset);
@@ -551,7 +523,7 @@ void title_show ()
         MEM_free(tileset);
     MEM_free(tilemap);
 
-    // title screen display loop
+    // Title screen display loop
     for (;;)
     {
         enqueueTwoFirstPalsTitle(0); // Load 1st and 2nd strip's palette
@@ -572,29 +544,23 @@ void title_show ()
     allocateMeltingEffectArrays();
     initializeMeltingEffectArrays();
 
-    #if USE_HALVED_TILEMAPS == FALSE
-    // Clear Plane B just the region where the DOOM logo appears
-    clearPlaneBFromLogoImmediately();
-    #endif
-
-    // Makes the palettes from displaced columns the actual one used by the HInt
     //VDP_waitVBlank(FALSE);
     //waitVCounterReg(224-4);
+    // Set the palettes from displaced columns image to be ready for HInt the next frame
     swapPalettesTitle();
 
     u8 keyPressDelayPeriod = 10; // Helps to avoid a long pressed button in previous update loop to leek into next update loop
     u16 scanlineEffectPos = 0;
 
-    // melting screen update loop
+    // Melting screen update loop
     for (;;)
     {
         enqueueTwoFirstPalsTitle(scanlineEffectPos); // Load 1st and 2nd strip's palette
 
         // Enqueue the current column offsets to the VSRAM
         VDP_setVerticalScrollTile(BG_A, 0, columnOffsetsA, 320/16, DMA_QUEUE);
-        #if USE_HALVED_TILEMAPS
         VDP_setVerticalScrollTile(BG_B, 0, columnOffsetsB, 320/16, DMA_QUEUE);
-        #endif
+
         // Draw Black tiles above every column to cover the rolled back tiles of Title Screen due to VScroll effect
         drawBlackAboveScroll(scanlineEffectPos);
         // Advance to the next scanline where the Title Screen will be scrolled to
@@ -624,11 +590,9 @@ void title_show ()
 
     freeMeltingEffectArrays();
     freePalettesTitle();
-    #if USE_HALVED_TILEMAPS
     // Clean mem region where fixed buffers are located
     memsetU32((u32*)HALVED_TILEMAP_B_ADDRESS, 0, ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2) / 4);
     memsetU32((u32*)HALVED_TILEMAP_A_ADDRESS, 0, ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2) / 4);
-    #endif
 
     VDP_resetScreen();
 }

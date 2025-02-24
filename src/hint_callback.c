@@ -226,13 +226,13 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemap) {
         hud_tilemap = 0;
-        // PW_ADDR comes with the correct base position in screen
-        //DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+        // PW_ADDR_AT_HUD comes with the correct base position in screen
+        //DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR_AT_HUD, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
             // it relies on vdpCtrl_ptr_l
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif

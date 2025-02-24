@@ -6,6 +6,7 @@
 #include "joy_6btn.h"
 #include "utils.h"
 #include "consts.h"
+#include "consts_ext.h"
 #include "map_matrix.h"
 #include "frame_buffer.h"
 #include "render.h"
@@ -198,7 +199,7 @@ void game_loop ()
 		dda(posX, posY, delta_a_ptr);
 
         render_DMA_enqueue_framebuffer();
-    
+
         render_SYS_doVBlankProcessEx_ON_VBLANK();
 	}
 }

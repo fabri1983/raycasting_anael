@@ -28,6 +28,7 @@ s16 weaponSwayY = 0;
 s16 weaponSwayDirX = 1;
 s16 weaponSwayDirY = 0; // Neutral
 bool isMoving = FALSE;
+
 #define MAX_WEAPON_SWAY_X 8 // Maximum weapon sway in pixels
 #define MAX_WEAPON_SWAY_Y 6 // Maximum weapon sway in pixels. Must be >= MAX_WEAPON_SWAY_X
 
@@ -37,7 +38,6 @@ u16 weapon_biggerAnimTileNum ()
     maxTileNum = max(maxTileNum, sprDef_weapon_pistol_anim.maxNumTile);
     maxTileNum = max(maxTileNum, sprDef_weapon_shotgun_anim.maxNumTile);
     return maxTileNum;
-    //return 144;
 }
 
 u16 weapon_getVRAMLocation ()

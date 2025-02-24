@@ -2,6 +2,7 @@ magick doom_title_screen_full.png -unique -depth 8 -colors 256 -crop 320x8 -defi
 magick doom_title_screen_full_shifted.png -unique -depth 8 -colors 256 -crop 320x8 -define png:format=png8 -define histogram:unique-colors=false doom_title_screen_full_shifted_0_%d.png
 
 
+
 # Quantize every chunk using imagemagick tool and 2 (32 colors) palettes per chunk:
 magick doom_title_screen_full.png ^
   -unique -depth 4 -colors 32 -crop x8 -define png:format=png8 -define histogram:unique-colors=false ^

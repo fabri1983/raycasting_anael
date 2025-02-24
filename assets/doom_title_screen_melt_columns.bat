@@ -10,10 +10,10 @@ set work_dir=temp_columns
 if not exist %work_dir% mkdir %work_dir%
 
 :: Pixels wide for each column
-set column_width=16
+set column_width=8
 
 :: Offsets for each column
-set offsets=4 20 12 0 20 4 12 16 20 14 8 24 20 4 16 12 0 16 4 12
+set offsets=4 20 12 0 20 4 12 16 20 12 8 24 20 4 16 12 0 16 4 12 8 16 8 4 24 16 8 20 24 16 4 20 16 0 12 8 4 12 8 16
 
 :: Calculate the number of offsets
 set /a offset_count=0

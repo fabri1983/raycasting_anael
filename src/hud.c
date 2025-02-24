@@ -543,16 +543,16 @@ FORCE_INLINE void hud_update ()
         #elif DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
         vint_enqueueHudTilemap();
         #elif DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE
-        // PW_ADDR comes with the correct base position in screen
-        DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+        // PW_ADDR_AT_HUD comes with the correct base position in screen
+        DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR_AT_HUD, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #elif DMA_HUD_TILEMAP_IMMEDIATELY
-        // PW_ADDR comes with the correct base position in screen
-        //DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
+        // PW_ADDR_AT_HUD comes with the correct base position in screen
+        //DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR_AT_HUD, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
         u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
         #endif
     }

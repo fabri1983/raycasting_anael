@@ -22,8 +22,10 @@
 
 #define HUD_TILEMAP_COMPRESSED T // If TRUE then we decompress it into a buffer. Otherwise we use the uncompressed data from ROM.
 
+// X tile position in Window Plane
 #define HUD_XP 0
-#define HUD_YP (PLANE_COLUMNS == 64 ? 24 : 12)
+// Y tile position in Window Plane depending on PLANE_COLUMNS
+#define HUD_YP (PLANE_COLUMNS == 64 ? (224/8 - HUD_HEIGHT) : (224/8 - HUD_HEIGHT)/2)
 
 #define WEAPON_FIST 0
 #define WEAPON_PISTOL 1
