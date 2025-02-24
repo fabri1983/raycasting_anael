@@ -206,10 +206,6 @@ void game_loop ()
 
 void game_loop_auto ()
 {
-    weapon_update();
-    hud_update();
-    spr_eng_update();
-
     // NOTE: here we are moving from the most UPPER-LEFT position of the map[][] layout, 
     // stepping DOWN into Y Axis, and RIGHT into X Axis, where in each position we do a full rotation.
     // Therefore we only interesting in collisions with x+1 and y+1.
@@ -273,6 +269,10 @@ void game_loop_auto ()
                 // clear the frame buffer
                 clearBuffer();
 
+                weapon_update();
+                hud_update();
+                spr_eng_update();
+                
                 u16 a = angle / (1024/AP); // a range is [0, 128)
                 u16* delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
 

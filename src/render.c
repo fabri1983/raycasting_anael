@@ -186,7 +186,10 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 
 FORCE_INLINE void render_DMA_enqueue_framebuffer ()
 {
+    // ------------------------
     // DMA frame_buffer Plane A
+    // ------------------------
+
     #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
     // Send first 1/8 of frame_buffer Plane A
     DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
@@ -212,6 +215,10 @@ FORCE_INLINE void render_DMA_enqueue_framebuffer ()
     DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
     #endif
     #endif
+
+    // ------------------------
+    // DMA frame_buffer Plane B
+    // ------------------------
 
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
     // Half bottom frame_buffer Plane B

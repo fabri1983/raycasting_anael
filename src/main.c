@@ -90,7 +90,7 @@ fabri1983's resources notes:
 
 int main (bool hardReset)
 {
-	// On soft reset we do like a hard reset
+	// On soft reset we do a hard reset
 	if (!hardReset) {
 		VDP_waitDMACompletion(); // avoids some glitches as per Genesis Manual's Addendum section
         SPR_end();
@@ -109,7 +109,10 @@ int main (bool hardReset)
     // Restart DMA with this settings
     DMA_initEx(DMA_QUEUE_SIZE_MIN, 0, 0);
 
+    // ----------------------
 	// Basic game setup
+    // ----------------------
+
     fb_allocate_frame_buffer();
     render_loadWallPalettes();
     vint_reset();
@@ -127,7 +130,9 @@ int main (bool hardReset)
     weapon_addAmmo(WEAPON_PISTOL, 50);
     weapon_addAmmo(WEAPON_SHOTGUN, 50);
 
+    // ----------------------
 	// Setup VDP
+    // ----------------------
 
 	VDP_setScreenWidth320();
 	VDP_setPlaneSize(PLANE_COLUMNS, 32, TRUE);
@@ -175,7 +180,15 @@ int main (bool hardReset)
 
 	SYS_enableInts();
 
+    // ----------------------
+    // Game Loop
+    // ----------------------
+
 	game_loop();
+
+    // ----------------------
+    // Clear used VRAM
+    // ----------------------
 
     fb_free_frame_buffer();
     hud_free_dst_buffer();
