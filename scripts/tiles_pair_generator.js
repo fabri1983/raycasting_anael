@@ -170,7 +170,7 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                                 let framebuffer = framebuffer_planeA;
                                 if ((column % 2) == 1)
                                     framebuffer = framebuffer_planeB;
-                                utils.write_vline(h2, tileAttrib, framebuffer, column/2);
+                                utils.write_vline(h2, tileAttrib, framebuffer, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
 
                                 break;
                             }
@@ -191,7 +191,7 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                                 let framebuffer = framebuffer_planeA;
                                 if ((column % 2) == 1)
                                     framebuffer = framebuffer_planeB;
-                                utils.write_vline(h2, tileAttrib, framebuffer, column/2);
+                                utils.write_vline(h2, tileAttrib, framebuffer, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
 
                                 break;
                             }
@@ -239,7 +239,7 @@ function writeOutputToFile (finalMap, outputFile) {
     fs.writeFileSync(outputFile, outputString, 'utf8');
 }
 
-// Function to run parallel workers
+// Function to run parallel workers (fired by Main Thread only)
 function runWorkers () {
     return new Promise((resolve, reject) => {
 
@@ -247,7 +247,7 @@ function runWorkers () {
         const tab_deltas = utils.readTabDeltas(tabDeltasFile);
         const tab_wall_div = utils.generateTabWallDiv();
         const tab_color_d8_1 = utils.generateTabColor_d8_1();
-        const map = utils.readMapMatrix(mapMatrixFile);
+        const mapMatrix = utils.readMapMatrix(mapMatrixFile);
         const jobQueue = [];
         const activeWorkers = new Set();
         let completedJobs = 0;
@@ -265,14 +265,14 @@ function runWorkers () {
             jobQueue.push({ startPosX, endPosX });
         }
 
+        // Reset iterations counter
+        completedIterations = 0;
+
         // Total jobs to complete
         const totalJobs = jobQueue.length;
         console.log(`Main thread: Total jobs to complete: ${totalJobs}`);
         
         console.log('Main thread: Waiting for all workers to complete their jobs...');
-
-        // Reset iterations counter
-        completedIterations = 0;
 
         // Initial progress display
         displayProgress();
@@ -280,13 +280,17 @@ function runWorkers () {
         const progressInterval = setInterval(displayProgress, 4000);
 
         function startWorker() {
-            if (jobQueue.length === 0 || activeWorkers.size >= numCores) return;
+            // if no available CPU core to process a new Worker or no job left to process, then return
+            if (activeWorkers.size >= numCores || jobQueue.length === 0)
+                return;
 
             const job = jobQueue.shift();
-            const workerId = `[${job.startPosX}-${job.endPosX}]`;
+            const jobId = `[${job.startPosX}-${job.endPosX}]`;
+            const startPosX = job.startPosX;
+            const endPosX = job.endPosX;
 
             const worker = new Worker(__filename, {
-                workerData: { workerId, ...job, tab_deltas, tab_wall_div, tab_color_d8_1, map }
+                workerData: { jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix }
             });
 
             activeWorkers.add(worker);
@@ -300,20 +304,29 @@ function runWorkers () {
                     completedJobs++;
 
                     results.push(message);
-                    
-                    if (completedJobs === totalJobs) {
+
+                    // Were all jobs completed? then resolve with results
+                    if (completedJobs === totalJobs)
                         finishProcessing();
-                    } else {
+                    // Otherwise keep processing jobs
+                    else
                         startWorker(); // Start a new job if available
-                    }
                 }
             });
 
             worker.on('error', (error) => {
                 process.stdout.write('\n'); // Move to the next line after progress bar
-                console.error(`Worker ${workerId} error:`, error);
+                console.error(`Job ${jobId} error:`, error);
                 activeWorkers.delete(worker);
                 reject(error);
+            });
+
+            worker.on('exit', (code) => {
+                if (code !== 0) {
+                    process.stdout.write('\n'); // Move to the next line after progress bar
+                    console.error(`Job ${jobId} exited with code ${code}`);
+                    activeWorkers.delete(worker);
+                }
             });
         }
 
@@ -324,7 +337,7 @@ function runWorkers () {
             resolve(results);
         }
 
-        // Start initial batch of workers
+        // Start initial batch of workers (Main Thread only)
         for (let i = 0; i < numCores; i++) {
             startWorker();
         }
@@ -362,7 +375,7 @@ if (isMainThread) {
             console.log(endTimeStr);
         });
 } else {
-    const { workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map } = workerData;
-    const result = processGameChunk(workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map);
+    const { jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix } = workerData;
+    const result = processGameChunk(jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix);
     parentPort.postMessage(result);
 }

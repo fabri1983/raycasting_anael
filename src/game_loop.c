@@ -443,7 +443,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
     #endif
 }
 
-static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
+static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     u16 mapX = posX / FP;
 	u16 mapY = posY / FP;
@@ -477,7 +477,7 @@ static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 de
 }
 
 #if USE_MAP_HIT_COMPRESSED
-static FORCE_INLINE void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
+static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     u16 hit_value = map_hit_decompressAt();
     // if (hit_value == 0)
@@ -500,10 +500,8 @@ static FORCE_INLINE void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX,
 }
 #endif
 
-static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
+static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 {
-    u16 h2 = tab_wall_div[sideDistX]; // height halved
-
     #if RENDER_SHOW_TEXCOORD
     u16 d = (7 - min(7, sideDistX / FP));
     u16 wallY = posY + (mulu(sideDistX, rayDirAngleY) >> FS);
@@ -523,8 +521,8 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
         "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
         : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistX), [tab] "+a" (tab)
-        : 
-        : 
+        :
+        :
     );
     #else
     u8 d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
@@ -533,6 +531,8 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
 
+    u16 h2 = tab_wall_div[sideDistX]; // height halved
+
     #if RENDER_HALVED_PLANES
     write_vline_halved(h2, tileAttrib);
     #else
@@ -540,10 +540,8 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     #endif
 }
 
-static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
+static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
-    u16 h2 = tab_wall_div[sideDistY]; // height halved
-
     #if RENDER_SHOW_TEXCOORD
     u16 d = (7 - min(7, sideDistY / FP));
     u16 wallX = posX + (mulu(sideDistY, rayDirAngleX) >> FS);
@@ -563,8 +561,8 @@ static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayD
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
         "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
         : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistY), [tab] "+a" (tab)
-        : 
-        : 
+        :
+        :
     );
     #else
     u8 d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
@@ -572,6 +570,8 @@ static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayD
     if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
     else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
     #endif
+
+    u16 h2 = tab_wall_div[sideDistY]; // height halved
 
     #if RENDER_HALVED_PLANES
     write_vline_halved(h2, tileAttrib);

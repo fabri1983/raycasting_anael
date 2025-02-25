@@ -159,7 +159,7 @@ const utils = {
             case 10:	framebuffer[11*TILEMAP_COLUMNS + column] = tileAttrib;
                         framebuffer[12*TILEMAP_COLUMNS + column] = tileAttrib; // fallthru
                         break;
-        }   
+        }
     },
 
     /**

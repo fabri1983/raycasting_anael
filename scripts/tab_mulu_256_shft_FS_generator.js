@@ -1,15 +1,20 @@
 /*
-    This table is created out of: mulu(sideDistX_l0|l1, deltaDistX) >> FS (and the same for Y).
-    sideDistX_l0|l1 has max value 256 (including). Same apply for sideDistY_l0|l1.
-    deltaDistX|Y is obtained from a = angle/(1024/AP), ie 128 posible rotation values for each (X,Y) position in the map.
-    "a" is then used to get the tab_deltas[] entry which gives us access to the PIXEL_COLUMNS values for deltaDistX and deltaDistY.
-    So (1024/(1024/AP))=128, then 128*PIXEL_COLUMNS possible entries to get into tab_deltas[], then values for deltaDistX and deltaDistY 
-    are obtained from x=0 up to x=PIXEL_COLUMNS-1.
- */
+This table is created out of: mulu(sideDistX_l0|l1, deltaDistX) >> FS (and the same for Y).
+sideDistX_l0|l1 has max value 256 (including). Same apply for sideDistY_l0|l1.
+deltaDistX|Y is obtained from a = angle/(1024/AP), ie 128 posible rotation values for each (X,Y) position in the map.
+"a" is then used to get the tab_deltas[] entry which gives us access to the PIXEL_COLUMNS values for deltaDistX and deltaDistY.
+So (1024/(1024/AP))=128, then 128*PIXEL_COLUMNS possible entries to get into tab_deltas[], then values for deltaDistX and deltaDistY 
+are obtained from x=0 up to x=PIXEL_COLUMNS-1.
+So:
+    u16 tab_mulu_256_shft_FS[(256+1) * (1024/(1024/AP))*PIXEL_COLUMNS]
+But given that tab_deltas[] X and Y values are ranged between 0 and MPH_VALUES_DELTADIST_NKEYS-1 we end up with:
+    u16 tab_mulu_256_shft_FS[(256+1) * MPH_VALUES_DELTADIST_NKEYS]
+And for that matter we use script perf_hash_mulu_256_shft_FS_generator.js.
+*/
 
 /*
 // Table constent is generated with scripts tab_mulu_256_shft_FS_generator.js and tab_mulu_256_shft_FS_transformer.js.
-const u16 tab_mulu_256_ahft_fs[256+1][(1024/(1024/AP))*PIXEL_COLUMNS] = {
+const u16 tab_mulu_256_shft_FS[(256+1) * (1024/(1024/AP))*PIXEL_COLUMNS] = {
 0
 };
 */
@@ -181,8 +186,9 @@ function processTabDeltasChunk (workerId, startPosX, endPosX, tab_deltas, map) {
     return outputMap;
 }
 
-// Function to run parallel workers
+// Function to run parallel workers (fired by Main Thread only)
 function runWorkers () {
+
     const numCores = Math.min(16, os.cpus().length);
     const tab_deltas = utils.readTabDeltas(tabDeltasFile);
     const map = utils.readMapMatrix(mapMatrixFile);
@@ -233,13 +239,13 @@ function runWorkers () {
             process.stdout.write('\n'); // Move to the next line after progress bar
 
             const finalMap = new Map();
-            results.forEach(result => {
-                result.forEach(([key, value]) => {
-                    // NOTE: not sure why I need to do this, something is wrong in the way the keys is generated.
+            results.forEach(resultMap => {
+                for (const [key, value] of resultMap) {
+                    // NOTE: not sure why I need to do next, something is wrong in the way the keys are generated.
                     // Keep the line with biggest value
                     //if (!finalMap.has(key) || finalMap.get(key) < value)
-                        finalMap.set(key, value);
-                });
+                    finalMap.set(key, value);
+                }
             });
 
             // Sort by key in ASC order, then save key=value into an array
@@ -274,5 +280,5 @@ if (isMainThread) {
 } else {
     const { workerId, startPosX, endPosX, tab_deltas, map } = workerData;
     const result = processTabDeltasChunk(workerId, startPosX, endPosX, tab_deltas, map);
-    parentPort.postMessage(Array.from(result.entries()));
+    parentPort.postMessage(result);
 }

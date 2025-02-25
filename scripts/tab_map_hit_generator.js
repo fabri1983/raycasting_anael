@@ -294,7 +294,7 @@ function writeOutputToFile (arr, outputFile) {
     fs.writeFileSync(outputFile, content);
 }
 
-// Function to run parallel workers
+// Function to run parallel workers (fired by Main Thread only)
 function runWorkers () {
     return new Promise((resolve, reject) => {
 
@@ -318,14 +318,14 @@ function runWorkers () {
             jobQueue.push({ startPosX, endPosX });
         }
 
+        // Reset iterations counter
+        completedIterations = 0;
+
         // Total jobs to complete
         const totalJobs = jobQueue.length;
         console.log(`Main thread: Total jobs to complete: ${totalJobs}`);
         
         console.log('Main thread: Waiting for all workers to complete their jobs...');
-
-        // Reset iterations counter
-        completedIterations = 0;
 
         // Initial progress display
         displayProgress();
@@ -333,13 +333,17 @@ function runWorkers () {
         const progressInterval = setInterval(displayProgress, 4000);
 
         function startWorker() {
-            if (jobQueue.length === 0 || activeWorkers.size >= numCores) return;
+            // if no available CPU core to process a new Worker or no job left to process, then return
+            if (activeWorkers.size >= numCores || jobQueue.length === 0)
+                return;
 
             const job = jobQueue.shift();
-            const workerId = `[${job.startPosX}-${job.endPosX}]`;
+            const jobId = `[${job.startPosX}-${job.endPosX}]`;
+            const startPosX = job.startPosX;
+            const endPosX = job.endPosX;
 
             const worker = new Worker(__filename, {
-                workerData: { workerId, ...job, tab_deltas, map }
+                workerData: { jobId, startPosX, endPosX, tab_deltas, map }
             });
 
             activeWorkers.add(worker);
@@ -354,19 +358,28 @@ function runWorkers () {
 
                     results.push(message);
                     
-                    if (completedJobs === totalJobs) {
+                    // Were all jobs completed? then resolve with results
+                    if (completedJobs === totalJobs)
                         finishProcessing();
-                    } else {
+                    // Otherwise keep processing jobs
+                    else
                         startWorker(); // Start a new job if available
-                    }
                 }
             });
 
             worker.on('error', (error) => {
                 process.stdout.write('\n'); // Move to the next line after progress bar
-                console.error(`Worker ${workerId} error:`, error);
+                console.error(`Job ${jobId} error:`, error);
                 activeWorkers.delete(worker);
                 reject(error);
+            });
+
+            worker.on('exit', (code) => {
+                if (code !== 0) {
+                    process.stdout.write('\n'); // Move to the next line after progress bar
+                    console.error(`Job ${jobId} exited with code ${code}`);
+                    activeWorkers.delete(worker);
+                }
             });
         }
 
@@ -377,7 +390,7 @@ function runWorkers () {
             resolve(results);
         }
 
-        // Start initial batch of workers
+        // Start initial batch of workers (Main Thread only)
         for (let i = 0; i < numCores; i++) {
             startWorker();
         }
@@ -426,7 +439,7 @@ if (isMainThread) {
             console.log(endTimeStr);
         });
 } else {
-    const { workerId, startPosX, endPosX, tab_deltas, map } = workerData;
-    const result = processGameChunk(workerId, startPosX, endPosX, tab_deltas, map);
+    const { jobId, startPosX, endPosX, tab_deltas, map } = workerData;
+    const result = processGameChunk(jobId, startPosX, endPosX, tab_deltas, map);
     parentPort.postMessage(result);
 }

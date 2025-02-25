@@ -42,7 +42,7 @@
 #define RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED T
 #define RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS T
 #define RENDER_USE_MAP_HIT_COMPRESSED F
-#define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 4.
+#define RENDER_COLUMNS_UNROLL 2 // Use only multiple of 2. Supported values: 1, 2, 4. Glitches appear with 1 and 4, dang!
 #define RENDER_ENABLE_FRAME_LOAD_CALCULATION T
 
 #define DMA_ALLOW_BUFFERED_SPRITE_TILES F // Set to TRUE if you have compressed sprites, otherwise FALSE.
