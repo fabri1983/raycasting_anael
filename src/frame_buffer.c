@@ -27,8 +27,8 @@ void clear_buffer_no_usp ()
 	__asm volatile (
 		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Makes a0 points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
+		// Makes a0 points to the memory location at the framebuffer's end 
+        "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -67,8 +67,7 @@ void clear_buffer_no_usp ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: "a" (frame_buffer), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
 		: "memory"
@@ -84,8 +83,8 @@ void clear_buffer ()
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
         // Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
-		// Makes a0 points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
+		// Makes a0 points to the memory location at the framebuffer's end 
+        "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -127,8 +126,7 @@ void clear_buffer ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: "a" (frame_buffer), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2)
 		: "memory"
@@ -145,7 +143,7 @@ void clear_buffer_sp ()
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
-		// Makes SP points to the memory location of the framebuffer's end 
+		// Makes SP points to the memory location at the framebuffer's end 
         "    move.l  %[frame_buffer_end],%%sp\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0

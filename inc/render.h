@@ -33,7 +33,7 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ();
 void render_DMA_enqueue_framebuffer ();
 void render_DMA_row_by_row_framebuffer ();
 
-void render_DMA_halved_mirror_planes ();
+void render_mirror_planes_in_VRAM ();
 void render_copy_top_entries_in_VRAM ();
 
 #endif // _RENDER_H_

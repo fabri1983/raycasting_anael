@@ -11,8 +11,8 @@ void clear_buffer_halved_no_usp ()
 	__asm volatile (
 		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-		// Makes a0 points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
+		// Makes a0 points to the memory location at the framebuffer's end 
+        "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -75,8 +75,7 @@ void clear_buffer_halved_no_usp ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: "a" (frame_buffer), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
           [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
@@ -93,8 +92,8 @@ void clear_buffer_halved ()
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
         // Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
-		// Makes a0 points to the memory location of the framebuffer's end 
-		"    lea     %c[TOTAL_BYTES](%%a0),%%a0\n" // frame_buffer + TOTAL_BYTES: buffer end
+		// Makes a0 points to the memory location at the framebuffer's end 
+        "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
 		"    move.l  %%d0,%%d1\n"
@@ -160,8 +159,7 @@ void clear_buffer_halved ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: "a" (frame_buffer), 
-		  [TOTAL_BYTES] "i" ((VERTICAL_ROWS*PLANE_COLUMNS*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS))*2), 
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
 		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
           [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
@@ -179,7 +177,7 @@ void clear_buffer_halved_sp ()
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
-		// Makes SP points to the memory location of the framebuffer's end 
+		// Makes SP points to the memory location at the framebuffer's end 
         "    move.l  %[frame_buffer_end],%%sp\n" // frame_buffer end address
 		// Clear registers
 		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
@@ -308,7 +306,7 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
     // This block of code sets bottom tilemap entry and save the top value into an array for later use.
     u16 h2_aux2 = h2;
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
-    //u16* top_entries_ptr = top_entries + top_entries_current_col;
+    u16* top_entries_ptr = top_entries + top_entries_current_col;
     #endif
     __asm volatile (
         // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
@@ -337,9 +335,9 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         // Top tilemap entry (here we only care that the TILE_ATTR_VFLIP_MASK is set)
         "    lsl.w   %[_SHIFT_TOP_COLUMN_BYTES],%[h2]\n" // h2 = (h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
-        //"    move.w  %[tileAttrib],(%[tilemap],%[h2])\n" // WE DON'T NEED THIS IN THIS SCENARIO, NOW THAT WE STORE IT IN top_entries ARRAY
-        //"    move.w  %[tileAttrib],(%[top_entries_ptr])\n" // Stores the value for top tilemap entry
-        //"    move.w  %[h2],2(%[top_entries_ptr])\n" // Stores the row for top tilemap entry
+        //"    move.w  %[tileAttrib],(%[tilemap],%[h2])\n" // WE DON'T NEED THIS ANYMORE NOW THAT WE STORE IT IN top_entries[]
+        "    move.w  %[tileAttrib],(%[top_entries_ptr])\n" // Stores the value for top tilemap entry
+        "    move.w  %[h2],2(%[top_entries_ptr])\n" // Stores the row for top tilemap entry
         #endif
 
         // Bottom tilemap entry
@@ -349,7 +347,7 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
 
         : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
           #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
-          //, [top_entries_ptr] "+a" (top_entries_ptr)
+          , [top_entries_ptr] "+a" (top_entries_ptr)
           #endif
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), 
@@ -478,7 +476,7 @@ void fb_mirror_planes_in_RAM ()
         : [_len_low_high] "i" (((0x9300 | ( (len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
           [_addr_low_mid] "i" (((0x9500 | ( (fromAddr) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 8) & 0xff)) ), \
           [_addr_high] "i" (0x97C0), /* VRAM COPY operation */ \
-          /* If you want to add VDP stepping then use: u16 addr_high_step = (0x97C0 << 16) | (0x8F00 | ((step) & 0xff)); \ */ \
+          /* If you want to add VDP stepping then use: addr_high_step = (0x97C0 << 16) | (0x8F00 | ((step) & 0xff)); \ */ \
           [_cmdAddr] "i" ((cmdAddr)) \
         : \
     )
@@ -493,7 +491,9 @@ void fb_mirror_planes_in_VRAM ()
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
+        VDP_waitDMACompletion();
         DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
+        VDP_waitDMACompletion();
     }
     VDP_setAutoInc(2);*/
 
@@ -505,10 +505,12 @@ void fb_mirror_planes_in_VRAM ()
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
+        VDP_waitDMACompletion();
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
+        VDP_waitDMACompletion();
     }
-
+    
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2; // Set VDP stepping back to 2
 }
 

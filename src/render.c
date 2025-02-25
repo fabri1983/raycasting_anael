@@ -259,7 +259,7 @@ void render_DMA_row_by_row_framebuffer ()
     #endif
 }
 
-FORCE_INLINE void render_DMA_halved_mirror_planes ()
+FORCE_INLINE void render_mirror_planes_in_VRAM ()
 {
     fb_mirror_planes_in_VRAM();
 }

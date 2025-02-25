@@ -185,7 +185,7 @@ void vint_callback ()
     #endif
 
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
-    render_DMA_halved_mirror_planes();
+    render_mirror_planes_in_VRAM();
     #endif
 
     turnOnVDP(0x74);
