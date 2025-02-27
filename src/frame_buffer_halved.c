@@ -516,7 +516,7 @@ void fb_mirror_planes_in_VRAM ()
         DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
         clear_buffer_row(pA_bottom_half_start);
         pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row
-        while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+        //while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
 
         DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
         clear_buffer_row(pB_bottom_half_start);
@@ -537,7 +537,7 @@ void fb_mirror_planes_in_VRAM ()
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pA_bottom_half_start);
         pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
-        while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+        //while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
 
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
