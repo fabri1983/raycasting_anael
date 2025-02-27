@@ -409,39 +409,39 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
 {
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM
 
-    // C version: set tilemap top entries (not inverted)
+    // C version: set tilemap top entries (already inverted)
     /*u16* entries_ptr = top_entries;
     #pragma GCC unroll 80 // Always set the max number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
-        u16 val = (*entries_ptr++);
-        u16 h2 = (*entries_ptr++);
-        frame_buffer[i + h2/2] = val; // h2/2 because it was saved in byte addressing
-        val = (*entries_ptr++);
-        h2 = (*entries_ptr++);
-        frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS + i + h2/2] = val; // h2/2 because it was saved in byte addressing
+        u16 val = *entries_ptr++;
+        u16 h2 = *entries_ptr++;
+        frame_buffer[i + h2] = val; // h2 comes in byte addressing
+        val = *entries_ptr++;
+        h2 = *entries_ptr++;
+        frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS + i + h2] = val; // h2 comes in byte addressing
     }*/
 
-    // ASM version: set tilemap top entries (not inverted)
-    u16* entries_ptr = top_entries;
+    // ASM version: set tilemap top entries (already inverted)
+    u32* entries_ptr = (u32*) top_entries;
     u32 entry; // h2 in higher word, and val in lower word
     u16 offset;
     __asm volatile (
         ".set col, 0\n\t"
         ".rept %c[_PIXEL_COLUMNS]/2\n\t"
             "move.l  (%[entries_ptr])+,%[entry]\n\t" // val in higher word, h2 in lower word
-            "move.w  %[entry],%[offset]\n\t" // copy h2
+            "move.w  %[entry],%[offset]\n\t" // copy h2 into offset
             "swap    %[entry]\n\t"
-            "move.w  %[entry],col*2(%[fb],%[offset].w)\n\t" // *2 for byte addressing
+            "move.w  %[entry],col*2(%[fb],%[offset])\n\t" // *2 for byte addressing
 
             "move.l  (%[entries_ptr])+,%[entry]\n\t" // val in higher word, h2 in lower word
-            "move.w  %[entry],%[offset]\n\t" // copy h2
+            "move.w  %[entry],%[offset]\n\t" // copy h2 into offset
             "addi.w  #%c[_VERTICAL_ROWS]*%c[_PLANE_COLUMNS]*2,%[offset]\n\t" // *2 for byte addressing
             "swap    %[entry]\n\t"
-            "move.w  %[entry],col*2(%[fb],%[offset].w)\n\t" // *2 for byte addressing
+            "move.w  %[entry],col*2(%[fb],%[offset])\n\t" // *2 for byte addressing
             ".set col, col + 1\n\t"
         ".endr\n\t"
-        : [entries_ptr] "+a" (entries_ptr), [entry] "=d" (entry), [offset] "=d" (offset)
-        : [fb] "a" (frame_buffer),
+        : [entry] "=d" (entry), [offset] "=d" (offset)
+        : [entries_ptr] "a" (entries_ptr), [fb] "a" (frame_buffer),
           [_PIXEL_COLUMNS] "i" (PIXEL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
         :
     );
@@ -481,6 +481,29 @@ void fb_mirror_planes_in_RAM ()
         : \
     )
 
+static void clear_buffer_row (u32* ptr)
+{
+    // C version
+    /*u32 zero = 0;
+    #pragma GCC unroll 40 // Always set the max number since it does not accept defines
+    for (u8 i = 0; i < TILEMAP_COLUMNS/2; ++i) { // /2 because we are using a u32* pointer, so updating long words
+        *ptr++ = zero;
+    }*/
+
+    // ASM version
+    u32 zero = 0;
+    u16 countDbra = (TILEMAP_COLUMNS/2)/2 - 1; // /2 because we are using a u32* pointer, so updating long words, and additional /2 for the 2 move.l
+    __asm volatile (
+        "1:\n\t"
+        "move.l  %2,(%0)+\n\t"
+        "move.l  %2,(%0)+\n\t"
+        "dbra    %1,1b\n"
+        : "+a" (ptr), "+d" (countDbra)
+        : "d" (zero)
+        :
+    );
+}
+
 void fb_mirror_planes_in_VRAM ()
 {
     // Mirror bottom half Plane A and B region into top half Plane A and B
@@ -491,13 +514,20 @@ void fb_mirror_planes_in_VRAM ()
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
-        VDP_waitDMACompletion();
+        clear_buffer_row(pA_bottom_half_start);
+        pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row
+        while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+
         DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
-        VDP_waitDMACompletion();
+        clear_buffer_row(pB_bottom_half_start);
+        pB_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row
+        while(GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
     }
     VDP_setAutoInc(2);*/
 
     // ASM version
+    u32* pA_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS)/2)*2);
+    u32* pB_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2)*2);
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
 
@@ -505,12 +535,17 @@ void fb_mirror_planes_in_VRAM ()
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
-        VDP_waitDMACompletion();
+        clear_buffer_row(pA_bottom_half_start);
+        pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
+        while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
-        VDP_waitDMACompletion();
+        clear_buffer_row(pB_bottom_half_start);
+        pB_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
+        while(GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
     }
-    
+
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2; // Set VDP stepping back to 2
 }
 
@@ -518,25 +553,25 @@ void fb_copy_top_entries_in_VRAM ()
 {
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
 
-    vu16* vdpCtrl_ptr_w = (vu16*) VDP_CTRL_PORT;
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     vu16* vdpData_ptr_w = (vu16*) VDP_DATA_PORT;
 
-    // C version: set tilemap top entries (not inverted)
+    // C version: set tilemap top entries (already inverted)
     u16* entries_ptr = top_entries;
-
     #pragma GCC unroll 80 // Always set the max number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = (*entries_ptr++);
         u16 h2 = (*entries_ptr++);
-        //frame_buffer[i + h2/2] = val; // h2/2 because it was saved in byte addressing
-        *vdpCtrl_ptr_w = VDP_WRITE_VRAM_ADDR(PA_ADDR + 2*i + 2*h2/2);
+        *vdpCtrl_ptr_l = VDP_WRITE_VRAM_ADDR(PA_ADDR + 2*i + h2); // h2 is already in byte addressing
         *vdpData_ptr_w = val;
         val = (*entries_ptr++);
         h2 = (*entries_ptr++);
-        //frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS + i + h2/2] = val; // h2/2 because it was saved in byte addressing
-        *vdpCtrl_ptr_w = VDP_WRITE_VRAM_ADDR(PB_ADDR + 2*i + 2*h2/2);
+        *vdpCtrl_ptr_l = VDP_WRITE_VRAM_ADDR(PB_ADDR + 2*i + h2); // h2 is already in byte addressing
         *vdpData_ptr_w = val;
     }
+
+    // ASM version: set tilemap top entries (already inverted)
+    // TODO: use same snippet than in copy_top_entries_in_RAM() but replacing %[fb] by ctrl_port and data_port
 
     #endif
 }

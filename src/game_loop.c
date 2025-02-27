@@ -49,17 +49,21 @@ static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
 static FORCE_INLINE void clearBuffer ()
 {
-    #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
-        #if RENDER_HALVED_PLANES
-        clear_buffer_halved_sp();
-        #else
-        clear_buffer_sp();
-        #endif
-    #elif RENDER_CLEAR_FRAMEBUFFER
-        #if RENDER_HALVED_PLANES
-        clear_buffer_halved();
-        #else
-        clear_buffer();
+    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
+        // ramebuffer is cleared while VRAM to VRAM copy async ops are running. See fb_mirror_planes_in_VRAM().
+    #else
+        #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
+            #if RENDER_HALVED_PLANES
+            clear_buffer_halved_sp();
+            #else
+            clear_buffer_sp();
+            #endif
+        #elif RENDER_CLEAR_FRAMEBUFFER
+            #if RENDER_HALVED_PLANES
+            clear_buffer_halved();
+            #else
+            clear_buffer();
+            #endif
         #endif
     #endif
 }
@@ -69,7 +73,7 @@ void game_loop ()
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
 	// Smaller positions locate at top-left corner of the map[][] layout (as seen in the .h), bigger positions locate at bottom-right.
 	// But dx and dy, applied to posX and posY respectively, goes from 0 to (+/-)FP/ANGLE_DIR_NORMALIZATION (used in tab_dir_xy.h).
-	u16 posX = 2*FP, posY = 2*FP;
+	u16 posX = 2*FP - 3*MAP_FRACTION, posY = 2*FP;
 
 	// angle max value is 1023 and is updated in (1024/AP) units.
 	// 0 points down in the map[], 256 points right, 512 points up, 768 points left, 1024 = 0.
