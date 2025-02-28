@@ -170,12 +170,12 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     render_setupFrameLoadCalculation();
     #endif
 
-    // Wait until vint is triggered and returned from vint_callback()
-    render_waitVInt_vtimer();
-
     // joy state refresh
     //JOY_update();
     joy_update_6btn();
+
+    // Wait until vint is triggered and returned from vint_callback()
+    render_waitVInt_vtimer();
 
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     render_calculateFrameLoad();

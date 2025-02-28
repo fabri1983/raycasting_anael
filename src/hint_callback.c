@@ -151,7 +151,7 @@ typedef union
     };
 } InterruptCaller;
 
-extern InterruptCaller hintCaller;
+extern InterruptCaller hintCaller; // Declared in sys.c
 
 FORCE_INLINE void hint_reset_change_bg_state ()
 {

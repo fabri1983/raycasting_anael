@@ -571,7 +571,7 @@ void fb_copy_top_entries_in_VRAM ()
     }
 
     // ASM version: set tilemap top entries (already inverted)
-    // TODO: use same snippet than in copy_top_entries_in_RAM() but replacing %[fb] by ctrl_port and data_port
+    /// TODO: use same snippet than in copy_top_entries_in_RAM() but replacing %[fb] by ctrl_port and data_port
 
     #endif
 }
