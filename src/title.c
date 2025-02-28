@@ -118,13 +118,13 @@ static TileMap* unpackTitle256cTilemap ()
         return copyTilemap(tilemap);
 }
 
-static void enqueueTitle256cTilemap (VDPPlane plane, u16 currTileIndex, TileMap* tilemap)
-{
-    u16 baseTileAttribs = TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, currTileIndex);
-    const u32 offset = 0;//mulu(y, tilemap->w) + x;
-    u16* data = tilemap->tilemap + offset;
-    VDP_setTileMapDataRectEx(plane, data, baseTileAttribs, 0, 0, TITLE_256C_WIDTH/8, TITLE_256C_HEIGHT/8, TITLE_256C_WIDTH/8, DMA_QUEUE);
-}
+// static void enqueueTitle256cTilemap (VDPPlane plane, u16 currTileIndex, TileMap* tilemap)
+// {
+//     u16 baseTileAttribs = TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, currTileIndex);
+//     const u32 offset = 0;//mulu(y, tilemap->w) + x;
+//     u16* data = tilemap->tilemap + offset;
+//     VDP_setTileMapDataRectEx(plane, data, baseTileAttribs, 0, 0, TITLE_256C_WIDTH/8, TITLE_256C_HEIGHT/8, TITLE_256C_WIDTH/8, DMA_QUEUE);
+// }
 
 static void copyInterleavedHalvedTilemaps (TileMap* tilemap, u16 currTileIndex)
 {

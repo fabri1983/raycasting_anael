@@ -299,8 +299,8 @@ void game_loop_auto ()
 /// @param posX 
 /// @param posY 
 /// @param delta_a_ptr tab_deltas at the current viewing angle
-static void dda (u16 posX, u16 posY, u16* delta_a_ptr) {
-
+static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
+{
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     // Value goes from 0...FP (including), multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2 for faster array acces in ASM
     u32 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;

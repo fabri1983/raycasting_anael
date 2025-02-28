@@ -18,10 +18,10 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     move.l  #_ROW_OFFSET,(0xC00000)   ;// VDP_DATA_PORT: writes on both planes
     move.w  #hint_mirror_planes_callback_asm_LABEL_\m,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_callback_asm_M);
     *.if \n == 0
-    *move.w  #0x4ED6,hintCaller ;// jmp (a6)
-    *suba    a6,a6 ;// clean higher and lower bytes
+    *move.w  #0x4ED5,hintCaller ;// jmp (a5)
+    *suba    a5,a5 ;// clean higher and lower bytes
     *.endif
-    *move.w  #hint_mirror_planes_callback_asm_LABEL_\m,a6
+    *move.w  #hint_mirror_planes_callback_asm_LABEL_\m,a5
     rte
 .endm
 

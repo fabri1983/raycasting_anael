@@ -4,6 +4,36 @@
 #include "utils.h"
 #include <vdp_tile.h>
 
+#define MOVEM_OR_MOVES_HALVED_NO_USP \
+    "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n" \
+    "    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n" \
+    "    .endr\n" \
+    /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) > 0 && ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) < 3\n" \
+    "       .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n" \
+    "       move.l  %%d0,-(%%a0)\n" \
+    "       .endr\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 3\n" \
+    "       movem.l %%d0-%%d2,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 4\n" \
+    "       movem.l %%d0-%%d3,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 5\n" \
+    "       movem.l %%d0-%%d4,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 6\n" \
+    "       movem.l %%d0-%%d5,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 7\n" \
+    "       movem.l %%d0-%%d6,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n" \
+    "       movem.l %%d0-%%d7,-(%%a0)\n" \
+    "    .endif\n"
+    // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
+
 void clear_buffer_halved_no_usp ()
 {
     // We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
@@ -30,48 +60,27 @@ void clear_buffer_halved_no_usp ()
 		"    move.l  %%d0,%%a6\n"
         // frame_buffer's Plane B region (actually at the end)
         // Iterate over bottom half rows - 1
+        ".set regs, 14\n"
 		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
-		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
-    	"    .endr\n"
-		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
+            MOVEM_OR_MOVES_HALVED_NO_USP
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
 		// One more iteration without the last lea instruction
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
-    	"    .endr\n"
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+		    MOVEM_OR_MOVES_HALVED_NO_USP
         // Accomodate to locate at the end of frame_buffer's Plane A region
         "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
         // frame_buffer's Plane A region (actually at the end)
         // Iterate over bottom half rows - 1
         ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
-		    // Clear all the bytes of current row by using 14 registers with long word (4 bytes) access.
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
-    	"    .endr\n"
-		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
+            MOVEM_OR_MOVES_HALVED_NO_USP
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
 		// One more iteration without the last lea instruction
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n"
-    	"    .endr\n"
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+		    MOVEM_OR_MOVES_HALVED_NO_USP
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
@@ -82,6 +91,36 @@ void clear_buffer_halved_no_usp ()
 		: "memory"
 	);
 }
+
+#define MOVEM_OR_MOVES_HALVED \
+    "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n" \
+    "    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n" \
+    "    .endr\n" \
+    /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) > 0 && ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) < 3\n" \
+    "       .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n" \
+    "       move.l  %%d0,-(%%a0)\n" \
+    "       .endr\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 3\n" \
+    "       movem.l %%d0-%%d2,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 4\n" \
+    "       movem.l %%d0-%%d3,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 5\n" \
+    "       movem.l %%d0-%%d4,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 6\n" \
+    "       movem.l %%d0-%%d5,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 7\n" \
+    "       movem.l %%d0-%%d6,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n" \
+    "       movem.l %%d0-%%d7,-(%%a0)\n" \
+    "    .endif\n"
+    // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
 void clear_buffer_halved ()
 {
@@ -112,48 +151,27 @@ void clear_buffer_halved ()
         "    move.l  %%d0,%%a7\n"
         // frame_buffer's Plane B region (actually at the end)
         // Iterate over bottom half rows - 1
+        ".set regs, 15\n"
 		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
-		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n"
-    	"    .endr\n"
-		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
+            MOVEM_OR_MOVES_HALVED
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
 		// One more iteration without the last lea instruction
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n"
-    	"    .endr\n"
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+            MOVEM_OR_MOVES_HALVED
         // Accomodate to locate at the end of frame_buffer's Plane A region
         "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
         // frame_buffer's Plane A region (actually at the end)
         // Iterate over bottom half rows - 1
         ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
-		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n"
-    	"    .endr\n"
-		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
+            MOVEM_OR_MOVES_HALVED
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
 		// One more iteration without the last lea instruction
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n"
-    	"    .endr\n"
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%a0)\n"
-		"    .endr\n"
+            MOVEM_OR_MOVES_HALVED
         // Restore SP
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
@@ -166,6 +184,36 @@ void clear_buffer_halved ()
 		: "memory"
 	);
 }
+
+#define MOVEM_OR_MOVES_HALVED_SP \
+    "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n" \
+    "    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n" \
+    "    .endr\n" \
+    /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) > 0 && ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) < 3\n" \
+    "       .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n" \
+    "       move.l  %%d0,-(%%sp)\n" \
+    "       .endr\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 3\n" \
+    "       movem.l %%d0-%%d2,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 4\n" \
+    "       movem.l %%d0-%%d3,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 5\n" \
+    "       movem.l %%d0-%%d4,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 6\n" \
+    "       movem.l %%d0-%%d5,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 7\n" \
+    "       movem.l %%d0-%%d6,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n" \
+    "       movem.l %%d0-%%d7,-(%%sp)\n" \
+    "    .endif\n"
+    // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
 void clear_buffer_halved_sp ()
 {
@@ -197,48 +245,26 @@ void clear_buffer_halved_sp ()
 		"    move.l  %%d0,%%a6\n"
         // frame_buffer's Plane B region (actually at the end)
         // Iterate over bottom half rows - 1
+        ".set regs, 15\n"
 		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
-		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
-    	"    .endr\n"
-		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%sp)\n"
-		"    .endr\n"
+		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
+            MOVEM_OR_MOVES_HALVED_SP
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%sp),%%sp\n"
 		".endr\n"
 		// One more iteration without the last lea instruction
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
-    	"    .endr\n"
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%sp)\n"
-		"    .endr\n"
+            MOVEM_OR_MOVES_HALVED_SP
         // Accomodate to locate at the end of frame_buffer's Plane A region
         "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%sp),%%sp\n"
         // frame_buffer's Plane A region (actually at the end)
         // Iterate over bottom half rows - 1
         ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
-		    // Clear all the bytes of current row by using 15 registers with long word (4 bytes) access.
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
-    	"    .endr\n"
-		    // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%sp)\n"
-		"    .endr\n"
+            MOVEM_OR_MOVES_HALVED_SP
 		    // Skip the non displayed data
 		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%sp),%%sp\n"
 		".endr\n"
 		// One more iteration without the last lea instruction
-		"    .rept (%c[TILEMAP_COLUMNS_BYTES] / (15*4))\n"
-    	"    movem.l %%d0-%%d7/%%a0-%%a6,-(%%sp)\n"
-    	"    .endr\n"
-		"    .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (15*4)) / 4)\n"
-		"    move.l  %%d0,-(%%sp)\n"
-		"    .endr\n"
+            MOVEM_OR_MOVES_HALVED_SP
 		// Restore SP
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
@@ -368,15 +394,16 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         "move.l  %[_srcAddr],%%a0\n\t" \
         "move.l  %[_dstAddr],%%a1\n\t" \
         /* Iterate VERTICAL_ROWS/2 - 1 so we can ommit last lea instructions */ \
+        ".set regs, 14\n" \
         ".rept %c[_VERTICAL_ROWS]/2 - 1\n\t" \
-            /* Copy long words to 14 registers, then copy them into target */ \
-            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n\t" \
+            /* Copy long words to regs registers, then copy them into target */ \
+            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n\t" \
             "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t" \
             "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t" \
-            "lea     14*4(%%a1),%%a1\n\t" \
+            "lea     regs*4(%%a1),%%a1\n\t" \
             ".endr\n\t" \
             /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
-            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n\t" \
+            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n\t" \
             "move.l  (%%a0)+,(%%a1)+\n\t" \
             ".endr\n\t" \
             /* Re accommodate for next iteration */ \
@@ -384,14 +411,14 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
             "lea     -2*(%c[_PLANE_COLUMNS]+%c[_TILEMAP_COLUMNS])(%%a1),%%a1\n\t" \
         ".endr\n\t" \
         /* One last iteration without the lea instructions */ \
-            /* Copy long words to 14 registers, then copy them into target */ \
-            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (14*4))\n\t" \
+            /* Copy long words to regs registers, then copy them into target */ \
+            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n\t" \
             "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t" \
             "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t" \
-            "lea     14*4(%%a1),%%a1\n\t" \
+            "lea     regs*4(%%a1),%%a1\n\t" \
             ".endr\n\t" \
             /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
-            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (14*4)) / 4)\n\t" \
+            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n\t" \
             "move.l  (%%a0)+,(%%a1)+\n\t" \
             ".endr\n\t" \
         /* Restore SP */ \
