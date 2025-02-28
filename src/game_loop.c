@@ -392,17 +392,21 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1)
 #endif
 {
-	const u16 deltaDistX = *(delta_a_ptr + 0); // value from 182 up to 65535, but only 915 different values
-	const u16 deltaDistY = *(delta_a_ptr + 1); // value from 182 up to 65535, but only 915 different values
-	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2); // value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
-	const s16 rayDirAngleY = (s16) *(delta_a_ptr + 3); // value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
+    // Length of ray from one X or Y side to next X or Y side. Value from 182 up to 65535, but only 915 different values
+	const u16 deltaDistX = *(delta_a_ptr + 0), deltaDistY = *(delta_a_ptr + 1);
+    // Value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
+	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2), rayDirAngleY = (s16) *(delta_a_ptr + 3);
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-    const u16 deltaDistX_perf_hash = *(delta_a_ptr + 4); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
-	const u16 deltaDistY_perf_hash = *(delta_a_ptr + 5); // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
+    // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
+    const u16 deltaDistX_perf_hash = *(delta_a_ptr + 4), deltaDistY_perf_hash = *(delta_a_ptr + 5);
     #endif
 
-	u16 sideDistX, sideDistY; // effective value goes up to 4096-1 once in the stepping loop due to condition control
+    // Length of ray from current position to next X or Y side. Wffective value goes up to 4096-1 once in the stepping loop due to condition control
+	u16 sideDistX, sideDistY;
+    // What direction to step in X or Y direction (either +1 or -1)
 	s16 stepX, stepY, stepYMS;
+
+    // Calculate step and initial sideDist
 
 	if (rayDirAngleX < 0) {
 		stepX = -1;
@@ -447,14 +451,17 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
     #endif
 }
 
-static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
+static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
 {
+    // Which box of the map we're in
     u16 mapX = posX / FP;
 	u16 mapY = posY / FP;
 	const u8* map_ptr = &map[mapY][mapX];
 
+    // Now the actual DDA starts. It's a loop that increments the ray with 1 square every time, until a wall is hit.
 	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
 
+        // Jump to next map square, either in X or Y direction
 		// side X
 		if (sideDistX < sideDistY) {
 			mapX += stepX;
@@ -481,7 +488,7 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 }
 
 #if USE_MAP_HIT_COMPRESSED
-static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
+static FORCE_INLINE void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     u16 hit_value = map_hit_decompressAt();
     // if (hit_value == 0)
@@ -493,6 +500,7 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
     u16 hit_mapXY = (hit_value >> MAP_HIT_OFFSET_MAPXY) & MAP_HIT_MASK_MAPXY;
     u16 hit_sideDistXY = (hit_value >> MAP_HIT_OFFSET_SIDEDISTXY);// & MAP_HIT_MASK_SIDEDISTXY;
 
+    // Jump to next map square, either in X or Y direction
     // side X
     if (hit_sideDistXY < sideDistY) {
         hitOnSideX(hit_sideDistXY, hit_mapXY, posY, rayDirAngleY);
