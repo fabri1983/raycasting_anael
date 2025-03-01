@@ -393,12 +393,12 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 #endif
 {
     // Length of ray from one X or Y side to next X or Y side. Value from 182 up to 65535, but only 915 different values
-	const u16 deltaDistX = *(delta_a_ptr + 0), deltaDistY = *(delta_a_ptr + 1);
+	const u16 deltaDistX = delta_a_ptr[0], deltaDistY = delta_a_ptr[1];
     // Value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
-	const s16 rayDirAngleX = (s16) *(delta_a_ptr + 2), rayDirAngleY = (s16) *(delta_a_ptr + 3);
+	const s16 rayDirAngleX = (s16) delta_a_ptr[2], rayDirAngleY = (s16) delta_a_ptr[3];
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
     // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
-    const u16 deltaDistX_perf_hash = *(delta_a_ptr + 4), deltaDistY_perf_hash = *(delta_a_ptr + 5);
+    const u16 deltaDistX_perf_hash = delta_a_ptr[4], deltaDistY_perf_hash = delta_a_ptr[5];
     #endif
 
     // Length of ray from current position to next X or Y side. Wffective value goes up to 4096-1 once in the stepping loop due to condition control
@@ -515,25 +515,29 @@ static FORCE_INLINE void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX,
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 {
     #if RENDER_SHOW_TEXCOORD
+    // We only need the Texture X coordinate because we stay in the same vertical stripe of the screen.
+    // Calculate the X coordinate where exactly the wall was hit (this is not the final Texture X coordinate)
+    u16 wallTexX = posY + (mulu(sideDistX, rayDirAngleY) >> FS);
+    // Substracting the integer value of the wall off it
+    //wallTexX = ((wallTexX * 8) >> FS) & 7; // Faster? But is actually slower given the context
+    wallTexX = max((wallTexX - mapY*FP) * 8 / FP, 0); // cleaner
+    // Now let's calculate a color to represent the wall X coordinate (not the final Texture X coordinate)
     u16 d = (7 - min(7, sideDistX / FP));
-    u16 wallY = posY + (mulu(sideDistX, rayDirAngleY) >> FS);
-    //wallY = ((wallY * 8) >> FS) & 7; // Faster? But is actually slower given the context
-    wallY = max((wallY - mapY*FP) * 8 / FP, 0); // cleaner
     u16 tileAttrib;
-    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8 + (8*8);
-    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallY)*8
+    if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8 + (8*8);
+    else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
     //u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
     u16 tileAttrib = mapY;
-    u16* tab = (u16*)tab_color_d8_1_X_pals_shft;
+    u16* tab = (u16*) tab_color_d8_1_X_pals_shft;
     __asm volatile (
         "andi.w  #1,%[tileAttrib]\n\t"
         "add.w   %[sideDist],%[tileAttrib]\n\t"
         "add.w   %[sideDist],%[tileAttrib]\n\t"
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
         "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
-        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistX), [tab] "+a" (tab)
-        :
+        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistX)
+        : [tab] "a" (tab)
         :
     );
     #else
@@ -555,25 +559,29 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
     #if RENDER_SHOW_TEXCOORD
+    // We only need the Texture X coordinate because we stay in the same vertical stripe of the screen.
+    // Calculate the X coordinate where exactly the wall was hit (this is not the final Texture X coordinate)
+    u16 wallTexX = posX + (mulu(sideDistY, rayDirAngleX) >> FS);
+    // Substracting the integer value of the wall off it
+    //wallTexX = ((wallTexX * 8) >> FS) & 7; // Faster? But is actually slower given the context
+    wallTexX = max((wallTexX - mapX*FP) * 8 / FP, 0); // cleaner
+    // Now let's calculate a color to represent the wall X coordinate (not the final Texture X coordinate)
     u16 d = (7 - min(7, sideDistY / FP));
-    u16 wallX = posX + (mulu(sideDistY, rayDirAngleX) >> FS);
-    //wallX = ((wallX * 8) >> FS) & 7; // Faster? But is actually slower given the context
-    wallX = max((wallX - mapX*FP) * 8 / FP, 0); // cleaner
     u16 tileAttrib;
-    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8 + (8*8);
-    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallX)*8;
+    if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8 + (8*8);
+    else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8;
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
     //u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
     u16 tileAttrib = mapX;
-    u16* tab = (u16*)tab_color_d8_1_Y_pals_shft;
+    u16* tab = (u16*) tab_color_d8_1_Y_pals_shft;
     __asm volatile (
         "andi.w  #1,%[tileAttrib]\n\t"
         "add.w   %[sideDist],%[tileAttrib]\n\t"
         "add.w   %[sideDist],%[tileAttrib]\n\t"
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
         "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
-        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistY), [tab] "+a" (tab)
-        :
+        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistY)
+        : [tab] "a" (tab)
         :
     );
     #else
