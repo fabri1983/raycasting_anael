@@ -229,6 +229,8 @@ void clear_buffer_sp ()
 	);
 }
 
+#define H2_FOR_TOP_ENTRY (TILEMAP_COLUMNS/8)*2 // *2 for byte convertion
+
 void write_vline (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
@@ -368,7 +370,6 @@ void write_vline (u16 h2, u16 tileAttrib)
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets top and bottom tilemap entries.
     u16 h2_aux2 = h2;
-    u16 h2_top = (TILEMAP_COLUMNS/8)*2; // *2 for byte convertion
     u16 h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2; // *2 for byte convertion
     __asm volatile (
         // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
@@ -398,16 +399,16 @@ void write_vline (u16 h2, u16 tileAttrib)
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
         // Top tilemap entry
-        #if ((TILEMAP_COLUMNS/8)*2)*2 == 10 // h2_top == 10
-        "    move.w	%[h2],%[h2_top]\n"
+        #if H2_FOR_TOP_ENTRY == 10
+        "    move.w	%[h2],%[h2_aux]\n"
         "    add.w	%[h2],%[h2]\n"
         "    add.w	%[h2],%[h2]\n"
-        "    add.w	%[h2_top],%[h2]\n"
+        "    add.w	%[h2_aux],%[h2]\n"
         "    add.w	%[h2],%[h2]\n"
-        #elif ((TILEMAP_COLUMNS/8)*2)*2 == 8 // h2_top == 8
+        #elif H2_FOR_TOP_ENTRY == 8
         "    lsl.w   #3,%[h2]\n"
         #else
-        "    mulu.w  %[h2_top],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
+        "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
         #endif
         "    move.w  %[tileAttrib],(%[tilemap],%[h2])\n"
 
@@ -416,11 +417,10 @@ void write_vline (u16 h2, u16 tileAttrib)
         "    sub.w   %[h2],%[h2_bottom]\n" // h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
         "    move.w  %[tileAttrib],(%[tilemap],%[h2_bottom])"
 
-        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2),
-          [h2_top] "+d" (h2_top), [h2_bottom] "+d" (h2_bottom)
+        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2), [h2_bottom] "+d" (h2_bottom)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS),
-          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
+          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [H2_TOP] "i" (H2_FOR_TOP_ENTRY)
         :
     );
 }

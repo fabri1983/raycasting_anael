@@ -270,6 +270,8 @@ FORCE_INLINE void fb_increment_entries_column ()
     #endif
 }
 
+#define H2_FOR_TOP_ENTRY_HALVED (TILEMAP_COLUMNS/8)*2 // *2 for byte convertion
+
 void write_vline_halved (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
@@ -301,16 +303,14 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets bottom tilemap entry and save the top value into an array for later use.
     u16 h2_aux2 = h2;
-    u16 h2_top = ((TILEMAP_COLUMNS/8)*2)*2; // *2 due to additional lsr.w #1, *2 for byte convertion
     u16 h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2; // *2 for byte convertion
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     u16* top_entries_ptr = top_entries + top_entries_current_col;
     #endif
     __asm volatile (
         // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
-        // we can use it as a multiple of the block size (4 bytes) we'll jump into
+        // we can use it as a multiple of the block size (8 bytes) we'll jump into
         "    andi.w  %[CLEAR_BITS_OFFSET],%[h2]\n" // (h2 & ~(8-1))
-        "    lsr.w   #1,%[h2]\n" // /2 to make it multiple of 4
         // Jump into table using h2
         "    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
         // Assignment ranges:
@@ -323,6 +323,8 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         ".set offdown, (%c[_VERTICAL_ROWS] - 2) * %c[_TILEMAP_COLUMNS] * 2\n" // *2 for byte convertion
         ".rept (%c[_VERTICAL_ROWS] - 2) / 2\n"
         "    move.w  %[tileAttrib],offdown(%[tilemap])\n"
+        "    nop\n"
+        "    nop\n" // harmless instruciton to pad into 8 bytes block size
         "    .set offdown, offdown - (%c[_TILEMAP_COLUMNS] * 2)\n" // *2 for byte convertion
         ".endr\n"
 
@@ -331,17 +333,16 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
         // Top tilemap entry
-        #if ((TILEMAP_COLUMNS/8)*2)*2 == 20 // h2_top == 20
-        "    move.w  %[h2],%[h2_top]\n"
+        #if H2_FOR_TOP_ENTRY_HALVED == 10
+        "    move.w  %[h2],%[h2_aux]\n"
         "    add.w   %[h2],%[h2]\n"
         "    add.w   %[h2],%[h2]\n"
-        "    add.w   %[h2_top],%[h2]\n"
+        "    add.w   %[h2_aux],%[h2]\n"
         "    add.w   %[h2],%[h2]\n"
-        "    add.w   %[h2],%[h2]\n"
-        #elif ((TILEMAP_COLUMNS/8)*2)*2 == 16 // h2_top = 16
-        "    lsl.w   #4,%[h2]\n"
+        #elif H2_FOR_TOP_ENTRY_HALVED == 8
+        "    lsl.w   #3,%[h2]\n"
         #else
-        "    mulu.w  %[h2_top],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
+        "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
         #endif
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         //"    move.w  %[tileAttrib],(%[tilemap],%[h2])\n" // WE DON'T NEED THIS ANYMORE NOW THAT WE STORE IT IN top_entries[]
@@ -354,14 +355,13 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         "    sub.w   %[h2],%[h2_bottom]\n" // h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
         "    move.w  %[tileAttrib],(%[tilemap],%[h2_bottom])"
 
-        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2),
-          [h2_top] "+d" (h2_top), [h2_bottom] "+d" (h2_bottom)
+        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2), [h2_bottom] "+d" (h2_bottom)
           #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
           , [top_entries_ptr] "+a" (top_entries_ptr)
           #endif
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
-          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
+          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [H2_TOP] "i" (H2_FOR_TOP_ENTRY_HALVED)
         :
     );
 }
