@@ -370,7 +370,6 @@ void write_vline (u16 h2, u16 tileAttrib)
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets top and bottom tilemap entries.
     u16 h2_aux2 = h2;
-    u16 h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2; // *2 for byte convertion
     __asm volatile (
         // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
         // we can use it as a multiple of the block size (8 bytes) we'll jump into
@@ -399,28 +398,30 @@ void write_vline (u16 h2, u16 tileAttrib)
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
         // Top tilemap entry
-        #if H2_FOR_TOP_ENTRY == 10
-        "    move.w	%[h2],%[h2_aux]\n"
-        "    add.w	%[h2],%[h2]\n"
-        "    add.w	%[h2],%[h2]\n"
-        "    add.w	%[h2_aux],%[h2]\n"
-        "    add.w	%[h2],%[h2]\n"
-        #elif H2_FOR_TOP_ENTRY == 8
-        "    lsl.w   #3,%[h2]\n"
-        #else
+        // #if H2_FOR_TOP_ENTRY == 10
+        // "    move.w	%[h2],%[h2_aux]\n"
+        // "    add.w	%[h2],%[h2]\n"
+        // "    add.w	%[h2],%[h2]\n"
+        // "    add.w	%[h2_aux],%[h2]\n"
+        // "    add.w	%[h2],%[h2]\n"
+        // #elif H2_FOR_TOP_ENTRY == 8
+        // "    lsl.w   #3,%[h2]\n"
+        // #else
         "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
-        #endif
-        "    move.w  %[tileAttrib],(%[tilemap],%[h2])\n"
+        // #endif
+        "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)\n"
 
         // Bottom tilemap entry
         "    or.w    %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
-        "    sub.w   %[h2],%[h2_bottom]\n" // h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
-        "    move.w  %[tileAttrib],(%[tilemap],%[h2_bottom])"
+        "    neg.w   %[h2]\n"
+        "    addi.w  %[H2_BOTTOM],%[h2]\n" // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
+        "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)"
 
-        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2), [h2_bottom] "+d" (h2_bottom)
+        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
-          [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS),
-          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), [H2_TOP] "i" (H2_FOR_TOP_ENTRY)
+          [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
+          [H2_TOP] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" ((VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2), // *2 for byte convertion
+          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
         :
     );
 }
