@@ -4,9 +4,8 @@
 #include <types.h>
 
 // 224 px display height, but only VERTICAL_ROWS height for the frame buffer (tilemap).
-// PLANE_COLUMNS is the width of the tilemap on screen.
+// TILEMAP_COLUMNS is the width of the tilemap on screen.
 // Multiplied by 2 because is shared between the 2 planes BG_A and BG_B.
-// Removed last (PLANE_COLUMNS-TILEMAP_COLUMNS) non displayed columns (if case applies).
 extern u16* frame_buffer;
 
 void fb_allocate_frame_buffer ();

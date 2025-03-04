@@ -186,48 +186,11 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 
 FORCE_INLINE void render_DMA_enqueue_framebuffer ()
 {
-    // ------------------------
-    // DMA frame_buffer Plane A
-    // ------------------------
-
-    #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Send first 1/8 of frame_buffer Plane A
-    DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*1 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-    // The other 1/8 is sent in HInt
-    // Remaining 6/8 of the frame_buffer Plane A
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*2, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET_BYTES*2, 
-        ((VERTICAL_ROWS*PLANE_COLUMNS)/8)*6 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Remaining 3/4 of the frame_buffer Plane A if first 1/4 was sent in hint_load_hud_pals_callback()
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/4, PA_ADDR + QUARTER_PLANE_ADDR_OFFSET_BYTES, 
-        ((VERTICAL_ROWS*PLANE_COLUMNS)/4)*3 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Remaining 1/2 of the frame_buffer Plane A if first 1/2 was sent in hint_load_hud_pals_callback()
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES, 
-        (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #else
-    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Half bottom frame_buffer Plane A
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES, 
-        (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #elif DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
     // All the frame_buffer Plane A
     DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #endif
-    #endif
-
-    // ------------------------
-    // DMA frame_buffer Plane B
-    // ------------------------
-
-    #if RENDER_MIRROR_PLANES_USING_VDP_VRAM && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Half bottom frame_buffer Plane B
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES, 
-        (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #elif DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
+ 
     // All the frame_buffer Plane B
     DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
-    #endif
 }
 
 void render_DMA_row_by_row_framebuffer ()
@@ -242,19 +205,21 @@ void render_DMA_row_by_row_framebuffer ()
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS/2 + i*PLANE_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS + VERTICAL_ROWS*PLANE_COLUMNS/2 + i*PLANE_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
     #else
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + i*TILEMAP_COLUMNS*2, 
+            VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS + i*PLANE_COLUMNS)*2, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + i*TILEMAP_COLUMNS)*2, 
+            VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
     #endif
 }

@@ -227,12 +227,11 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     if (hud_tilemap) {
         hud_tilemap = 0;
         // PW_ADDR_AT_HUD comes with the correct base position in screen
-        //DMA_doDmaFast(DMA_VRAM, hud_getTilemap(), PW_ADDR_AT_HUD, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
             // it relies on vdpCtrl_ptr_l
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif
@@ -287,19 +286,6 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
 
         weaponPalA_addrForDMA = NULL;
     }*/
-
-    #if DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-    // Send next 1/8 of frame_buffer Plane A
-    DMA_doDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS)/8, PA_ADDR + EIGHTH_PLANE_ADDR_OFFSET_BYTES, 
-        (VERTICAL_ROWS*PLANE_COLUMNS)/8 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-    #elif DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-	// Send first 1/4 of frame_buffer Plane A
-	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/4 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-    #elif DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT && DMA_FRAMEBUFFER_ROW_BY_ROW == FALSE
-	// Send first 1/2 of frame_buffer Plane A
-	DMA_doDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS)/2 - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
-    #else
-    #endif
 
     // USE THIS TO SEE HOW MUCH DEEP IN THE HUD IMAGE ALL THE DMA GOES
     // turnOffVDP_m(vdpCtrl_ptr_l, 0x74);

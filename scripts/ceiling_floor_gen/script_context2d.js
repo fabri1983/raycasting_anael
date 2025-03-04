@@ -241,9 +241,20 @@ function drawTexturedPlane (y, height, texture, isCeiling) {
             const textureIndex = ((textureY + TEXTURE_SIZE) % TEXTURE_SIZE * TEXTURE_SIZE + (textureX + TEXTURE_SIZE) % TEXTURE_SIZE) * 4;
             const imageDataIndex = screenYOffset + screenX * 4;
 
-            data[imageDataIndex] = textureData[textureIndex];
-            data[imageDataIndex + 1] = textureData[textureIndex + 1];
-            data[imageDataIndex + 2] = textureData[textureIndex + 2];
+			// Calculate distance from the center of the screen
+			const centerDistance = Math.abs(screenY - height) / height;
+
+			// Apply shading based on the distance from the center, using a Exponential Falloff
+			let shadingFactor;
+			if (isCeiling)
+				shadingFactor = 1 - Math.pow(centerDistance, 4); // Exponential falloff. Bigger exponent means darker
+			else
+				shadingFactor = 1 - Math.pow(1 - centerDistance, 4); // Exponential falloff. Bigger exponent means darker
+
+            // Apply the shading factor to the texture color
+            data[imageDataIndex + 0] = textureData[textureIndex + 0] * shadingFactor;
+            data[imageDataIndex + 1] = textureData[textureIndex + 1] * shadingFactor;
+            data[imageDataIndex + 2] = textureData[textureIndex + 2] * shadingFactor;
             data[imageDataIndex + 3] = textureData[textureIndex + 3];
         }
     }

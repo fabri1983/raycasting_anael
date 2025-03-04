@@ -132,7 +132,7 @@ void waitVCounterReg (u16 n);
 /// @brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address) and writes the command too.
 /// Assumes the 4 arguments are known values at compile time, and the VDP stepping was already set.
 /// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
-/// @param fromAddr source VRAM address in u32 format.
+/// @param fromAddr source RAM address in u32 format.
 /// @param cmdAddr destinaiton address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
 /// @param len words to move (is words bcause DMA RAM/ROM to VRAM move 2 bytes per cycle op).
 #define doDMAfast_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \

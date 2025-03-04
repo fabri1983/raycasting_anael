@@ -28,12 +28,6 @@
 // Render only half bottom region of both planes to later mirror them using one of the many available strategies.
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
 
-#define DMA_FRAMEBUFFER_ROW_BY_ROW T // TRUE: DMA row by row. FALSE: normal DMA enqueue and DMA flush.
-
-#define DMA_FRAMEBUFFER_A_EIGHT_CHUNKS_ON_DISPLAY_PERIOD_AND_HINT F
-#define DMA_FRAMEBUFFER_A_FIRST_QUARTER_ON_HINT F
-#define DMA_FRAMEBUFFER_A_FIRST_HALF_ON_HINT F
-
 // Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
 #define RENDER_CLEAR_FRAMEBUFFER F
 // Slightly faster with the use of SP as pointer. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites usp temporarily so be sure no interrupt triggers.
@@ -52,7 +46,6 @@
 
 #define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT F
 #define DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT T
-#define DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE F
 #define DMA_HUD_TILEMAP_IMMEDIATELY F
 
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT F

@@ -30,7 +30,7 @@ static void decompressTilemap ()
 static u16* hud_tilemap_src;
 #endif
 
-/// @brief Destination buffer where all the hud tilemap entries are correctly placed. Size is PLANE_COLUMNS*HUD_BG_H.
+/// @brief Destination buffer where all the hud tilemap entries are correctly placed. Size is TILEMAP_COLUMNS*HUD_BG_H.
 static u16* hud_tilemap_dst;
 
 static u8 weaponInventoryBits;
@@ -243,23 +243,23 @@ FORCE_INLINE bool hud_isDead ()
     __asm volatile ( \
         ".rept (%c[HEIGHT] - 1)\n" \
         "  .rept (%c[WIDTH]/2)\n" /* divided by 2 because we move long words */ \
-        "    move.l   (%0)+,(%1)+\n" \
+        "    move.l  (%0)+,(%1)+\n" \
         "  .endr\n" \
         "  .if (%c[WIDTH] & 1)\n" /* handle odd WIDTH */ \
-        "    move.w   (%0)+,(%1)+\n" \
+        "    move.w  (%0)+,(%1)+\n" \
         "  .endif\n" \
         "    lea     2*%c[FROM_NEXT_ROW](%0),%0\n" \
         "    lea     2*%c[TO_NEXT_ROW](%1),%1\n" \
         ".endr\n" \
         "  .rept (%c[WIDTH]/2)\n" /* divided by 2 because we move long words */ \
-        "    move.l   (%0)+,(%1)+\n" \
+        "    move.l  (%0)+,(%1)+\n" \
         "  .endr\n" \
         "  .if (%c[WIDTH] & 1)\n" /* handle odd WIDTH */ \
-        "    move.w   (%0)+,(%1)+\n" \
+        "    move.w  (%0)+,(%1)+\n" \
         "  .endif\n" \
         : "+a" (from), "+a" (to) \
         : [HEIGHT] "i" (TARGET_H), [WIDTH] "i" (TARGET_W), \
-          [FROM_NEXT_ROW] "i" (HUD_SOURCE_IMAGE_W - TARGET_W), [TO_NEXT_ROW] "i" (PLANE_COLUMNS - TARGET_W) \
+          [FROM_NEXT_ROW] "i" (HUD_SOURCE_IMAGE_W - TARGET_W), [TO_NEXT_ROW] "i" (TILEMAP_COLUMNS - TARGET_W) \
     )
 
 static void setHUDBg ()
@@ -268,7 +268,7 @@ static void setHUDBg ()
 
     // This sets the entire HUD BG tilemap
     u16* from = hud_tilemap_src + (HUD_BG_Y*HUD_SOURCE_IMAGE_W + HUD_BG_X);
-    u16* to = hud_tilemap_dst + (HUD_BG_YP*PLANE_COLUMNS + HUD_BG_XP);
+    u16* to = hud_tilemap_dst + (HUD_BG_YP*TILEMAP_COLUMNS + HUD_BG_XP);
     COPY_TILEMAP_DATA(from, to, HUD_BG_W, HUD_BG_H);
 }
 
@@ -294,17 +294,17 @@ static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
 
     // Hundreds
     from = hud_tilemap_src + ((HUD_NUMS_Y + 0*HUD_NUMS_H)*HUD_SOURCE_IMAGE_W + (HUD_NUMS_X + hundrs*HUD_NUMS_W));
-    to = hud_tilemap_dst + (target_YP*PLANE_COLUMNS + (target_XP + 0*HUD_NUMS_W));
+    to = hud_tilemap_dst + (target_YP*TILEMAP_COLUMNS + (target_XP + 0*HUD_NUMS_W));
     COPY_TILEMAP_DATA(from, to, HUD_NUMS_W, HUD_NUMS_H);
 
     // Tens
     from = hud_tilemap_src + ((HUD_NUMS_Y + 1*HUD_NUMS_H)*HUD_SOURCE_IMAGE_W + (HUD_NUMS_X + tens*HUD_NUMS_W));
-    to = hud_tilemap_dst + (target_YP*PLANE_COLUMNS + (target_XP + 1*HUD_NUMS_W));
+    to = hud_tilemap_dst + (target_YP*TILEMAP_COLUMNS + (target_XP + 1*HUD_NUMS_W));
     COPY_TILEMAP_DATA(from, to, HUD_NUMS_W, HUD_NUMS_H);
 
     // Ones
     from = hud_tilemap_src + ((HUD_NUMS_Y + 2*HUD_NUMS_H)*HUD_SOURCE_IMAGE_W + (HUD_NUMS_X + ones*HUD_NUMS_W));
-    to = hud_tilemap_dst + (target_YP*PLANE_COLUMNS + (target_XP + 2*HUD_NUMS_W));
+    to = hud_tilemap_dst + (target_YP*TILEMAP_COLUMNS + (target_XP + 2*HUD_NUMS_W));
     COPY_TILEMAP_DATA(from, to, HUD_NUMS_W, HUD_NUMS_H);
 }
 
@@ -330,13 +330,13 @@ static FORCE_INLINE void setHUDWeapons ()
     // has shotgun?
     if (weaponInventoryBits & (1 << WEAPON_SHOTGUN)) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X);
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_HIGH_YP*PLANE_COLUMNS + HUD_WEAPON_HIGH_XP);
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_HIGH_YP*TILEMAP_COLUMNS + HUD_WEAPON_HIGH_XP);
         COPY_TILEMAP_DATA(from, to, 1, 2); // dimensions for weapon 3: 1x2 tiles
     }
     // has machine gun?
     if (weaponInventoryBits & (1 << WEAPON_MACHINE_GUN)) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 1); // jump previous weapons
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_HIGH_YP*PLANE_COLUMNS + HUD_WEAPON_HIGH_XP + 1); // jump previous weapons
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_HIGH_YP*TILEMAP_COLUMNS + HUD_WEAPON_HIGH_XP + 1); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 4: 2x2 tiles
     }
 
@@ -344,31 +344,31 @@ static FORCE_INLINE void setHUDWeapons ()
 
     if (weaponInventoryBits & (1 << WEAPON_ROCKET)) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 3); // jump previous weapons
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*PLANE_COLUMNS + HUD_WEAPON_LOW_XP);
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 5: 2x2 tiles
     }
     // has plasma but not shotgun?
     if ((weaponInventoryBits & ((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) == ((1 << WEAPON_PLASMA) | (0 << WEAPON_SHOTGUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 5); // jump previous weapons
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*PLANE_COLUMNS + HUD_WEAPON_LOW_XP + 2); // jump previous weapons
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 2); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 1, 2); // dimensions for weapon 6: 1x2 tiles
     }
     // has plasma and shotgun?
     else if ((weaponInventoryBits & ((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) == ((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 6); // jump previous weapons
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*PLANE_COLUMNS + HUD_WEAPON_LOW_XP + 2); // jump previous weapons
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 2); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 1, 2); // dimensions for weapon 6: 1x2 tiles
     }
     // has bfg but not machine gun?
     if ((weaponInventoryBits & ((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) == ((1 << WEAPON_BFG) | (0 << WEAPON_MACHINE_GUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 7); // jump previous weapons
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*PLANE_COLUMNS + HUD_WEAPON_LOW_XP + 3); // jump previous weapons
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 3); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 7: 2x2 tiles
     }
     // has bfg and machine gun?
     else if ((weaponInventoryBits & ((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) == ((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 9); // jump previous weapons
-        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*PLANE_COLUMNS + HUD_WEAPON_LOW_XP + 3); // jump previous weapons
+        u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 3); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 7: 2x2 tiles
     }
 }
@@ -380,25 +380,25 @@ static FORCE_INLINE void setHUDKeys ()
     // has blue card?
     if (keyInventoryBits & (1 << KEY_CARD_BLUE)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X);
-        u16* to = hud_tilemap_dst + (HUD_KEY_YP*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + (HUD_KEY_YP*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has blue card and yellow card?
     if ((keyInventoryBits & ((1 << KEY_CARD_BLUE) | (1 << KEY_CARD_YELLOW))) == ((1 << KEY_CARD_BLUE) | (1 << KEY_CARD_YELLOW))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 2);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has yellow card but not blue card?
     else if ((keyInventoryBits & ((1 << KEY_CARD_YELLOW) | (1 << KEY_CARD_BLUE))) == ((1 << KEY_CARD_YELLOW) | (0 << KEY_CARD_BLUE))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 4);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has red card?
     if (keyInventoryBits & (1 << KEY_CARD_RED)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 6);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+3)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+3)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 1);
     }
 
@@ -407,31 +407,31 @@ static FORCE_INLINE void setHUDKeys ()
     // has blue skull?
     if (keyInventoryBits & (1 << KEY_SKULL_BLUE)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 8);
-        u16* to = hud_tilemap_dst + (HUD_KEY_YP*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + (HUD_KEY_YP*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has blue skull and yellow skull?
     if ((keyInventoryBits & ((1 << KEY_SKULL_BLUE) | (1 << KEY_SKULL_YELLOW))) == ((1 << KEY_SKULL_BLUE) | (1 << KEY_SKULL_YELLOW))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 10);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has yellow skull but not blue skull?
     else if ((keyInventoryBits & ((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_BLUE))) == ((1 << KEY_SKULL_YELLOW) | (0 << KEY_SKULL_BLUE))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 12);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has red skull?
     if (keyInventoryBits & (1 << KEY_SKULL_RED)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 14);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+2)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+2)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has yellow skull and red skull?
     if ((keyInventoryBits & ((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_RED))) == ((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_RED))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 16);
-        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+2)*PLANE_COLUMNS + HUD_KEY_XP);
+        u16* to = hud_tilemap_dst + ((HUD_KEY_YP+2)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 1);
     }
 }
@@ -462,7 +462,7 @@ static FORCE_INLINE void setHUDFace ()
     }
 
     u16* from = hud_tilemap_src + (face_Y*HUD_SOURCE_IMAGE_W + face_X);
-    u16* to = hud_tilemap_dst + (HUD_FACE_YP*PLANE_COLUMNS + HUD_FACE_XP);
+    u16* to = hud_tilemap_dst + (HUD_FACE_YP*TILEMAP_COLUMNS + HUD_FACE_XP);
     COPY_TILEMAP_DATA(from, to, HUD_FACE_W, HUD_FACE_H);
 }
 
@@ -494,7 +494,7 @@ u16 hud_loadInitialState (u16 currentTileIndex)
 }
 
 void hud_free_dst_buffer () {
-    memsetU32((u32*)hud_tilemap_dst, 0, (PLANE_COLUMNS*HUD_BG_H)/2);
+    memsetU32((u32*)hud_tilemap_dst, 0, (TILEMAP_COLUMNS*HUD_BG_H)/2);
 }
 
 void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr)
@@ -542,17 +542,13 @@ FORCE_INLINE void hud_update ()
         hint_enqueueHudTilemap();
         #elif DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
         vint_enqueueHudTilemap();
-        #elif DMA_ENQUEUE_HUD_TILEMAP_FOR_SGDK_QUEUE
-        // PW_ADDR_AT_HUD comes with the correct base position in screen
-        DMA_queueDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR_AT_HUD, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
         #elif DMA_HUD_TILEMAP_IMMEDIATELY
         // PW_ADDR_AT_HUD comes with the correct base position in screen
-        //DMA_doDmaFast(DMA_VRAM, hud_tilemap_dst, PW_ADDR_AT_HUD, (PLANE_COLUMNS*HUD_BG_H) - (PLANE_COLUMNS-TILEMAP_COLUMNS), -1);
         vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
         u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*PLANE_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
         #endif
     }

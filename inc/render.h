@@ -30,7 +30,9 @@ void render_DMA_flushQueue ();
 /// Please compare it with original SYS_doVBlankProcessEx() at vdp.c to see what has been removed.
 void render_SYS_doVBlankProcessEx_ON_VBLANK ();
 
+// Not used anymore since we are DMAing row by row which is faster
 void render_DMA_enqueue_framebuffer ();
+
 void render_DMA_row_by_row_framebuffer ();
 
 void render_mirror_planes_in_VRAM ();

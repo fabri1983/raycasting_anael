@@ -59,35 +59,25 @@ void clear_buffer_halved_no_usp ()
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
         // frame_buffer's Plane B region (actually at the end)
-        // Iterate over bottom half rows - 1
+        // Iterate over bottom half rows
         ".set regs, 14\n"
-		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+		".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
             MOVEM_OR_MOVES_HALVED_NO_USP
-		    // Skip the non displayed data
-		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
-		// One more iteration without the last lea instruction
-		    MOVEM_OR_MOVES_HALVED_NO_USP
         // Accomodate to locate at the end of frame_buffer's Plane A region
-        "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
+        "    lea     -%c[TILEMAP_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
         // frame_buffer's Plane A region (actually at the end)
-        // Iterate over bottom half rows - 1
-        ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+        // Iterate over bottom half rows
+        ".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
             MOVEM_OR_MOVES_HALVED_NO_USP
-		    // Skip the non displayed data
-		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
-		// One more iteration without the last lea instruction
-		    MOVEM_OR_MOVES_HALVED_NO_USP
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
-		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
-          [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);
 }
@@ -150,37 +140,27 @@ void clear_buffer_halved ()
 		"    move.l  %%d0,%%a6\n"
         "    move.l  %%d0,%%a7\n"
         // frame_buffer's Plane B region (actually at the end)
-        // Iterate over bottom half rows - 1
+        // Iterate over bottom half rows
         ".set regs, 15\n"
-		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+		".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
             MOVEM_OR_MOVES_HALVED
-		    // Skip the non displayed data
-		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
-		// One more iteration without the last lea instruction
-            MOVEM_OR_MOVES_HALVED
         // Accomodate to locate at the end of frame_buffer's Plane A region
-        "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
+        "    lea     -%c[TILEMAP_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
         // frame_buffer's Plane A region (actually at the end)
-        // Iterate over bottom half rows - 1
-        ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+        // Iterate over bottom half rows
+        ".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
             MOVEM_OR_MOVES_HALVED
-		    // Skip the non displayed data
-		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%a0),%%a0\n"
 		".endr\n"
-		// One more iteration without the last lea instruction
-            MOVEM_OR_MOVES_HALVED
         // Restore SP
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
-		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
-          [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);
 }
@@ -244,36 +224,26 @@ void clear_buffer_halved_sp ()
 		"    move.l  %%d0,%%a5\n"
 		"    move.l  %%d0,%%a6\n"
         // frame_buffer's Plane B region (actually at the end)
-        // Iterate over bottom half rows - 1
+        // Iterate over bottom half rows
         ".set regs, 15\n"
-		".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+		".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
             MOVEM_OR_MOVES_HALVED_SP
-		    // Skip the non displayed data
-		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%sp),%%sp\n"
 		".endr\n"
-		// One more iteration without the last lea instruction
-            MOVEM_OR_MOVES_HALVED_SP
         // Accomodate to locate at the end of frame_buffer's Plane A region
-        "    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW]-%c[PLANE_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%sp),%%sp\n"
+        "    lea     -%c[TILEMAP_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%sp),%%sp\n"
         // frame_buffer's Plane A region (actually at the end)
-        // Iterate over bottom half rows - 1
-        ".rept (%c[_VERTICAL_ROWS]/2 - 1)\n"
+        // Iterate over bottom half rows
+        ".rept %c[_VERTICAL_ROWS]/2\n"
             MOVEM_OR_MOVES_HALVED_SP
-		    // Skip the non displayed data
-		"    lea     -%c[NON_DISPLAYED_BYTES_PER_ROW](%%sp),%%sp\n"
 		".endr\n"
-		// One more iteration without the last lea instruction
-            MOVEM_OR_MOVES_HALVED_SP
 		// Restore SP
 		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		: 
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + VERTICAL_ROWS*PLANE_COLUMNS*2*2 - (PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), 
-		  [NON_DISPLAYED_BYTES_PER_ROW] "i" ((PLANE_COLUMNS-TILEMAP_COLUMNS)*2),
-          [PLANE_COLUMNS_BYTES] "i" (PLANE_COLUMNS*2)
+		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
+		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		:
 	);
 }
@@ -307,20 +277,20 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
 	// Draw HALF a solid vertical line: from BOTTOM to TOP
 	if (h2 == 0) {
 		// C version
-		//for (u16 y = 0; y < VERTICAL_ROWS*PLANE_COLUMNS/2; y+=PLANE_COLUMNS) {
-		// 	column_ptr[y] = tileAttrib;
-		//}
+		/*for (u16 y = 0; y < VERTICAL_ROWS*TILEMAP_COLUMNS/2; y+=TILEMAP_COLUMNS) {
+			column_ptr[y] = tileAttrib;
+		}*/
 
 		// ASM version
 		__asm volatile (
-			".set off,(%c[_VERTICAL_ROWS]/2)*(%c[_PLANE_COLUMNS]*2)\n" // *2 for byte addressing
+			".set off,(%c[_VERTICAL_ROWS]*%c[_TILEMAP_COLUMNS]/2)*2\n" // *2 for byte addressing
 			".rept %c[_VERTICAL_ROWS]/2\n"
 			"    move.w  %[tileAttrib],off(%[tilemap])\n"
-			"    .set off,off+%c[_PLANE_COLUMNS]*2\n" // *2 for byte addressing
+			"    .set off,off+%c[_TILEMAP_COLUMNS]*2\n" // *2 for byte addressing
 			".endr\n"
 			: [tileAttrib] "+d" (tileAttrib)
 			: [tilemap] "a" (column_ptr), 
-              [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS)
+              [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS)
 			:
 		);
 
@@ -331,6 +301,8 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets bottom tilemap entry and save the top value into an array for later use.
     u16 h2_aux2 = h2;
+    u16 h2_top = ((TILEMAP_COLUMNS/8)*2)*2; // *2 due to additional lsr.w #1, *2 for byte convertion
+    u16 h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2; // *2 for byte convertion
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     u16* top_entries_ptr = top_entries + top_entries_current_col;
     #endif
@@ -338,28 +310,39 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
         // we can use it as a multiple of the block size (4 bytes) we'll jump into
         "    andi.w  %[CLEAR_BITS_OFFSET],%[h2]\n" // (h2 & ~(8-1))
-        "    lsr.w   #1,%[h2]\n" // make it multiple of 4
+        "    lsr.w   #1,%[h2]\n" // /2 to make it multiple of 4
         // Jump into table using h2
         "    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
         // Assignment ranges:
-        //  from [(VERTICAL_ROWS-2)*PLANE_COLUMNS] down to [(((VERTICAL_ROWS-2)/2)+1)*PLANE_COLUMNS]
+        //  from [(VERTICAL_ROWS-2)*TILEMAP_COLUMNS] down to [(((VERTICAL_ROWS-2)/2)+1)*TILEMAP_COLUMNS]
         // Eg for VERTICAL_ROWS=28: 
-        //  from [26*PLANE_COLUMNS] down to [14*PLANE_COLUMNS]
+        //  from [26*TILEMAP_COLUMNS] down to [14*TILEMAP_COLUMNS]
         // Eg for VERTICAL_ROWS=24: 
-        //  from [22*PLANE_COLUMNS] down to [12*PLANE_COLUMNS]
+        //  from [22*TILEMAP_COLUMNS] down to [12*TILEMAP_COLUMNS]
         ".wvl_table_%=:\n"
-        ".set offdown, (%c[_VERTICAL_ROWS] - 2) * %c[_PLANE_COLUMNS] * 2\n" // *2 for byte convertion
+        ".set offdown, (%c[_VERTICAL_ROWS] - 2) * %c[_TILEMAP_COLUMNS] * 2\n" // *2 for byte convertion
         ".rept (%c[_VERTICAL_ROWS] - 2) / 2\n"
         "    move.w  %[tileAttrib],offdown(%[tilemap])\n"
-        "    .set offdown, offdown - %c[_PLANE_COLUMNS] * 2\n" // *2 for byte convertion
+        "    .set offdown, offdown - (%c[_TILEMAP_COLUMNS] * 2)\n" // *2 for byte convertion
         ".endr\n"
 
         // Setup for top and bottom tilemap entries
         "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7)
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
-        // Top tilemap entry (here we only care that the TILE_ATTR_VFLIP_MASK is set)
-        "    lsl.w   %[_SHIFT_TOP_COLUMN_BYTES],%[h2]\n" // h2 = (h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8))
+        // Top tilemap entry
+        #if ((TILEMAP_COLUMNS/8)*2)*2 == 20 // h2_top == 20
+        "    move.w  %[h2],%[h2_top]\n"
+        "    add.w   %[h2],%[h2]\n"
+        "    add.w   %[h2],%[h2]\n"
+        "    add.w   %[h2_top],%[h2]\n"
+        "    add.w   %[h2],%[h2]\n"
+        "    add.w   %[h2],%[h2]\n"
+        #elif ((TILEMAP_COLUMNS/8)*2)*2 == 16 // h2_top = 16
+        "    lsl.w   #4,%[h2]\n"
+        #else
+        "    mulu.w  %[h2_top],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
+        #endif
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         //"    move.w  %[tileAttrib],(%[tilemap],%[h2])\n" // WE DON'T NEED THIS ANYMORE NOW THAT WE STORE IT IN top_entries[]
         "    move.w  %[tileAttrib],(%[top_entries_ptr])\n" // Stores the value for top tilemap entry
@@ -368,18 +351,17 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
 
         // Bottom tilemap entry
         "    or.w    %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
-        "    sub.w   %[h2],%[h2_bottom]\n" // h2_bottom = (VERTICAL_ROWS-1)*PLANE_COLUMNS - ((h2 & ~(8-1)) << (LOG2(PLANE_COLUMNS) - LOG2(8)))
-        "    move.w  %[tileAttrib],(%[tilemap],%[h2_bottom])\n"
+        "    sub.w   %[h2],%[h2_bottom]\n" // h2_bottom = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
+        "    move.w  %[tileAttrib],(%[tilemap],%[h2_bottom])"
 
-        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
+        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2),
+          [h2_top] "+d" (h2_top), [h2_bottom] "+d" (h2_bottom)
           #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
           , [top_entries_ptr] "+a" (top_entries_ptr)
           #endif
-        : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS),
-          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK), 
-          [_SHIFT_TOP_COLUMN_BYTES] "i" (LOG2(PLANE_COLUMNS) - LOG2(8) + 1 + 1), // +1 due to division by 2, +1 due to initial lsr.w #1
-          [h2_bottom] "d" ((VERTICAL_ROWS-1)*PLANE_COLUMNS*2),// *2 for byte convertion
-          [_PIXEL_COLUMNS] "i" (PIXEL_COLUMNS)
+        : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
+          [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
+          [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
         :
     );
 }
@@ -393,9 +375,9 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         /* Load source and destiny addresses */ \
         "move.l  %[_srcAddr],%%a0\n\t" \
         "move.l  %[_dstAddr],%%a1\n\t" \
-        /* Iterate VERTICAL_ROWS/2 - 1 so we can ommit last lea instructions */ \
+        /* Iterate VERTICAL_ROWS/2 */ \
         ".set regs, 14\n" \
-        ".rept %c[_VERTICAL_ROWS]/2 - 1\n\t" \
+        ".rept %c[_VERTICAL_ROWS]/2\n\t" \
             /* Copy long words to regs registers, then copy them into target */ \
             ".rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n\t" \
             "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t" \
@@ -403,31 +385,39 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
             "lea     regs*4(%%a1),%%a1\n\t" \
             ".endr\n\t" \
             /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
-            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n\t" \
-            "move.l  (%%a0)+,(%%a1)+\n\t" \
-            ".endr\n\t" \
-            /* Re accommodate for next iteration */ \
-            "lea     2*(%c[_PLANE_COLUMNS]-%c[_TILEMAP_COLUMNS])(%%a0),%%a0\n\t" \
-            "lea     -2*(%c[_PLANE_COLUMNS]+%c[_TILEMAP_COLUMNS])(%%a1),%%a1\n\t" \
+            ".if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) > 0 && ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) < 4\n" \
+                ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n" \
+                "move.l  (%%a0)+,(%%a1)+\n\t" \
+                ".endr\n" \
+            ".endif\n" \
+            ".if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 4\n" \
+                "movem.l (%%a0)+,%%d0-%%d3\n\t" \
+                "movem.l %%d0-%%d3,(%%a1)\n\t" \
+                "lea     4*4(%%a1),%%a1\n\t" \
+            ".endif\n" \
+            ".if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 5\n" \
+                "movem.l (%%a0)+,%%d0-%%d4\n\t" \
+                "movem.l %%d0-%%d4,(%%a1)\n\t" \
+                "lea     5*4(%%a1),%%a1\n\t" \
+            ".endif\n" \
+            ".if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 6\n" \
+                "movem.l (%%a0)+,%%d0-%%d5\n\t" \
+                "movem.l %%d0-%%d5,(%%a1)\n\t" \
+                "lea     6*4(%%a1),%%a1\n\t" \
+            ".endif\n" \
+            ".if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 7\n" \
+                "movem.l (%%a0)+,%%d0-%%d6\n\t" \
+                "movem.l %%d0-%%d6,(%%a1)\n\t" \
+                "lea     7*4(%%a1),%%a1\n\t" \
+            ".endif\n" \
+            /* Remaining conditions (up to regs-1) should be added here and adjusted according the available registers */ \
         ".endr\n\t" \
-        /* One last iteration without the lea instructions */ \
-            /* Copy long words to regs registers, then copy them into target */ \
-            ".rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n\t" \
-            "movem.l (%%a0)+,%%d0-%%d7/%%a2-%%a7\n\t" \
-            "movem.l %%d0-%%d7/%%a2-%%a7,(%%a1)\n\t" \
-            "lea     regs*4(%%a1),%%a1\n\t" \
-            ".endr\n\t" \
-            /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
-            ".rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n\t" \
-            "move.l  (%%a0)+,(%%a1)+\n\t" \
-            ".endr\n\t" \
         /* Restore SP */ \
 		"move.l  %%usp,%%sp\n\t" \
 		/* Restore all saved registers */ \
 		"movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6" \
         : \
         : [_srcAddr] "i" (srcAddr), [_dstAddr] "i" (dstAddr), \
-          [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS), \
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2) \
         : \
     )
@@ -445,7 +435,7 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
         frame_buffer[i + h2] = val; // h2 comes in byte addressing
         val = *entries_ptr++;
         h2 = *entries_ptr++;
-        frame_buffer[VERTICAL_ROWS*PLANE_COLUMNS + i + h2] = val; // h2 comes in byte addressing
+        frame_buffer[VERTICAL_ROWS*TILEMAP_COLUMNS + i + h2] = val; // h2 comes in byte addressing
     }*/
 
     // ASM version: set tilemap top entries (already inverted)
@@ -462,14 +452,14 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
 
             "move.l  (%[entries_ptr])+,%[entry]\n\t" // val in higher word, h2 in lower word
             "move.w  %[entry],%[offset]\n\t" // copy h2 into offset
-            "addi.w  #%c[_VERTICAL_ROWS]*%c[_PLANE_COLUMNS]*2,%[offset]\n\t" // *2 for byte addressing
+            "addi.w  #%c[_VERTICAL_ROWS]*%c[_TILEMAP_COLUMNS]*2,%[offset]\n\t" // *2 for byte addressing
             "swap    %[entry]\n\t"
             "move.w  %[entry],col*2(%[fb],%[offset])\n\t" // *2 for byte addressing
-            ".set col, col + 1\n\t"
+        ".set col, col + 1\n\t"
         ".endr\n\t"
         : [entry] "=d" (entry), [offset] "=d" (offset)
         : [entries_ptr] "a" (entries_ptr), [fb] "a" (frame_buffer),
-          [_PIXEL_COLUMNS] "i" (PIXEL_COLUMNS), [_PLANE_COLUMNS] "i" (PLANE_COLUMNS), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
+          [_PIXEL_COLUMNS] "i" (PIXEL_COLUMNS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
         :
     );
 
@@ -478,12 +468,12 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
 
 void fb_mirror_planes_in_RAM ()
 {
-    u32 pA_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS)/2)*2;
-    u32 pA_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS)/2 - PLANE_COLUMNS)*2;
+    u32 pA_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
+    u32 pA_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
     copy_bottom_half_into_top_half(pA_bottom_half_start, pA_top_half_end);
 
-    u32 pB_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2)*2;
-    u32 pB_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2 - PLANE_COLUMNS)*2;
+    u32 pB_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
+    u32 pB_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
     copy_bottom_half_into_top_half(pB_bottom_half_start, pB_top_half_end);
 
     copy_top_entries_in_RAM();
@@ -543,7 +533,7 @@ void fb_mirror_planes_in_VRAM ()
         DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
         clear_buffer_row(pA_bottom_half_start);
         pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row
-        //while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+        while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
 
         DMA_doVRamCopy(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
         clear_buffer_row(pB_bottom_half_start);
@@ -553,8 +543,8 @@ void fb_mirror_planes_in_VRAM ()
     VDP_setAutoInc(2);*/
 
     // ASM version
-    u32* pA_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS)/2)*2);
-    u32* pB_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*PLANE_COLUMNS) + (VERTICAL_ROWS*PLANE_COLUMNS)/2)*2);
+    u32* pA_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
+    u32* pB_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
 
@@ -563,13 +553,13 @@ void fb_mirror_planes_in_VRAM ()
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pA_bottom_half_start);
-        pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
-        //while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+        pA_bottom_half_start += (TILEMAP_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
+        while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
 
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pB_bottom_half_start);
-        pB_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
+        pB_bottom_half_start += (TILEMAP_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
         while(GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
     }
 

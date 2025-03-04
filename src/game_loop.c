@@ -202,8 +202,6 @@ void game_loop ()
 
 		dda(posX, posY, delta_a_ptr);
 
-        render_DMA_enqueue_framebuffer();
-
         render_SYS_doVBlankProcessEx_ON_VBLANK();
 	}
 }
@@ -282,8 +280,6 @@ void game_loop_auto ()
 
                 dda(posX, posY, delta_a_ptr);
 
-                render_DMA_enqueue_framebuffer();
-
                 render_SYS_doVBlankProcessEx_ON_VBLANK();
 
                 // handle inputs
@@ -338,43 +334,43 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         fb_increment_entries_column();
         map_hit_incrementColumn();
         if ((column & 1) == 0)
-            column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+            column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
         else
-            column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+            column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
 
         #elif RENDER_COLUMNS_UNROLL == 2
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+        column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
 
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+        column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
 
         #elif RENDER_COLUMNS_UNROLL == 4
 
         process_column(delta_a_ptr + 0*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+        column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
 
         process_column(delta_a_ptr + 1*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+        column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
 
         process_column(delta_a_ptr + 2*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        column_ptr += VERTICAL_ROWS*PLANE_COLUMNS; // jumps into Plane B region
+        column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
 
         process_column(delta_a_ptr + 3*DELTA_PTR_OFFSET_AMNT, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        column_ptr += -VERTICAL_ROWS*PLANE_COLUMNS + 1; // go back to Plane A region and advance one tilemap entry
+        column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
 
         #endif
 
