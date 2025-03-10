@@ -2,6 +2,12 @@
 #define _FRAME_BUFFER_H_
 
 #include <types.h>
+#include "consts.h"
+
+// Offset to access top entry. *2 for byte convertion.
+#define H2_FOR_TOP_ENTRY (TILEMAP_COLUMNS/8)*2
+// Offset to access bottom entry. *2 for byte convertion.
+#define H2_FOR_BOTTOM_ENTRY ((VERTICAL_ROWS-1)*TILEMAP_COLUMNS)*2
 
 // 224 px display height, but only VERTICAL_ROWS height for the frame buffer (tilemap).
 // TILEMAP_COLUMNS is the width of the tilemap on screen.

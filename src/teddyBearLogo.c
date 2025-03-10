@@ -15,7 +15,7 @@
 #include "utils.h"
 #include "logos_res.h"
 
-#define STR_VERSION "v2.0 (Feb 2025)"
+#define STR_VERSION "v2.9 (Mar 2025)"
 #define STR_VERSION_LEN 16 // String version length including \0
 
 void displayTeddyBearLogo ()

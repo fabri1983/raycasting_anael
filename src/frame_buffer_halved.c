@@ -270,8 +270,6 @@ FORCE_INLINE void fb_increment_entries_column ()
     #endif
 }
 
-#define H2_FOR_TOP_ENTRY_HALVED (TILEMAP_COLUMNS/8)*2 // *2 for byte convertion
-
 void write_vline_halved (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
@@ -323,22 +321,22 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         ".rept (%c[_VERTICAL_ROWS] - 2) / 2\n"
         "    move.w  %[tileAttrib],offdown(%[tilemap])\n"
         "    nop\n"
-        "    nop\n" // harmless instruciton to pad into 8 bytes block size
+        "    nop\n" // harmless instruction to pad into 8 bytes block size
         "    .set offdown, offdown - (%c[_TILEMAP_COLUMNS] * 2)\n" // *2 for byte convertion
         ".endr\n"
 
         // Setup for top and bottom tilemap entries
-        "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7)
+        "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7); // h2 % 8
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
         // Top tilemap entry
-        #if H2_FOR_TOP_ENTRY_HALVED == 10
+        #if H2_FOR_TOP_ENTRY == 10
         "    move.w  %[h2],%[h2_aux]\n"
         "    add.w   %[h2],%[h2]\n"
         "    add.w   %[h2],%[h2]\n"
         "    add.w   %[h2_aux],%[h2]\n"
         "    add.w   %[h2],%[h2]\n"
-        #elif H2_FOR_TOP_ENTRY_HALVED == 8
+        #elif H2_FOR_TOP_ENTRY == 8
         "    lsl.w   #3,%[h2]\n"
         #else
         "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
@@ -361,7 +359,7 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
           #endif
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
-          [H2_TOP] "i" (H2_FOR_TOP_ENTRY_HALVED), [H2_BOTTOM] "i" ((VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2), // *2 for byte convertion
+          [H2_TOP] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" (H2_FOR_BOTTOM_ENTRY),
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
         :
     );

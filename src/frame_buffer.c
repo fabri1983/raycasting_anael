@@ -229,8 +229,6 @@ void clear_buffer_sp ()
 	);
 }
 
-#define H2_FOR_TOP_ENTRY (TILEMAP_COLUMNS/8)*2 // *2 for byte convertion
-
 void write_vline (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
@@ -420,7 +418,7 @@ void write_vline (u16 h2, u16 tileAttrib)
         : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
-          [H2_TOP] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" ((VERTICAL_ROWS-1)*TILEMAP_COLUMNS*2), // *2 for byte convertion
+          [H2_TOP] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" (H2_FOR_BOTTOM_ENTRY),
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
         :
     );
