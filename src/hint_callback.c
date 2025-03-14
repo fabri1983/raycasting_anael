@@ -38,7 +38,7 @@ static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
-#if DMA_ALLOW_BUFFERED_SPRITE_TILES
+#if DMA_ALLOW_COMPRESSED_SPRITE_TILES
 static u8 tiles_buf_elems;
 static u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
@@ -72,7 +72,7 @@ void hint_reset ()
     memsetU16(tiles_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_elems = 0;
 
-    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+    #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     memsetU16(tiles_buf_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
     memsetU16(tiles_buf_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_buf_elems = 0;
@@ -84,12 +84,12 @@ void hint_reset ()
     #endif
 }
 
-FORCE_INLINE bool canDMAinHint (u16 lenInWord)
+bool canDMAinHint (u16 lenInWord)
 {
     return (tilesLenInWordTotalToDMA + lenInWord) <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
 }
 
-FORCE_INLINE void hint_enqueueWeaponPal (u16* pal)
+void hint_enqueueWeaponPal (u16* pal)
 {
     // This was the old way
     // PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal + 1, 16, DMA_QUEUE);
@@ -99,7 +99,7 @@ FORCE_INLINE void hint_enqueueWeaponPal (u16* pal)
     //weaponPalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
 }
 
-FORCE_INLINE void hint_setPalToRestore (u16* pal)
+void hint_setPalToRestore (u16* pal)
 {
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
     restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
@@ -107,7 +107,7 @@ FORCE_INLINE void hint_setPalToRestore (u16* pal)
     #endif
 }
 
-FORCE_INLINE void hint_enqueueHudTilemap ()
+void hint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
     hud_tilemap = 1;
@@ -125,7 +125,7 @@ void hint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 
 void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
-    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+    #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
     tiles_buf_lenInWord[tiles_buf_elems] = lenInWord;
     ++tiles_buf_elems;
@@ -153,7 +153,7 @@ typedef union
 
 extern InterruptCaller hintCaller; // Declared in sys.c
 
-FORCE_INLINE void hint_reset_change_bg_state ()
+void hint_reset_change_bg_state ()
 {
     // C version
     // Change the hint callback to the one that changes the BG color. This takes effect immediatelly.
@@ -252,7 +252,7 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     }
     #endif
 
-    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+    #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     // Have any buffered tiles to DMA?
     while (tiles_buf_elems) {
         --tiles_buf_elems;
@@ -309,7 +309,7 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
 static u16 vCounterManual;
 static u32 mirror_offset_rows; // positive numbers move planes upward
 
-FORCE_INLINE void hint_reset_mirror_planes_state ()
+void hint_reset_mirror_planes_state ()
 {
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.

@@ -7,6 +7,9 @@
 #define _VSRAM_CMD VDP_WRITE_VSRAM_ADDR(0)
 #define _HINT_COUNTER 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN - 1)
 
+;// If a5 register could be somehow reserved along all the callbacks execution then we can speed it up
+#define IS_A5_RESERVED_FOR_CALLBACKS 0
+
 .extern hintCaller
 .extern hint_mirror_planes_last_scanline_callback
 
@@ -16,12 +19,15 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     move.l  #_VSRAM_CMD,(0xC00004)    ;// VDP_CTRL_PORT: 0: Plane A, 2: Plane B
     .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - (HMC_START_OFFSET_FACTOR + \n)*((2 << 16) | 2)
     move.l  #_ROW_OFFSET,(0xC00000)   ;// VDP_DATA_PORT: writes on both planes
+#if IS_A5_RESERVED_FOR_CALLBACKS == 0
     move.w  #hint_mirror_planes_callback_asm_LABEL_\m,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_callback_asm_M);
-    *.if \n == 0
-    *move.w  #0x4ED5,hintCaller ;// jmp (a5)
-    *suba    a5,a5 ;// clean higher and lower bytes
-    *.endif
-    *move.w  #hint_mirror_planes_callback_asm_LABEL_\m,a5
+#else
+    .if \n == 0
+    move.w  #0x4ED5,hintCaller ;// jmp (a5)
+    suba    a5,a5 ;// clean higher and lower bytes
+    .endif
+    move.w  #hint_mirror_planes_callback_asm_LABEL_\m,a5
+#endif
     rte
 .endm
 
@@ -135,6 +141,9 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     ;// Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next callback, not immediatelly.
     move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-2);
     move.w  #hint_mirror_planes_last_scanline_callback,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
-    *move.w  #0x4EF9,hintCaller ;// jmp (xxx).l
+#if IS_A5_RESERVED_FOR_CALLBACKS == 1
+    ;// Restore first 2 bytes that were overwritten in first callback
+    move.w  #0x4EF9,hintCaller ;// jmp (xxx).l
+#endif
     rte
 .endr

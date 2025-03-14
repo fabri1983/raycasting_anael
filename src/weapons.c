@@ -69,7 +69,7 @@ void weapon_resetState ()
     changeWeaponEffect_timer = 0;
 }
 
-static FORCE_INLINE void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
+static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
 {
     resetToIdle_timer = 0;
     fire_coolDown_timer = 0;
@@ -132,7 +132,7 @@ void weapon_select (u8 weaponId)
     }
 }
 
-static FORCE_INLINE void stopFireAnimation ()
+static void stopFireAnimation ()
 {
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
     // reset the animation to the frame that stays ready to hit the hit animation (no idle frame)
@@ -196,7 +196,7 @@ void weapon_addAmmo (u8 weaponId, u16 amnt)
     hud_addAmmoUnits(currAmmo + amnt);
 }
 
-static FORCE_INLINE bool useAmmo ()
+static bool useAmmo ()
 {
     switch (currWeaponId) {
         case WEAPON_FIST: return TRUE;
@@ -259,7 +259,7 @@ void weapon_fire ()
     SPR_setAutoAnimation(spr_currWeapon, TRUE);
 }
 
-FORCE_INLINE void weapon_updateSway (bool _isMoving)
+void weapon_updateSway (bool _isMoving)
 {
     isMoving = _isMoving;
     if (isMoving == FALSE) {
@@ -298,7 +298,7 @@ FORCE_INLINE void weapon_updateSway (bool _isMoving)
     }
 }
 
-FORCE_INLINE void weapon_update ()
+void weapon_update ()
 {
     if (SPR_getAutoAnimation(spr_currWeapon) && SPR_isAnimationDone(spr_currWeapon)) {
         stopFireAnimation();

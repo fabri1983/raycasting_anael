@@ -15,6 +15,7 @@
 #include "vint_callback.h"
 
 extern VoidCallback *vblankCB;
+
 #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
 extern bool addFrameLoad(u16 frameLoad, u32 vtime);
 extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
@@ -22,11 +23,11 @@ extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
 
 u16 render_loadTiles ()
 {
-	// Create a buffer tile
+	// Create a buffer of the size of a tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4*8]
 	memset(tile, 0, 32); // clear the tile with color index 0 (which is the BG color index)
 
-	// 9 possible tile heights
+	// 9 possible tile heights (0 pixels to 8 pixels)
 
 	// Tile with only color 0 (height 0) goes at index 0
 	VDP_loadTileData((u32*)tile, 0, 1, CPU);
@@ -34,31 +35,35 @@ u16 render_loadTiles ()
 	// Remaining 8 possible tile heights, distributed in 8 sets
 
     // fabri1983: we'll add 8 more tiles so we can use the other half of the palette.
-    // First pass loads 8 tiles with colors 0..7.
-    // Second pass loads 8 tiles with colors 0 and 8..14
+    // First pass create and load 8 tiles with colors 0..7.
+    // Second pass create and load 8 tiles with colors 0 and 8..14
     for (u8 pass=0; pass < 2; ++pass) {
 
         // 8 tiles per set
         for (u16 t = 1; t <= 8; t++) {
             memset(tile, 0, 32); // clear the tile with color index 0
-            // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors
+            // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors going from darker to lighter
             for (u16 c = 0; c < 8; c++) {
-                // Visit the heigh of each tile in current set
+                // Visit the height of each tile in current set. Height here is 0 based.
                 for (u16 h = t-1; h < 8; h++) {
                     // Visit the columns of current row. 1 byte holds 2 colors as per Tile definition (4 bits per color),
                     // so lower byte is color c and higher byte is color c+1, letting the RCA video signal do the blending.
-                    // We only fill most left 4 pixels of the tile, leaving the other 4 pixels with color 0. 
+                    // We only fill most left 4 columns of pixels of the tile, leaving the other 4 columns with color 0. 
                     for (u16 b = 0; b < 2; b++) {
+                        // lower 4 bits
                         u8 colorLow = c;
                         if (pass == 1)
                             colorLow = c == 0 ? 0 : c+7;
 
+                        // higher 4 bits
                         u8 colorHigh = (c+1) == 8 ? c : c+1;
                         // We clamp to color 7 since starting at SGDK's palette 8th color they repeat
                         if (pass == 1)
                             colorHigh += 7;
 
+                        // combine lower and higher bits (low and high colors)
                         u8 color = colorLow | (colorHigh << 4);
+
                         // This sets 2 pixels (remember color holds 2 color pixels) at [4*h] and [4*h + 1] 
                         // meaning we are leaving next 4 pixels at [4*h + 2] and [4*h + 2] as it is (currently 0)
                         tile[4*h + b] = color;
@@ -85,7 +90,7 @@ void render_loadWallPalettes ()
     PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, DMA);
 }
 
-FORCE_INLINE void render_Z80_setBusProtection (bool value)
+void render_Z80_setBusProtection (bool value)
 {
     Z80_requestBus(FALSE);
 	u16 busProtectSignalAddress = (Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
@@ -96,7 +101,7 @@ FORCE_INLINE void render_Z80_setBusProtection (bool value)
 
 extern DMAOpInfo *dmaQueues;
 
-FORCE_INLINE void render_DMA_flushQueue ()
+void render_DMA_flushQueue ()
 {
     u16 queueIndex = DMA_getQueueSize();
     if (queueIndex == 0)
@@ -164,7 +169,7 @@ static void render_calculateFrameLoad ()
 }
 #endif
 
-FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
+void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 {
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     render_setupFrameLoadCalculation();
@@ -184,7 +189,7 @@ FORCE_INLINE void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     #endif
 }
 
-FORCE_INLINE void render_DMA_enqueue_framebuffer ()
+void render_DMA_enqueue_framebuffer ()
 {
     // All the frame_buffer Plane A
     DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
@@ -224,12 +229,12 @@ void render_DMA_row_by_row_framebuffer ()
     #endif
 }
 
-FORCE_INLINE void render_mirror_planes_in_VRAM ()
+void render_mirror_planes_in_VRAM ()
 {
     fb_mirror_planes_in_VRAM();
 }
 
-FORCE_INLINE void render_copy_top_entries_in_VRAM ()
+void render_copy_top_entries_in_VRAM ()
 {
     fb_copy_top_entries_in_VRAM();
 }

@@ -32,7 +32,7 @@ static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
-#if DMA_ALLOW_BUFFERED_SPRITE_TILES
+#if DMA_ALLOW_COMPRESSED_SPRITE_TILES
 static u8 tiles_buf_elems;
 static u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
@@ -59,7 +59,7 @@ void vint_reset ()
     memsetU16(tiles_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_elems = 0;
 
-    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+    #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     memsetU16(tiles_buf_toIndex, 0, DMA_MAX_QUEUE_CAPACITY);
     memsetU16(tiles_buf_lenInWord, 0, DMA_MAX_QUEUE_CAPACITY);
     tiles_buf_elems = 0;
@@ -71,14 +71,14 @@ void vint_reset ()
     #endif
 }
 
-FORCE_INLINE void vint_enqueueHudTilemap ()
+void vint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     hud_tilemap = 1;
     #endif
 }
 
-FORCE_INLINE void vint_setPalToRestore (u16* pal)
+void vint_setPalToRestore (u16* pal)
 {
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
     restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
@@ -96,7 +96,7 @@ void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 
 void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
-    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+    #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
     tiles_buf_lenInWord[tiles_buf_elems] = lenInWord;
     ++tiles_buf_elems;
@@ -169,7 +169,7 @@ void vint_callback ()
     }
     #endif
 
-    #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+    #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     // Have any buffered tiles to DMA?
     while (tiles_buf_elems) {
         --tiles_buf_elems;

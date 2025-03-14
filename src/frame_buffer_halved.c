@@ -478,25 +478,6 @@ void fb_mirror_planes_in_RAM ()
     copy_top_entries_in_RAM();
 }
 
-#define doDMA_VRAM_COPY_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
-    __asm volatile ( \
-        /* Setup DMA length (in long word here) */ \
-        "move.l  %[_len_low_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
-        /* Setup DMA address low and mid */ \
-        "move.l  %[_addr_low_mid],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
-        /* Setup DMA address high */ \
-        "move.w  %[_addr_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
-        /* Trigger DMA */ \
-        "move.l  %[_cmdAddr],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
-        : [_ctrl_port] "+a" (ctrl_port) \
-        : [_len_low_high] "i" (((0x9300 | ( (len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
-          [_addr_low_mid] "i" (((0x9500 | ( (fromAddr) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 8) & 0xff)) ), \
-          [_addr_high] "i" (0x97C0), /* VRAM COPY operation */ \
-          /* If you want to add VDP stepping then use: addr_high_step = (0x97C0 << 16) | (0x8F00 | ((step) & 0xff)); \ */ \
-          [_cmdAddr] "i" ((cmdAddr)) \
-        : \
-    )
-
 static void clear_buffer_row (u32* ptr)
 {
     // C version

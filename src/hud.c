@@ -44,7 +44,7 @@ static Digits armor_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 
 static u16 updateFlags;
 
-static FORCE_INLINE void addHUDDigits (Digits* digits, u16 amnt)
+static void addHUDDigits (Digits* digits, u16 amnt)
 {
     digits->ones += amnt;
 
@@ -68,7 +68,7 @@ static FORCE_INLINE void addHUDDigits (Digits* digits, u16 amnt)
     }
 }
 
-static FORCE_INLINE void subHUDDigits (Digits* digits, u16 amnt)
+static void subHUDDigits (Digits* digits, u16 amnt)
 {
     if (digits->ones >= amnt) {
         digits->ones -= amnt;
@@ -93,7 +93,7 @@ static FORCE_INLINE void subHUDDigits (Digits* digits, u16 amnt)
     }
 }
 
-FORCE_INLINE void hud_resetAmmo ()
+void hud_resetAmmo ()
 {
     updateFlags |= 1 << UPDATE_FLAG_AMMO;
     hud_setAmmo(0, 0, 0); // no ammo
@@ -119,7 +119,7 @@ void hud_subAmmoUnits (u16 amnt)
     subHUDDigits(&ammo_digits, amnt);
 }
 
-FORCE_INLINE void hud_resetHealth ()
+void hud_resetHealth ()
 {
     updateFlags |= 1 << UPDATE_FLAG_HEALTH;
     hud_setHealth(0, 0, 0); // no health
@@ -145,7 +145,7 @@ void hud_subHealthUnits (u16 amnt)
     subHUDDigits(&health_digits, amnt);
 }
 
-FORCE_INLINE void hud_resetArmor ()
+void hud_resetArmor ()
 {
     updateFlags |= 1 << UPDATE_FLAG_ARMOR;
     hud_setArmor(0, 0, 0); // no armor
@@ -171,25 +171,25 @@ void hud_subArmorUnits (u16 amnt)
     subHUDDigits(&armor_digits, amnt);
 }
 
-FORCE_INLINE void hud_resetWeapons ()
+void hud_resetWeapons ()
 {
     updateFlags |= 1 << UPDATE_FLAG_WEAPON;
     weaponInventoryBits = 0; // no weapons
 }
 
-FORCE_INLINE void hud_addWeapon (u8 weapon)
+void hud_addWeapon (u8 weapon)
 {
     updateFlags |= 1 << UPDATE_FLAG_WEAPON;
     weaponInventoryBits |= 1 << weapon;
 }
 
-FORCE_INLINE void hud_resetKeys ()
+void hud_resetKeys ()
 {
     updateFlags |= 1 << UPDATE_FLAG_KEY;
     keyInventoryBits = KEY_NONE; // no keys
 }
 
-FORCE_INLINE void hud_addKey (u8 key)
+void hud_addKey (u8 key)
 {
     updateFlags |= 1 << UPDATE_FLAG_KEY;
     keyInventoryBits |= 1 << key;
@@ -200,31 +200,31 @@ static void resetFaceExpressionTimer ()
     faceExpressionTimer = 0;
 }
 
-FORCE_INLINE void hud_resetFaceExpression ()
+void hud_resetFaceExpression ()
 {
     resetFaceExpressionTimer();
     updateFlags |= 1 << UPDATE_FLAG_FACE;
     faceExpressionCol = FACE_EXPRESSION_CENTERED; // default
 }
 
-FORCE_INLINE void hud_setFaceExpression (u8 expr, u8 timer)
+void hud_setFaceExpression (u8 expr, u8 timer)
 {
     updateFlags |= 1 << UPDATE_FLAG_FACE;
     faceExpressionCol = expr;
     faceExpressionTimer = timer;
 }
 
-FORCE_INLINE bool hud_hasWeaponInInventory (u8 weapon)
+bool hud_hasWeaponInInventory (u8 weapon)
 {
     return weaponInventoryBits & (1 << weapon);
 }
 
-FORCE_INLINE bool hud_hasKeyInInventory (u8 key)
+bool hud_hasKeyInInventory (u8 key)
 {
     return keyInventoryBits & (1 << key);
 }
 
-FORCE_INLINE bool hud_isDead ()
+bool hud_isDead ()
 {
     // This is indeed faster
     return (health_digits.hundrs | health_digits.tens | health_digits.ones) == 0;
@@ -308,22 +308,22 @@ static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
     COPY_TILEMAP_DATA(from, to, HUD_NUMS_W, HUD_NUMS_H);
 }
 
-static FORCE_INLINE void setHUDAmmo ()
+static void setHUDAmmo ()
 {
     setHUDDigitsCommon(HUD_AMMO_XP, HUD_AMMO_YP, &ammo_digits);
 }
 
-static FORCE_INLINE void setHUDHealth ()
+static void setHUDHealth ()
 {
     setHUDDigitsCommon(HUD_HEALTH_XP, HUD_HEALTH_YP, &health_digits);
 }
 
-static FORCE_INLINE void setHUDArmor ()
+static void setHUDArmor ()
 {
     setHUDDigitsCommon(HUD_ARMOR_XP, HUD_ARMOR_YP, &armor_digits);
 }
 
-static FORCE_INLINE void setHUDWeapons ()
+static void setHUDWeapons ()
 {
     // UPPER WEAPONS
 
@@ -373,7 +373,7 @@ static FORCE_INLINE void setHUDWeapons ()
     }
 }
 
-static FORCE_INLINE void setHUDKeys ()
+static void setHUDKeys ()
 {
     // CARDS
 
@@ -436,7 +436,7 @@ static FORCE_INLINE void setHUDKeys ()
     }
 }
 
-static FORCE_INLINE void setHUDFace ()
+static void setHUDFace ()
 {
     u16 face_Y;
     u16 face_X;
@@ -504,12 +504,12 @@ void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr)
     *palB_addr = (u32) (img_hud_spritesheet.palette->data + (1*16) + 1) >> 1;
 }
 
-FORCE_INLINE u16* hud_getTilemap ()
+u16* hud_getTilemap ()
 {
     return hud_tilemap_dst;
 }
 
-static FORCE_INLINE void updateFaceExpressionTimer ()
+static void updateFaceExpressionTimer ()
 {
     if (faceExpressionTimer > 0) {
         --faceExpressionTimer;
@@ -519,7 +519,7 @@ static FORCE_INLINE void updateFaceExpressionTimer ()
     }
 }
 
-FORCE_INLINE void hud_update ()
+void hud_update ()
 {
     updateFaceExpressionTimer();
 

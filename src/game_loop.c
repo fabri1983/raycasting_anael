@@ -47,22 +47,28 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
-static FORCE_INLINE void clearBuffer ()
+static void clearBuffer ()
 {
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
         // ramebuffer is cleared while VRAM to VRAM copy async ops are running. See fb_mirror_planes_in_VRAM().
     #else
-        #if RENDER_CLEAR_FRAMEBUFFER_WITH_SP
+        #if RENDER_CLEAR_FRAMEBUFFER_NO_USP
             #if RENDER_HALVED_PLANES
-            clear_buffer_halved_sp();
+            clear_buffer_halved_no_usp();
             #else
-            clear_buffer_sp();
+            clear_buffer_no_usp();
             #endif
         #elif RENDER_CLEAR_FRAMEBUFFER
             #if RENDER_HALVED_PLANES
             clear_buffer_halved();
             #else
             clear_buffer();
+            #endif
+        #elif RENDER_CLEAR_FRAMEBUFFER_WITH_SP
+            #if RENDER_HALVED_PLANES
+            clear_buffer_halved_sp();
+            #else
+            clear_buffer_sp();
             #endif
         #endif
     #endif
@@ -447,7 +453,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
     #endif
 }
 
-static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
+static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     // Which box of the map we're in
     u16 mapX = posX / FP;
@@ -484,7 +490,7 @@ static FORCE_INLINE void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 de
 }
 
 #if USE_MAP_HIT_COMPRESSED
-static FORCE_INLINE void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
+static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     u16 hit_value = map_hit_decompressAt();
     // if (hit_value == 0)

@@ -10,7 +10,8 @@
 #define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT F
 #define HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT T
 
-#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT T // If TRUE then it will change from floor to roof bg color at HInt. If FALSE then we use single bg color.
+// If TRUE then it will change from floor to roof bg color at HInt. If FALSE then we use single bg color.
+#define HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT T
 
 // ((224-32)-2)/2 = 95. And additional -1 because hintCounter is 0 based
 #define HUD_HINT_SCANLINE_MID_SCREEN (HUD_HINT_SCANLINE_START_PAL_SWAP/2 - 1)

@@ -56,7 +56,7 @@
 // #endif
 
 
-/// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
+/// @brief Set bit 6 (64 decimal, 0x40 hexa) of VDP's reg 1.
 /// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 #define turnOffVDP_m(ctrl_port,reg01) \
@@ -67,8 +67,8 @@
         : \
     )
 
-/// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
-/// @param ctrl_port a variable defines as (vu32*)VDP_CTRL_PORT.
+/// @brief Set bit 6 (64 decimal, 0x40 hexa) of VDP's reg 1.
+/// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 #define turnOnVDP_m(ctrl_port,reg01) \
 __asm volatile ( \
@@ -78,11 +78,11 @@ __asm volatile ( \
     : \
 )
 
-/// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
+/// @brief Set bit 6 (64 decimal, 0x40 hexa) of VDP's reg 1.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOffVDP (u8 reg01);
 
-/// @brief Set bit 6 (64 decimal, 0x40 hexa) of reg 1.
+/// @brief Set bit 6 (64 decimal, 0x40 hexa) of VDP's reg 1.
 /// @param reg01 VDP's Reg 1 holds other bits than just VDP ON/OFF status, so we need its current value.
 void turnOnVDP (u8 reg01);
 
@@ -130,11 +130,11 @@ void waitHCounter_opt2 (u8 n);
 void waitVCounterReg (u16 n);
 
 /// @brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address) and writes the command too.
-/// Assumes the 4 arguments are known values at compile time, and the VDP stepping was already set.
+/// Assumes the 4 arguments are known values at compile time, and the VDP auto inc stepping was already set accordingly.
 /// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
 /// @param fromAddr source RAM address in u32 format.
-/// @param cmdAddr destinaiton address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
-/// @param len words to move (is words bcause DMA RAM/ROM to VRAM move 2 bytes per cycle op).
+/// @param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
+/// @param len words to move (is words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op).
 #define doDMAfast_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
@@ -153,6 +153,32 @@ void waitVCounterReg (u16 n);
           [_addr_high] "i" ( (0x9700 | (((fromAddr) >> 17) & 0x7f)) ), /* VRAM COPY operation with high address */ \
           /* If you want to add VDP stepping then use: ((0x9700 | (((fromAddr) >> 17) & 0x7f)) << 16) | (0x8F00 | ((step) & 0xff)) \ */ \
           [_cmdAddr] "i" ((u32)(cmdAddr)) \
+        : \
+    )
+
+/// @brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA VRAM to VRAM copy (length and source address) and writes the command too.
+/// Assumes the 4 arguments are known values at compile time, and the VDP auto inc stepping was already set to 1.
+/// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
+/// @param fromAddr source RAM address in u32 format.
+/// @param cmdAddr destination address as a command. Set with VDP_DMA_VRAMCOPY_ADDR macro.
+/// @param len bytes to move (is byte because DMA VRAM to VRAM copy moves 1 byte per VDP cycle op).
+#define doDMA_VRAM_COPY_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
+    __asm volatile ( \
+        /* Setup DMA length (in long word here) */ \
+        "move.l  %[_len_low_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
+        /* Setup DMA address low and mid */ \
+        "move.l  %[_addr_low_mid],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
+        /* Setup DMA address high */ \
+        "move.w  %[_addr_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
+        /* Trigger DMA */ \
+        "move.l  %[_cmdAddr],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
+        : \
+        : [_ctrl_port] "a" (ctrl_port), \
+          [_len_low_high] "i" (((0x9300 | ( (len) & 0xff)) << 16) | (0x9400 | (((len) >> 8) & 0xff)) ), \
+          [_addr_low_mid] "i" (((0x9500 | ( (fromAddr) & 0xff)) << 16) | (0x9600 | (((fromAddr) >> 8) & 0xff)) ), \
+          [_addr_high] "i" (0x97C0), /* VRAM COPY operation */ \
+          /* If you want to add VDP stepping then use: addr_high_step = (0x97C0 << 16) | (0x8F00 | ((step) & 0xff)); \ */ \
+          [_cmdAddr] "i" ((cmdAddr)) \
         : \
     )
 

@@ -232,11 +232,11 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
         // TODO: separate tileset per VDP sprite and only unpack/upload visible VDP sprite (using visibility) to VRAM
 
         // need unpacking ?
-        #if DMA_ALLOW_BUFFERED_SPRITE_TILES
+        #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
         u16 compression = tileset->compression;
         if (compression != COMPRESSION_NONE)
         {
-            // get buffer
+            // get buffer, it will be released in the appropriate unit
             u8* buf = DMA_allocateTemp(lenInWord);
 
             // unpack in temp buffer obtained from DMA queue
