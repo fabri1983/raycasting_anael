@@ -159,11 +159,7 @@ int main (bool hardReset)
 
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     VDP_setHIntCounter(0); // every scanline
-    #if HMC_USE_ASM_UNIT
     SYS_setHIntCallback(hint_mirror_planes_callback_asm_0);
-    #else
-    SYS_setHIntCallback(hint_mirror_planes_callback_0);
-    #endif
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);

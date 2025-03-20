@@ -14,8 +14,8 @@
 #define T 1
 #endif
 
-#define DISPLAY_LOGOS_AT_START F
-#define DISPLAY_TITLE_SCREEN F
+#define DISPLAY_LOGOS_AT_START T
+#define DISPLAY_TITLE_SCREEN T
 
 #define RENDER_SHOW_TEXCOORD F // Show texture coords? Is not optimized though
 
@@ -23,7 +23,6 @@
 #define RENDER_MIRROR_PLANES_USING_VDP_VRAM F // Mirror bottom half of planes into top hal, by using VRAM to VRAM copy
 #define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT F // Mirror bottom half of planes into top hal, by using VSCROLL table manipulation at HINT
 #define RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS T // Mirror bottom half of planes into top half, by using VSCROLL table manipulation at multiple HINTs (fully optimized)
-#define HMC_USE_ASM_UNIT F // If TRUE then it will use the functions defined in hint_callback_.s file.
 #define HMC_START_OFFSET_FACTOR 1 // Only for hints using VSCroll, this marks the initial offset factor
 // Render only half bottom region of both planes to later mirror them using one of the many available strategies.
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS

@@ -32,8 +32,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ();
 
 HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ();
 
-HINTERRUPT_CALLBACK hint_mirror_planes_callback_0 ();
-
+// Defined in hint_callback_.s
 extern HINTERRUPT_CALLBACK hint_mirror_planes_callback_asm_0 ();
 
 #endif // _HINT_CALLBACK_H_

@@ -1,3 +1,4 @@
+#include <genesis.h>
 #ifndef _RES_HUD_RES_H_
 #define _RES_HUD_RES_H_
 
