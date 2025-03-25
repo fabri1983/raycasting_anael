@@ -11,6 +11,8 @@ const tabDeltasFile = '../inc/tab_deltas.h';
 const mapMatrixFile = '../src/map_matrix.c';
 const outputFile = 'tiles_pair_OUTPUT.txt';
 
+const TILE_INDEX_MASK = 0x7FF;
+
 const MAX_JOBS = 256;
 
 // Progress tracking
@@ -25,16 +27,17 @@ function displayProgress () {
 
 function trackTilePairsBetweenPlanes (framebuffer_planeA, framebuffer_planeB, tilePairMap) {
     for (let i = 0; i < VERTICAL_ROWS*TILEMAP_COLUMNS; i++) {
-        // Construct the key using the bitmask 0x7FF which only keeps the tile index data of the framebuffer plane entry
-        const key = `${framebuffer_planeA[i] & 0x7FF}-${framebuffer_planeB[i] & 0x7FF}`;
+        // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data of the framebuffer plane entry
+        const key = `${framebuffer_planeA[i] & TILE_INDEX_MASK}-${framebuffer_planeB[i] & TILE_INDEX_MASK}`;
         tilePairMap.set(key, 1);
     }
 }
 
 // Processing function to be run inside the worker thread
-function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map) {
-    const framebuffer_planeA = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
-    const framebuffer_planeB = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
+function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map) {
+
+    //const framebuffer_planeA = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
+    //const framebuffer_planeB = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
     const tilePairMap = new Map();
     const posStepping = 1;
 
@@ -108,8 +111,8 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
 
             for (let angle = 0; angle < 1024; angle += (1024/AP)) {
 
-                utils.clean_framebuffer(framebuffer_planeA);
-                utils.clean_framebuffer(framebuffer_planeB);
+                //utils.clean_framebuffer(framebuffer_planeA);
+                //utils.clean_framebuffer(framebuffer_planeB);
 
                 // DDA (Digital Differential Analyzer)
 
@@ -119,6 +122,8 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                 const sideDistY_l1 = (Math.floor(posY / FP) + 1) * FP - posY;
 
                 let a = Math.floor(angle / (1024/AP));
+
+                let columnPlaneA_tileAttrib, columnPlaneB_tileAttrib;
 
                 for (let column = 0; column < PIXEL_COLUMNS; ++column) {
 
@@ -164,13 +169,21 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
 
                                 const d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
                                 let tileAttrib;
-                                if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
-                                else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
+                                if (mapY&1)
+                                    tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | (d8_1 + (8*8)); // use the tiles that point to second half of wall's palette
+                                else
+                                    tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
 
-                                let framebuffer = framebuffer_planeA;
-                                if ((column % 2) == 1)
-                                    framebuffer = framebuffer_planeB;
-                                utils.write_vline(h2, tileAttrib, framebuffer, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                if ((column % 2) == 0) {
+                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    columnPlaneA_tileAttrib = tileAttrib;
+                                } else {
+                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    columnPlaneB_tileAttrib = tileAttrib;
+                                    // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data of the framebuffer plane entry
+                                    const key = `${columnPlaneA_tileAttrib & TILE_INDEX_MASK}-${columnPlaneB_tileAttrib & TILE_INDEX_MASK}`;
+                                    tilePairMap.set(key, 1);
+                                }
 
                                 break;
                             }
@@ -185,13 +198,21 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
 
                                 const d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
                                 let tileAttrib;
-                                if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
-                                else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
+                                if (mapX&1)
+                                    tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
+                                else
+                                    tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
 
-                                let framebuffer = framebuffer_planeA;
-                                if ((column % 2) == 1)
-                                    framebuffer = framebuffer_planeB;
-                                utils.write_vline(h2, tileAttrib, framebuffer, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                if ((column % 2) == 0) {
+                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    columnPlaneA_tileAttrib = tileAttrib;
+                                } else {
+                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    columnPlaneB_tileAttrib = tileAttrib;
+                                    // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data of the framebuffer plane entry
+                                    const key = `${columnPlaneA_tileAttrib & TILE_INDEX_MASK}-${columnPlaneB_tileAttrib & TILE_INDEX_MASK}`;
+                                    tilePairMap.set(key, 1);
+                                }
 
                                 break;
                             }
@@ -201,7 +222,7 @@ function processGameChunk (workerId, startPosX, endPosX, tab_deltas, tab_wall_di
                 }
 
                 // traverse both framebuffers and track the generated pairs between each entry
-                trackTilePairsBetweenPlanes(framebuffer_planeA, framebuffer_planeB, tilePairMap);
+                //trackTilePairsBetweenPlanes(framebuffer_planeA, framebuffer_planeB, tilePairMap);
             }
 
             //global.gc(false); // Not sure if false sets a Minor GC call but it works fine.
@@ -254,7 +275,7 @@ function runWorkers () {
         const results = [];
 
         console.log('(Invoke with: node --max-old-space-size=4092 <script.js> to avoid running out of mem)');
-        console.log(`Utilizing ${numCores} cores for processing multiple jobs.`);
+        console.log(`Utilizing ${numCores} core/s for processing multiple jobs.`);
         let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
         console.log(startTimeStr);
 
@@ -281,8 +302,9 @@ function runWorkers () {
 
         function startWorker() {
             // if no available CPU core to process a new Worker or no job left to process, then return
-            if (activeWorkers.size >= numCores || jobQueue.length === 0)
+            if (activeWorkers.size >= numCores || jobQueue.length === 0) {
                 return;
+            }
 
             const job = jobQueue.shift();
             const jobId = `[${job.startPosX}-${job.endPosX}]`;
@@ -304,8 +326,9 @@ function runWorkers () {
                     completedJobs++;
 
                     results.push(message);
+                    //console.log(`${jobId}` + [...message.keys()]);
 
-                    // Were all jobs completed? then resolve with results
+                    // All jobs completed? then resolve with results
                     if (completedJobs === totalJobs)
                         finishProcessing();
                     // Otherwise keep processing jobs

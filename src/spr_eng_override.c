@@ -52,7 +52,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
     /*if (status & SPR_FLAG_FAST_AUTO_VISIBILITY)
     {
         // compute global visibility for sprite ('unsigned' allow merged <0 test)
-        if (((x + w) < (sw + w)) && ((y + h) < (sh + h)))
+        if (((u16)(x + w) < (u16)(sw + w)) && ((u16)(y + h) < (u16)(sh + h)))
             visibility = VISIBILITY_ON;
         else
             visibility = VISIBILITY_OFF;
@@ -60,12 +60,12 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
     else*/
     {
         // sprite is fully visible ? --> set all sprite visible ('unsigned' allow merged <0 test)
-        if ((x < (sw - w)) && (y < (sh - h)))
+        if ((x < (u16)(sw - w)) && (y < (u16)(sh - h)))
         {
             visibility = VISIBILITY_ON;
         }
         // sprite is fully hidden ? --> set all sprite to hidden ('unsigned' allow merged <0 test)
-        else if (((x + w) >= (sw + w)) || ((y + h) >= (sh + h)))
+        else if (((u16)(x + w) >= (u16)(sw + w)) || ((u16)(y + h) >= (u16)(sh + h)))
         {
             visibility = VISIBILITY_OFF;
         }
@@ -100,7 +100,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
                             visibility <<= 1;
 
                             // compute visibility ('unsigned' allow merged <0 test)
-                            if (((frameSprite->offsetX + bx) < mx) && ((frameSprite->offsetY + by) < my))
+                            if (((u16)(frameSprite->offsetX + bx) < mx) && ((u16)(frameSprite->offsetY + by) < my))
                                 visibility |= 1;
 
                             // next
@@ -115,7 +115,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
                             visibility <<= 1;
 
                             // compute visibility ('unsigned' allow merged <0 test)
-                            if (((frameSprite->offsetXFlip + bx) < mx) && ((frameSprite->offsetY + by) < my))
+                            if (((u16)(frameSprite->offsetXFlip + bx) < mx) && ((u16)(frameSprite->offsetY + by) < my))
                                 visibility |= 1;
 
                             // next
@@ -130,7 +130,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
                             visibility <<= 1;
 
                             // compute visibility ('unsigned' allow merged <0 test)
-                            if (((frameSprite->offsetX + bx) < mx) && ((frameSprite->offsetYFlip + by) < my))
+                            if (((u16)(frameSprite->offsetX + bx) < mx) && ((u16)(frameSprite->offsetYFlip + by) < my))
                                 visibility |= 1;
 
                             // next
@@ -145,7 +145,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
                             visibility <<= 1;
 
                             // compute visibility ('unsigned' allow merged <0 test)
-                            if (((frameSprite->offsetXFlip + bx) < mx) && ((frameSprite->offsetYFlip + by) < my))
+                            if (((u16)(frameSprite->offsetXFlip + bx) < mx) && ((u16)(frameSprite->offsetYFlip + by) < my))
                                 visibility |= 1;
 
                             // next
