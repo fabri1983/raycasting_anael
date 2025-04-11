@@ -320,8 +320,8 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         ".set offdown, (%c[_VERTICAL_ROWS] - 2) * %c[_TILEMAP_COLUMNS] * 2\n" // *2 for byte convertion
         ".rept (%c[_VERTICAL_ROWS] - 2) / 2\n"
         "    move.w  %[tileAttrib],offdown(%[tilemap])\n"
-        "    nop\n"
-        "    nop\n" // harmless instruction to pad into 8 bytes block size
+        "    nop\n" // 2 bytes op size
+        "    nop\n" // 2 bytes op size
         "    .set offdown, offdown - (%c[_TILEMAP_COLUMNS] * 2)\n" // *2 for byte convertion
         ".endr\n"
 

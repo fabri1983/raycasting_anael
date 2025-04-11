@@ -3,10 +3,13 @@
 
 #include "asm_mac.i"
 
+#define VDP_WRITE_CRAM_ADDR(adr)    (((0xC000 + ((adr) & 0x7F)) << 16) + 0x00)
+#define _CRAM_CMD VDP_WRITE_CRAM_ADDR(0*2)
+
 #define VDP_WRITE_VSRAM_ADDR(adr)   (((0x4000 + ((adr) & 0x7F)) << 16) + 0x10)
 #define _VSRAM_CMD VDP_WRITE_VSRAM_ADDR(0)
 
-#define _HINT_COUNTER 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN - 1)
+#define _HINT_COUNTER 0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1)
 
 ;// If a5 register could be somehow reserved along all the callbacks execution then we can speed it up
 #define IS_A5_RESERVED_FOR_CALLBACKS 0
@@ -16,6 +19,25 @@
 
 .macro macro_hint_callback_LABEL n, m
 hint_mirror_planes_callback_asm_LABEL_\n:
+#if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS == 1
+    ;// Do a ramp color for the BG
+    .if \n == 0
+    move.l  #_CRAM_CMD,(0xC00004)
+    move.w  #0x0888,(0xC00000)
+    .endif
+    .if \n == 57
+    move.l  #_CRAM_CMD,(0xC00004)
+    move.w  #0x0666,(0xC00000)
+    .endif
+    .if \n == 78
+    move.l  #_CRAM_CMD,(0xC00004)
+    move.w  #0x0444,(0xC00000)
+    .endif
+    .if \n == 90
+    move.l  #_CRAM_CMD,(0xC00004)
+    move.w  #0x0222,(0xC00000)
+    .endif
+#endif
     ;// Apply VSCROLL on both planes (writing in one go on both planes)
     move.l  #_VSRAM_CMD,(0xC00004)    ;// VDP_CTRL_PORT: 0: Plane A, 2: Plane B
     .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - (HMC_START_OFFSET_FACTOR + \n)*((2 << 16) | 2)
@@ -25,17 +47,17 @@ hint_mirror_planes_callback_asm_LABEL_\n:
 #else
     .if \n == 0
     move.w  #0x4ED5,hintCaller ;// jmp (a5)
-    suba    a5,a5 ;// clean higher and lower bytes
+    suba.l  a5,a5 ;// clean higher and lower bytes
     .endif
     move.w  #hint_mirror_planes_callback_asm_LABEL_\m,a5
 #endif
     rte
 .endm
 
-;// Entry point defined as a function. It matches with the first LABEL definition
+;// Entry point defined as a function. It matches with the first macro_hint_callback_LABEL following next
 func hint_mirror_planes_callback_asm_0
 
-;// Hint callbacks addressed as labels: from 0 up to (HUD_HINT_SCANLINE_MID_SCREEN - 1)
+;// Hint callbacks addressed as labels: from 0 up to (HINT_SCANLINE_MID_SCREEN - 1)
 macro_hint_callback_LABEL 0,1
 macro_hint_callback_LABEL 1,2
 macro_hint_callback_LABEL 2,3
@@ -135,16 +157,22 @@ macro_hint_callback_LABEL 94,95
 ;// Last hint callback addressed as label
 .irep n, 95
 hint_mirror_planes_callback_asm_LABEL_\n:
+#if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS == 1
+    ;// Restore the floor color (BG color)
+    move.l  #_CRAM_CMD,(0xC00004)
+    move.w  #0x0666,(0xC00000)
+#endif
     ;// Apply VSCROLL on both planes (writing in one go on both planes)
     move.l  #_VSRAM_CMD,(0xC00004)     ;// VDP_CTRL_PORT: 0: Plane A, 2: Plane B
     .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - (HMC_START_OFFSET_FACTOR + \n)*((2 << 16) | 2)
     move.l  #_ROW_OFFSET,(0xC00000)    ;// VDP_DATA_PORT: writes on both planes
     ;// Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next VDP's hint assertion.
-    move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN - 1);
+    move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1);
     move.w  #hint_mirror_planes_last_scanline_callback,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
 #if IS_A5_RESERVED_FOR_CALLBACKS == 1
     ;// Restore first 2 bytes that were overwritten in first callback
     move.w  #0x4EF9,hintCaller ;// jmp (xxx).l
 #endif
+
     rte
 .endr

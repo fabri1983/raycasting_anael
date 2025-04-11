@@ -468,11 +468,11 @@ static void setHUDFace ()
 
 u16 hud_loadInitialState (u16 currentTileIndex)
 {
-    // We have already set in resource file the base tile index from which the tileset will be located in VRAM: HUD_VRAM_START_INDEX
+    // We have already set in resource file the base tile index from which the tileset will be located in VRAM: VRAM_INDEX_AFTER_TILES
     currentTileIndex += img_hud_spritesheet.tileset->numTile;
 
     // Loads all the tileset at specified VRAM location
-	VDP_loadTileSet(img_hud_spritesheet.tileset, HUD_VRAM_START_INDEX, DMA);
+	VDP_loadTileSet(img_hud_spritesheet.tileset, VRAM_INDEX_AFTER_TILES, DMA);
 
     #if HUD_TILEMAP_COMPRESSED
     decompressTilemap(); // decompress it into hud_tilemap_src

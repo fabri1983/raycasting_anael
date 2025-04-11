@@ -1,4 +1,5 @@
 #include <genesis.h>
+
 #ifndef _RES_TITLE_RES_H_
 #define _RES_TITLE_RES_H_
 

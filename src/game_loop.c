@@ -322,7 +322,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
     //u16 a = angle / (1024/AP); // a range is [0, 128)
     //u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT));
 
-    // ALWAYS starts rendering process at column 0, given that column_ptr increment is hardcoded assuming first column is even.
+    // ALWAYS starts rendering process at column 0, given that column_ptr incremental amount is hardcoded and assumes first column is even.
     // If the target display dimensions are lower than full screen (except the hud) then just adjust PA_ADDR and PB_ADDR.
     u8 column = 0;
 

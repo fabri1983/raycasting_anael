@@ -14,10 +14,15 @@
 #define T 1
 #endif
 
-#define DISPLAY_LOGOS_AT_START T
-#define DISPLAY_TITLE_SCREEN T
+#define DISPLAY_LOGOS_AT_START F
+#define DISPLAY_TITLE_SCREEN F
 
 #define RENDER_SHOW_TEXCOORD F // Show texture coords? Is not optimized though
+
+// If TRUE then it will change from floor to roof bg color at HInt. If FALSE then we use single bg color (unless other switch is used).
+#define RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT T
+// If TRUE then it changes the BG color as a grey ramp effect. Only if hint multi callbacks siwtch is enabled.
+#define RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS F
 
 #define RENDER_MIRROR_PLANES_USING_CPU_RAM F // Mirror bottom half of planes into top hal, by using CPU and RAM
 #define RENDER_MIRROR_PLANES_USING_VDP_VRAM F // Mirror bottom half of planes into top hal, by using VRAM to VRAM copy
@@ -53,6 +58,9 @@
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT T
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE F
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE F
+
+// If change this value then update map_base parameter in hud_res.res file using value from HUD_BASE_TILE_ATTRIB
+#define VRAM_INDEX_AFTER_TILES (1 + 8*8 + 8*8)
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision

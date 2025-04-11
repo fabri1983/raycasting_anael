@@ -23,20 +23,24 @@ extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
 
 u16 render_loadTiles ()
 {
+    // ORDERING: Tiles are created in groups of 8 tiles except first one which is the empty tile.
+    // Tiles inside each group go from Highest to Smallest (in pixel height). Groups go from Darkest to Brightest.
+    // 4 most right columns of pixels for each tile is left empty because this way the Plane B can be displaced 4 bits to the right.
+
 	// Create a buffer of the size of a tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4*8]
 	memset(tile, 0, 32); // clear the tile with color index 0 (which is the BG color index)
 
-	// 9 possible tile heights (0 pixels to 8 pixels)
+	// 9 possible tile heights: from 0 to 8 pixels
 
-	// Tile with only color 0 (height 0) goes at index 0
+	// Tile with height 0 goes at index 0, and its color is 0
 	VDP_loadTileData((u32*)tile, 0, 1, CPU);
 
 	// Remaining 8 possible tile heights, distributed in 8 sets
 
     // fabri1983: we'll add 8 more tiles so we can use the other half of the palette.
-    // First pass create and load 8 tiles with colors 0..7.
-    // Second pass create and load 8 tiles with colors 0 and 8..14
+    // First pass creates and loads 8 tiles with colors 0..7.
+    // Second pass creates and loads 8 tiles with colors 0 and 8..14.
     for (u8 pass=0; pass < 2; ++pass) {
 
         // 8 tiles per set
@@ -64,25 +68,64 @@ u16 render_loadTiles ()
                         // combine lower and higher bits (low and high colors)
                         u8 color = colorLow | (colorHigh << 4);
 
-                        // This sets 2 pixels (remember color holds 2 color pixels) at [4*h] and [4*h + 1] 
-                        // meaning we are leaving next 4 pixels at [4*h + 2] and [4*h + 2] as it is (currently 0)
+                        // This sets 2 pixels (remember color holds 2 color pixels) at left columns [4*h] and [4*h + 1],
+                        // leaving right columns at [4*h + 2] and [4*h + 2] as it is (currently 0)
                         tile[4*h + b] = color;
+                        // Duplicate color in right colums too
+                        //tile[4*h + 2 + b] = color;
                     }
                 }
-                VDP_loadTileData((u32*)tile, c*8 + t + (pass*(8*8)), 1, CPU);
+                VDP_loadTileData((u32*)tile, t + c*8 + (pass*(8*8)), 1, CPU);
             }
         }
     }
 
-	MEM_free(tile);
+    // Add 5 tiles more to be used as floor using PAL0 (which holds grey palette) 
+    // ranging from 0x0222 (darkest) to 0x0444 (brightest) using dithering with black color at position 0xF
+    /*u16 floorTileStart = 1 + 8*8 + 8*8;
+    for (u16 t = 0; t < 5; t++) {
+        memset(tile, 0, 32); // Clear the tile
+        // Iterate over all heights
+        for (u16 h = 0; h < 8; h++) {
+            // Iterate for 2 columns of colors
+            for (u16 b = 0; b < 2; b++) {
+                u8 color;
+                // Different dithering ratios
+                switch (t) {
+                    case 0: // Darkest: 25% 0x2, 75% 0xF
+                        color = (((h + b) % 4) < 1) ? 0x22 : 0xF2;
+                        break;
+                    case 1: // 50% 0x2, 50% 0xF
+                        color = ((h + b) % 2) ? 0x22 : 0xF2;
+                        break;
+                    case 2: // 50% 0x2, 50% 0x4
+                        color = ((h + b) % 2) ? 0x22 : 0x42;
+                        break;
+                    case 3: // 25% 0x2, 75% 0x4
+                        color = (((h + b) % 4) < 1) ? 0x22 : 0x42;
+                        break;
+                    case 4: // Brightest: all 0x4
+                        color = 0x44;
+                        break;
+                }
+                // Set color for left columns
+                tile[4*h + b] = color;
+                // Duplicate color in right colums too
+                //tile[4*h + 2 + b] = color;
+            }
+        }
+        VDP_loadTileData((u32*)tile, floorTileStart + t, 1, CPU);
+    }*/
 
-	// Returns next available tile index in VRAM
-	return HUD_VRAM_START_INDEX; // 1 + 8*8 + 8*8
+    MEM_free(tile);
+
+    // Returns next available tile index in VRAM
+    return VRAM_INDEX_AFTER_TILES;
 }
 
 void render_loadWallPalettes ()
 {
-    // palette grey and palette red were already loaded
+    // palette grey and palette red were already loaded by SGDK
 
     // load colors used from green palette into PAL0
     PAL_setColors(PAL0*16 + 8, palette_green + 1, 7, DMA);

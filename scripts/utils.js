@@ -4,6 +4,18 @@ const fs = require('fs');
 const { FP, AP, PIXEL_COLUMNS, TILEMAP_COLUMNS, VERTICAL_ROWS, 
         MAP_SIZE, STEP_COUNT, MAX_U8, TILE_ATTR_VFLIP_MASK } = require('./consts');
 
+/**
+ * Tile class. Represents the 32 bytes color data that defines a Tile.
+ * Holds an array of Uint8Array(32).
+ */
+class Tile {
+    constructor() {
+        // Initialize a tile with 32 bytes (8x8 pixel tile with 4-bit color depth)
+        this.data = new Uint8Array(32); // initialized to zero by default
+        
+    }
+}
+
 const utils = {
 
     isInteger (value) {
@@ -111,6 +123,76 @@ const utils = {
         }
 
         return tab_wall_div;
+    },
+
+    Tile: Tile,  // Make the Tile class available
+
+    /**
+     * Generates all the tiles originally used by the render.
+     * @returns {vram, maxTileIndex} An object containing the array of Tile objects, and the max tile index calculated.
+     */
+    render_loadTiles () {
+        // Create an array to store the tiles (vram)
+        const vram = [];
+        // Keep track of max index used
+        let maxTileIndex = 0;
+
+        // Create initial zero tile (height 0)
+        const zeroTile = new Tile();
+        vram[0] = zeroTile;
+
+        // ORDERING: tiles are created in groups of 8 tiles except first one which is the empty tile.
+        // Each group goes from Highest to Smallest, and then each group goes from Darkest to Brightest.
+        // 4 most right columns of pixels of each tile is left empty because this way the Plane B can be displaced 4 bits to the right.
+        
+        // Two passes: first with colors 0-7, second with colors 0 and 8-14.
+        for (let pass = 0; pass < 2; pass++) {
+
+            // 8 tiles per set
+            for (let t = 1; t <= 8; t++) {
+                const tile = new Tile();
+                // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors going from darker to lighter
+                for (let c = 0; c < 8; c++) {
+                    // Visit the height of each tile in current set. Height here is 0 based.
+                    for (let h = t - 1; h < 8; h++) {
+                        // Visit the columns of current row. 1 byte holds 2 colors as per Tile definition (4 bits per color),
+                        // so lower byte is color c and higher byte is color c+1, letting the RCA video signal do the blending.
+                        // We only fill most left 4 columns of pixels of the tile, leaving the other 4 columns with color 0. 
+                        for (let b = 0; b < 2; b++) {
+                            // Determine lower and higher color values
+                            let colorLow = c;
+                            let colorHigh = (c + 1) === 8 ? c : c + 1;
+
+                            // Adjust colors for second pass
+                            if (pass === 1) {
+                                colorLow = c === 0 ? 0 : c + 7;
+                                // We clamp to color 7 since starting at SGDK's palette 8th color they repeat
+                                colorHigh += 7;
+                            }
+
+                            // Combine lower and higher color bits
+                            const color = colorLow | (colorHigh << 4);
+
+                            // Set the color bytes in the tile
+                            tile.data[4*h + b] = color;
+                        }
+                    }
+
+                    // Calculate the tile index and store the tile
+                    const tileIndex = t + c*8 + (pass*(8*8));
+                    vram[tileIndex] = tile;
+
+                    if (tileIndex > maxTileIndex) {
+                        maxTileIndex = tileIndex;
+                    }
+                }
+            }
+        }
+
+        return {
+            vram: vram,
+            maxTileIndex: maxTileIndex
+        };
     },
 
     clean_framebuffer (framebuffer) {

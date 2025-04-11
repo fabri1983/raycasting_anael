@@ -49,7 +49,7 @@ fabri1983's notes (since Aug/18/2024)
 
 fabri1983's resources notes:
 ----------------------------
-* HUD: the hud is treated as an image. The resource definition in .res file expects a map base attribute value which is 
+* HUD: the hud is treated as an image. The resource definition in hud_res.res file expects a map base attribute value which is 
   calculated before hand. See HUD_BASE_TILE_ATTRIB in hud.h.
 * HUD: if resource is compressed then also set const HUD_TILEMAP_COMPRESSED in hud.h.
 * WEAPONS: the location of sprite tiles is given by methods like weapon_getVRAMLocation(). Required for SPR_addSpriteEx().
@@ -142,17 +142,19 @@ int main (bool hardReset)
 	VDP_setHorizontalScroll(BG_B, 4); // offset plane by 4 pixels
     VDP_setWindowHPos(FALSE, HUD_XP);
     VDP_setWindowVPos(TRUE, HUD_YP);
-    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
-	PAL_setColor(0, 0x0222); //palette_grey[1] // roof color
+    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+	PAL_setColor(0, 0x0222); // palette_grey[1]=0x0222 roof color
+    #elif RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS
+    PAL_setColor(0, 0x0666); // palette_grey[2]=0x0444 floor color
     #else
-    PAL_setColor(0, 0x0444); //palette_grey[2] // floor color
+    PAL_setColor(0, 0x0444); // palette_grey[2]=0x0444 floor color
     #endif
 
 	SYS_disableInts();
 
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
-    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    #elif RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     hint_reset_change_bg_state();
     #endif
     SYS_setVIntCallback(vint_callback);
@@ -163,14 +165,14 @@ int main (bool hardReset)
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);
-    #elif HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    #elif RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the HUD palettes load into VRAM).
     // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
     // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-    VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN);
+    VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN);
     SYS_setHIntCallback(hint_change_bg_callback);
     #else
-    VDP_setHIntCounter(HUD_HINT_SCANLINE_START_PAL_SWAP-1); // additional -1 to account for DMA setup and so
+    VDP_setHIntCounter(HINT_SCANLINE_START_PAL_SWAP-1); // additional -1 to account for DMA setup and so
     SYS_setHIntCallback(hint_load_hud_pals_callback);
     #endif
     VDP_setHInterrupt(TRUE);

@@ -25,10 +25,14 @@ function displayProgress () {
     process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
+function createTrackingKey (i, j) {
+    return `${i}-${j}`;
+}
+
 function trackTilePairsBetweenPlanes (framebuffer_planeA, framebuffer_planeB, tilePairMap) {
     for (let i = 0; i < VERTICAL_ROWS*TILEMAP_COLUMNS; i++) {
         // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data of the framebuffer plane entry
-        const key = `${framebuffer_planeA[i] & TILE_INDEX_MASK}-${framebuffer_planeB[i] & TILE_INDEX_MASK}`;
+        const key = createTrackingKey(framebuffer_planeA[i] & TILE_INDEX_MASK, framebuffer_planeB[i] & TILE_INDEX_MASK);
         tilePairMap.set(key, 1);
     }
 }
@@ -36,8 +40,8 @@ function trackTilePairsBetweenPlanes (framebuffer_planeA, framebuffer_planeB, ti
 // Processing function to be run inside the worker thread
 function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map) {
 
-    //const framebuffer_planeA = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
-    //const framebuffer_planeB = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
+    const framebuffer_planeA = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
+    const framebuffer_planeB = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
     const tilePairMap = new Map();
     const posStepping = 1;
 
@@ -111,8 +115,8 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
 
             for (let angle = 0; angle < 1024; angle += (1024/AP)) {
 
-                //utils.clean_framebuffer(framebuffer_planeA);
-                //utils.clean_framebuffer(framebuffer_planeB);
+                utils.clean_framebuffer(framebuffer_planeA);
+                utils.clean_framebuffer(framebuffer_planeB);
 
                 // DDA (Digital Differential Analyzer)
 
@@ -175,14 +179,13 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
                                     tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
 
                                 if ((column % 2) == 0) {
-                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
-                                    columnPlaneA_tileAttrib = tileAttrib;
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    // columnPlaneA_tileAttrib = tileAttrib;
                                 } else {
-                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
-                                    columnPlaneB_tileAttrib = tileAttrib;
-                                    // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data of the framebuffer plane entry
-                                    const key = `${columnPlaneA_tileAttrib & TILE_INDEX_MASK}-${columnPlaneB_tileAttrib & TILE_INDEX_MASK}`;
-                                    tilePairMap.set(key, 1);
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    // columnPlaneB_tileAttrib = tileAttrib;
+                                    // const key = createTrackingKey(columnPlaneA_tileAttrib & TILE_INDEX_MASK, columnPlaneB_tileAttrib & TILE_INDEX_MASK);
+                                    // tilePairMap.set(key, 1);
                                 }
 
                                 break;
@@ -204,14 +207,13 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
                                     tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
 
                                 if ((column % 2) == 0) {
-                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
-                                    columnPlaneA_tileAttrib = tileAttrib;
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    // columnPlaneA_tileAttrib = tileAttrib;
                                 } else {
-                                    //utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
-                                    columnPlaneB_tileAttrib = tileAttrib;
-                                    // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data of the framebuffer plane entry
-                                    const key = `${columnPlaneA_tileAttrib & TILE_INDEX_MASK}-${columnPlaneB_tileAttrib & TILE_INDEX_MASK}`;
-                                    tilePairMap.set(key, 1);
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    // columnPlaneB_tileAttrib = tileAttrib;
+                                    // const key = createTrackingKey(columnPlaneA_tileAttrib & TILE_INDEX_MASK, columnPlaneB_tileAttrib & TILE_INDEX_MASK);
+                                    // tilePairMap.set(key, 1);
                                 }
 
                                 break;
@@ -221,11 +223,11 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
                     }
                 }
 
-                // traverse both framebuffers and track the generated pairs between each entry
-                //trackTilePairsBetweenPlanes(framebuffer_planeA, framebuffer_planeB, tilePairMap);
+                // Traverse both framebuffers and track the generated pairs between each entry
+                trackTilePairsBetweenPlanes(framebuffer_planeA, framebuffer_planeB, tilePairMap);
             }
 
-            //global.gc(false); // Not sure if false sets a Minor GC call but it works fine.
+            // global.gc(false); // Not sure if false sets a Minor GC call but it works fine.
 
             // Send progress update to main thread
             parentPort.postMessage({ type: 'progress', value: (1024/(1024/AP)) });

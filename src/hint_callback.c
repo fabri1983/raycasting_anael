@@ -178,7 +178,7 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
     // Set BG to the floor color
     waitHCounter_opt1(156); // NOTE: using waitHCounter_opt1() or _opt2() avoids a flickering
     *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-    *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]; // floor color
+    *(vu16*)VDP_DATA_PORT = 0x0444; // palette_grey[2]=0x0444 floor color
     */
 
     // ASM version.
@@ -190,7 +190,7 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
         "cmp.b   %c[_HCOUNTER_PORT],%[hcLimit]\n\t" // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
         "bhi.s   1b\n\t"                            // loop back if n is lower than (0xC00009)
         "move.l  %[_CRAM_CMD],(0xC00004)\n\t"       // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)"         // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]; // floor color
+        "move.w  %[floor_color],(0xC00000)"         // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]=0x0444 floor color
         :
         : [hcLimit] "d" (156), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1), // HCounter address is 0xC00009
           [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
@@ -216,10 +216,10 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
 
     // If case applies, change BG color to ceiling color
-    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
 	//waitHCounter_opt3(vdpCtrl_ptr_l, 156); // We can avoid the waiting here since this happens in the HUD region so any CRAM dot is barely noticeable
     *vdpCtrl_ptr_l = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0;
-    *(vu16*)VDP_DATA_PORT = 0x0222; //palette_grey[1]; // roof color
+    *(vu16*)VDP_DATA_PORT = 0x0222; // palette_grey[1]=0x0222 roof color
     #endif
 
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
@@ -316,7 +316,7 @@ void hint_reset_mirror_planes_state ()
     hintCaller.addr = hint_mirror_planes_callback_asm_0; //SYS_setHIntCallback(hint_mirror_planes_callback_asm_0);
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     mirror_offset_rows = (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - HMC_START_OFFSET_FACTOR*((2 << 16) | 2);
-    vCounterManual = HUD_HINT_SCANLINE_MID_SCREEN + 1; // +1 because we do --vCounterManual before condition check
+    vCounterManual = HINT_SCANLINE_MID_SCREEN + 1; // +1 because we do --vCounterManual before condition check
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
     hintCaller.addr = hint_mirror_planes_callback; //SYS_setHIntCallback(hint_mirror_planes_callback);
     #endif
@@ -340,7 +340,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
     --vCounterManual;
     if (vCounterManual == 0) {
         // Change the HInt counter to the HUD region. This takes effect next VDP's hint assertion.
-        *(vu16*)ctrl_l = 0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN - 1); //VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN - 1);
+        *(vu16*)ctrl_l = 0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1); //VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1);
         // Change to the hint callback with last operations
         hintCaller.addr = hint_mirror_planes_last_scanline_callback; //SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
     }
@@ -355,12 +355,12 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
         "subq.w  #1,%[vCounterManual]\n\t" // --vCounterManual;
         "bne.s   1f\n\t"
         // Change the HInt counter to the HUD region. This takes effect next VDP's hint assertion.
-        "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HUD_HINT_SCANLINE_MID_SCREEN-3);
+        "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN-3);
         "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
         "1:"
         : [mirror_offset_rows] "+m" (mirror_offset_rows), [vCounterManual] "+m" (vCounterManual)
         : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [NEXT_ROW_OFFSET] "i" ((2 << 16) | 2),
-          [_HINT_COUNTER] "i" (0x8A00 | (HUD_HINT_SCANLINE_MID_SCREEN - 1)),
+          [_HINT_COUNTER] "i" (0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1)),
           [hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [hintCaller] "m" (hintCaller)
         : "cc", "memory"
     );
@@ -383,10 +383,10 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
     hintCaller.addr = hint_load_hud_pals_callback; //SYS_setHIntCallback(hint_load_hud_pals_callback);
 
     // If case applies, change BG color to floor color
-    #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     waitHCounter_opt1(156);
     *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-    *(vu16*)data_l = 0x0444; //palette_grey[2]; // floor color
+    *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
     #endif
     */
 
@@ -399,12 +399,12 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(255);
         "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         // If case applies, change BG color to floor color
-        #if HUD_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+        #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
         "1:\n\t"
         "cmpi.b  %[hcLimit],%c[_HCOUNTER_PORT]\n\t" // cmpi: (0xC00009) - n. Compares byte because hcLimit won't be > 160 for our practical cases
         "blo.s   1b\n\t"                            // loop back if n is lower than (0xC00009)
         "move.l  %[_CRAM_CMD],(0xC00004)\n\t" // *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)"   // *(vu16*)data_l = 0x0444; //palette_grey[2]; // floor color
+        "move.w  %[floor_color],(0xC00000)"   // *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
         #endif
         :
         : [hcLimit] "i" (156), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1), // HCounter address is 0xC00009
