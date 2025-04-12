@@ -29,9 +29,8 @@ static TileSet* unpackTileset_custom (const TileSet* src)
     return result;
 }
 
-static TileSet* unpackTitle256cTileset ()
+static TileSet* unpackTitle256cTileset (TileSet* tileset)
 {
-    TileSet* tileset = img_title_bg_full.tileset;
     if (tileset->compression != COMPRESSION_NONE)
         return unpackTileset_custom(tileset);
     else
@@ -84,9 +83,8 @@ static TileMap* copyTilemap (TileMap *src)
     return result;
 }
 
-static TileMap* unpackTitle256cTilemap ()
+static TileMap* unpackTitle256cTilemap (TileMap* tilemap)
 {
-    TileMap* tilemap = img_title_bg_full.tilemap;
     if (tilemap->compression != COMPRESSION_NONE)
         return unpackTilemap_custom(tilemap);
     else
@@ -377,8 +375,8 @@ void title_vscroll_1_plane_show ()
     u16 currTileIndex = 1;
 
     // Unpack resources for the Title screen
-    TileSet* tilesetFull = unpackTitle256cTileset();
-    TileMap* tilemapFull = unpackTitle256cTilemap();
+    TileSet* tilesetFull = unpackTitle256cTileset(img_title_bg_full.tileset);
+    TileMap* tilemapFull = unpackTitle256cTilemap(img_title_bg_full.tilemap);
     copyTilemapIntoAddress(tilemapFull, currTileIndex, TITLE_FULL_TILEMAP_ADDRESS);
     MEM_free(tilemapFull);
 
@@ -436,8 +434,6 @@ void title_vscroll_1_plane_show ()
     // MELTING EFFECT TITLE SCREEN
     // ------------------------------------------------------
 
-    //VDP_waitVBlank(FALSE);
-    //waitVCounterReg(224-4);
     // Set the palettes from displaced columns image to be ready for HInt the next frame
     swapPalettesTitle();
 

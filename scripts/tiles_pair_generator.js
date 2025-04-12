@@ -26,7 +26,7 @@ function displayProgress () {
 }
 
 function createTrackingKey (i, j) {
-    return `${i}-${j}`;
+    return i + "-" + j;
 }
 
 function trackTilePairsBetweenPlanes (framebuffer_planeA, framebuffer_planeB, tilePairMap) {
@@ -38,10 +38,8 @@ function trackTilePairsBetweenPlanes (framebuffer_planeA, framebuffer_planeB, ti
 }
 
 // Processing function to be run inside the worker thread
-function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map) {
+function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, map, framebuffer_planeA, framebuffer_planeB) {
 
-    const framebuffer_planeA = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
-    const framebuffer_planeB = new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS);
     const tilePairMap = new Map();
     const posStepping = 1;
 
@@ -127,7 +125,7 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
 
                 let a = Math.floor(angle / (1024/AP));
 
-                let columnPlaneA_tileAttrib, columnPlaneB_tileAttrib;
+                //let columnPlaneA_tileAttrib, columnPlaneB_tileAttrib;
 
                 for (let column = 0; column < PIXEL_COLUMNS; ++column) {
 
@@ -179,10 +177,10 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
                                     tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) | d8_1;
 
                                 if ((column % 2) == 0) {
-                                    utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because we have 2 framebuffers
                                     // columnPlaneA_tileAttrib = tileAttrib;
                                 } else {
-                                    utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because we have 2 framebuffers
                                     // columnPlaneB_tileAttrib = tileAttrib;
                                     // const key = createTrackingKey(columnPlaneA_tileAttrib & TILE_INDEX_MASK, columnPlaneB_tileAttrib & TILE_INDEX_MASK);
                                     // tilePairMap.set(key, 1);
@@ -207,10 +205,10 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
                                     tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
 
                                 if ((column % 2) == 0) {
-                                    utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeA, column/2); // is /2 because we have 2 framebuffers
                                     // columnPlaneA_tileAttrib = tileAttrib;
                                 } else {
-                                    utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because framebuffer has width TILEMAP_COLUMNS
+                                    utils.write_vline(h2, tileAttrib, framebuffer_planeB, column/2); // is /2 because we have 2 framebuffers
                                     // columnPlaneB_tileAttrib = tileAttrib;
                                     // const key = createTrackingKey(columnPlaneA_tileAttrib & TILE_INDEX_MASK, columnPlaneB_tileAttrib & TILE_INDEX_MASK);
                                     // tilePairMap.set(key, 1);
@@ -223,7 +221,7 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
                     }
                 }
 
-                // Traverse both framebuffers and track the generated pairs between each entry
+                // Traverse both framebuffers and track generated pairs between each entry
                 trackTilePairsBetweenPlanes(framebuffer_planeA, framebuffer_planeB, tilePairMap);
             }
 
@@ -276,6 +274,13 @@ function runWorkers () {
         let completedJobs = 0;
         const results = [];
 
+        const framebuffer_planeA_bag = []
+        const framebuffer_planeB_bag = []
+        for (let i = 0; i < numCores; ++i) {
+            framebuffer_planeA_bag.push(new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS));
+            framebuffer_planeB_bag.push(new Uint16Array(VERTICAL_ROWS*TILEMAP_COLUMNS));
+        }
+
         console.log('(Invoke with: node --max-old-space-size=4092 <script.js> to avoid running out of mem)');
         console.log(`Utilizing ${numCores} core/s for processing multiple jobs.`);
         let startTimeStr = new Date().toLocaleString('en-US', { hour12: false });
@@ -312,9 +317,12 @@ function runWorkers () {
             const jobId = `[${job.startPosX}-${job.endPosX}]`;
             const startPosX = job.startPosX;
             const endPosX = job.endPosX;
+            // Get the framebuffers, already allocated
+            const framebuffer_planeA = framebuffer_planeA_bag.pop();
+            const framebuffer_planeB = framebuffer_planeB_bag.pop();
 
             const worker = new Worker(__filename, {
-                workerData: { jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix }
+                workerData: { jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix, framebuffer_planeA, framebuffer_planeB }
             });
 
             activeWorkers.add(worker);
@@ -330,6 +338,10 @@ function runWorkers () {
                     results.push(message);
                     //console.log(`${jobId}` + [...message.keys()]);
 
+                    // Put back the framebuffers
+                    framebuffer_planeA_bag.push(framebuffer_planeA);
+                    framebuffer_planeB_bag.push(framebuffer_planeB);
+
                     // All jobs completed? then resolve with results
                     if (completedJobs === totalJobs)
                         finishProcessing();
@@ -340,6 +352,10 @@ function runWorkers () {
             });
 
             worker.on('error', (error) => {
+                // Put back the framebuffers
+                framebuffer_planeA_bag.push(framebuffer_planeA);
+                framebuffer_planeB_bag.push(framebuffer_planeB);
+
                 process.stdout.write('\n'); // Move to the next line after progress bar
                 console.error(`Job ${jobId} error:`, error);
                 activeWorkers.delete(worker);
@@ -400,7 +416,7 @@ if (isMainThread) {
             console.log(endTimeStr);
         });
 } else {
-    const { jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix } = workerData;
-    const result = processGameChunk(jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix);
+    const { jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix, framebuffer_planeA, framebuffer_planeB } = workerData;
+    const result = processGameChunk(jobId, startPosX, endPosX, tab_deltas, tab_wall_div, tab_color_d8_1, mapMatrix, framebuffer_planeA, framebuffer_planeB);
     parentPort.postMessage(result);
 }

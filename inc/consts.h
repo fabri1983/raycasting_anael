@@ -14,8 +14,8 @@
 #define T 1
 #endif
 
-#define DISPLAY_LOGOS_AT_START F
-#define DISPLAY_TITLE_SCREEN F
+#define DISPLAY_LOGOS_AT_START T
+#define DISPLAY_TITLE_SCREEN T
 
 #define RENDER_SHOW_TEXCOORD F // Show texture coords? Is not optimized though
 

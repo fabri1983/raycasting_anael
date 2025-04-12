@@ -331,47 +331,49 @@ static void allocateMeltingEffectArrays ()
 
 static void initializeMeltingEffectArrays ()
 {
-    columnOffsetsA[0] = -4;
-    columnOffsetsA[1] = -20;
-    columnOffsetsA[2] = -12;
+    // multiples of 8
+
+    columnOffsetsA[0] = -8;
+    columnOffsetsA[1] = -24;
+    columnOffsetsA[2] = -16;
     columnOffsetsA[3] = -0;
-    columnOffsetsA[4] = -20;
-    columnOffsetsA[5] = -4;
-    columnOffsetsA[6] = -12;
-    columnOffsetsA[7] = -16;
-    columnOffsetsA[8] = -20;
-    columnOffsetsA[9] = -12;
-    columnOffsetsA[10] = -8;
+    columnOffsetsA[4] = -24;
+    columnOffsetsA[5] = -8;
+    columnOffsetsA[6] = -24;
+    columnOffsetsA[7] = -24;
+    columnOffsetsA[8] = -32;
+    columnOffsetsA[9] = -16;
+    columnOffsetsA[10] = -32;
     columnOffsetsA[11] = -24;
-    columnOffsetsA[12] = -20;
-    columnOffsetsA[13] = -4;
+    columnOffsetsA[12] = -32;
+    columnOffsetsA[13] = -0;
     columnOffsetsA[14] = -16;
-    columnOffsetsA[15] = -12;
+    columnOffsetsA[15] = -8;
     columnOffsetsA[16] = -0;
     columnOffsetsA[17] = -16;
-    columnOffsetsA[18] = -4;
-    columnOffsetsA[19] = -12;
+    columnOffsetsA[18] = -32;
+    columnOffsetsA[19] = -24;
 
-    columnOffsetsB[0] = -8;
-    columnOffsetsB[1] = -16;
+    columnOffsetsB[0] = -0;
+    columnOffsetsB[1] = -32;
     columnOffsetsB[2] = -8;
     columnOffsetsB[3] = -4;
-    columnOffsetsB[4] = -24;
+    columnOffsetsB[4] = -32;
     columnOffsetsB[5] = -16;
     columnOffsetsB[6] = -8;
-    columnOffsetsB[7] = -20;
-    columnOffsetsB[8] = -24;
-    columnOffsetsB[9] = -16;
-    columnOffsetsB[10] = -4;
-    columnOffsetsB[11] = -20;
+    columnOffsetsB[7] = -16;
+    columnOffsetsB[8] = -8;
+    columnOffsetsB[9] = -8;
+    columnOffsetsB[10] = -0;
+    columnOffsetsB[11] = -16;
     columnOffsetsB[12] = -16;
-    columnOffsetsB[13] = -0;
-    columnOffsetsB[14] = -12;
-    columnOffsetsB[15] = -8;
-    columnOffsetsB[16] = -4;
-    columnOffsetsB[17] = -12;
+    columnOffsetsB[13] = -8;
+    columnOffsetsB[14] = -24;
+    columnOffsetsB[15] = -24;
+    columnOffsetsB[16] = -32;
+    columnOffsetsB[17] = -8;
     columnOffsetsB[18] = -8;
-    columnOffsetsB[19] = -16;
+    columnOffsetsB[19] = -8;
 }
 
 static void freeMeltingEffectArrays ()

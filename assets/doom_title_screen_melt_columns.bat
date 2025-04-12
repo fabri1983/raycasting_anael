@@ -13,7 +13,7 @@ if not exist %work_dir% mkdir %work_dir%
 set column_width=8
 
 :: Offsets for each column
-set offsets=4 20 12 0 20 4 12 16 20 12 8 24 20 4 16 12 0 16 4 12 8 16 8 4 24 16 8 20 24 16 4 20 16 0 12 8 4 12 8 16
+set offsets=8 0 24 32 16 8 0 4 24 32 8 16 24 8 24 16 32 8 16 8 32 0 24 16 32 16 0 8 16 24 8 24 0 32 16 8 32 8 24 8
 
 :: Calculate the number of offsets
 set /a offset_count=0
