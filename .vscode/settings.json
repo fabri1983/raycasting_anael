@@ -50,7 +50,8 @@
     "title_res.h": "c",
     "vram.h": "c",
     "sys.h": "c",
-    "joy_6btn.h": "c"
+    "joy_6btn.h": "c",
+    "font.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

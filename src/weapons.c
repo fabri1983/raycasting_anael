@@ -34,7 +34,8 @@ bool isMoving = FALSE;
 
 u16 weapon_biggerAnimTileNum ()
 {
-    u16 maxTileNum = sprDef_weapon_fist_anim.maxNumTile;
+    u16 maxTileNum = 0;
+    maxTileNum = max(maxTileNum, sprDef_weapon_fist_anim.maxNumTile);
     maxTileNum = max(maxTileNum, sprDef_weapon_pistol_anim.maxNumTile);
     maxTileNum = max(maxTileNum, sprDef_weapon_shotgun_anim.maxNumTile);
     return maxTileNum;

@@ -182,13 +182,15 @@ static void freePalettesTitle ()
     MEM_free((void*) palettesDataSwap);
 }
 
-// Clears a VDPPlane only the region where the DOOM logo appears, and width extended to 64 columns so only one DMA command is issued.
+// Clears a VDPPlane only the region where the DOOM logo appears.
 static void clearPlaneBFromLogoImmediately ()
 {
-    //VDP_clearTileMap(PLANE_B_ADDR, 0, TITLE_LOGO_HEIGHT_TILES*64 - (64-(320/8)), TRUE);
-    //VDP_setAutoInc(2);
+    // Do the DMA fill it in one command, considering the extending width up to 64 tiles
+    VDP_clearTileMap(PLANE_B_ADDR + (TITLE_LOGO_Y_POS_TILES*64)*2 + TITLE_LOGO_X_POS_TILES*2, 0, 
+        TITLE_LOGO_HEIGHT_TILES*64 - (64-(320/8)) - (TITLE_LOGO_Y_POS_TILES*64) - TITLE_LOGO_X_POS_TILES, TRUE);
+    VDP_setAutoInc(2); // restore VDP's AutoInc back to 2 since DMA fill performs 1 byte stepping
 
-    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+    /*vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
     // DMA Fill sets 1 byte at a time
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1;
@@ -199,8 +201,8 @@ static void clearPlaneBFromLogoImmediately ()
         while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
     }
 
-    // Important to restore VDP AutoInc back to 2 since DMA fill performs 1 byte stepping
-    *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;
+    // Important to restore VDP's AutoInc back to 2 since DMA fill performs 1 byte stepping
+    *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;*/
 }
 
 static u16 screenRowPos;
