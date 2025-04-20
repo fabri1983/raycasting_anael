@@ -78,11 +78,11 @@ void vint_enqueueHudTilemap ()
     #endif
 }
 
-void vint_setPalToRestore (u16* pal)
+void vint_setPalToRestore (u16* pal_ptr)
 {
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
-    restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
-    //restorePalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
+    restorePalA_addrForDMA = (u32) (pal_ptr + 1) >> 1;
+    //restorePalB_addrForDMA = (u32) (pal_ptr + 16 + 1) >> 1;
     #endif
 }
 
@@ -130,8 +130,11 @@ void vint_callback ()
 
 	render_Z80_setBusProtection(FALSE);
 
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT | DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+    #endif
+
+    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
 	// Reload the palettes that were overriden by the HUD palettes
     setupDMAForPals(15, restorePalA_addrForDMA);
 	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
@@ -145,11 +148,9 @@ void vint_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemap) {
         hud_tilemap = 0;
-        // PW_ADDR_AT_HUD comes with the correct base position in screen
-        u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif

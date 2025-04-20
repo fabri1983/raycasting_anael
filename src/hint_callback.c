@@ -89,21 +89,21 @@ bool canDMAinHint (u16 lenInWord)
     return (tilesLenInWordTotalToDMA + lenInWord) <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
 }
 
-void hint_enqueueWeaponPal (u16* pal)
+void hint_enqueueWeaponPal (u16* pal_ptr)
 {
     // This was the old way
-    // PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal + 1, 16, DMA_QUEUE);
-    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 1, pal + 16 + 1, 16, DMA_QUEUE);
+    // PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal_ptr + 1, 16, DMA_QUEUE);
+    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 1, pal_ptr + 16 + 1, 16, DMA_QUEUE);
 
-    weaponPalA_addrForDMA = (u32) (pal + 1) >> 1;
-    //weaponPalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
+    weaponPalA_addrForDMA = (u32) (pal_ptr + 1) >> 1;
+    //weaponPalB_addrForDMA = (u32) (pal_ptr + 16 + 1) >> 1;
 }
 
-void hint_setPalToRestore (u16* pal)
+void hint_setPalToRestore (u16* pal_ptr)
 {
     #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-    restorePalA_addrForDMA = (u32) (pal + 1) >> 1;
-    //restorePalB_addrForDMA = (u32) (pal + 16 + 1) >> 1;
+    restorePalA_addrForDMA = (u32) (pal_ptr + 1) >> 1;
+    //restorePalB_addrForDMA = (u32) (pal_ptr + 16 + 1) >> 1;
     #endif
 }
 
@@ -226,12 +226,10 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemap) {
         hud_tilemap = 0;
-        // PW_ADDR_AT_HUD comes with the correct base position in screen
-        u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
             // it relies on vdpCtrl_ptr_l
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif

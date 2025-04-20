@@ -9,8 +9,8 @@
 // ((224-32)-2)/2 = 95. And additional -1 because hintCounter is 0 based
 #define HINT_SCANLINE_MID_SCREEN (HINT_SCANLINE_START_PAL_SWAP/2 - 1)
 
-#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT F
-#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT T
+#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT T
+#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT F
 
 #define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file
 // This value is the parameter map_base that has to go in the resource file if you modify one of the above. Currently is 16456.
