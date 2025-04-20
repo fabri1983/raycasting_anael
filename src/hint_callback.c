@@ -362,7 +362,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
         : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [NEXT_ROW_OFFSET] "i" ((2 << 16) | 2),
           [_HINT_COUNTER] "i" (0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1)),
           [hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [hintCaller] "m" (hintCaller)
-        : "cc", "memory"
+        :
     );
 }
 
@@ -381,13 +381,6 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
     *(vu16*)ctrl_l = 0x8A00 | 255; //VDP_setHIntCounter(255);
     // Change the hint callback to the normal one. This takes effect immediatelly.
     hintCaller.addr = hint_load_hud_pals_callback; //SYS_setHIntCallback(hint_load_hud_pals_callback);
-
-    // If case applies, change BG color to floor color
-    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
-    waitHCounter_opt1(156);
-    *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-    *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
-    #endif
     */
 
     // ASM version (register free so no push/pop from stack)
@@ -397,20 +390,10 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         "move.l  #0,(0xC00000)\n\t" // VDP_DATA_PORT: writes on both planes
         // Disable the HInt by setting the max positive value as the HintCounter. This takes effect next VDP's hint assertion.
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(255);
-        "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_load_hud_pals_callback);
-        // If case applies, change BG color to floor color
-        #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
-        "1:\n\t"
-        "cmpi.b  %[hcLimit],%c[_HCOUNTER_PORT]\n\t" // cmpi: (0xC00009) - n. Compares byte because hcLimit won't be > 160 for our practical cases
-        "blo.s   1b\n\t"                            // loop back if n is lower than (0xC00009)
-        "move.l  %[_CRAM_CMD],(0xC00004)\n\t" // *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)"   // *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
-        #endif
+        "move.w  %[hint_callback],%[hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
-        : [hcLimit] "i" (156), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1), // HCounter address is 0xC00009
-          [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
-          [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
+        : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
           [hint_callback] "s" (hint_load_hud_pals_callback), [hintCaller] "m" (hintCaller)
-        : "cc", "memory"
+        :
     );
 }

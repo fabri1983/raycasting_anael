@@ -83,7 +83,7 @@ fabri1983's resources notes:
 #include "title.h"
 #endif
 
-// The code is optimised further using GCC's automatic unrolling, but might not be the case if too much inlining is used (or whatever reason).
+// The code is optimised further using GCC's automatic unrolling, but might not be the case if too much inlining is used (or whatever other reason).
 #pragma GCC push_options
 //#pragma GCC optimize ("unroll-loops")
 #pragma GCC optimize ("no-unroll-loops")

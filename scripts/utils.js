@@ -108,6 +108,9 @@ const utils = {
         // Vertical height calculation starts at the center
         const WALL_H2 = (VERTICAL_ROWS * 8) / 2;
 
+        // Additional column height modification. Positive value increases drawing column height. Negative value decreases it.
+        const ADDITIONAL_WALL_HEIGHT_MODIF = 4;
+
         // Initialize the tab_wall_div array
         const tab_wall_div = new Array(FP * (STEP_COUNT + 1));
 
@@ -115,10 +118,10 @@ const utils = {
         for (let i = 0; i < tab_wall_div.length; i++) {
             let v = (TILEMAP_COLUMNS * FP) / (i + 1);
             let div = Math.round(Math.min(v, MAX_U8));
-            if (div >= WALL_H2) {
+            if ((div + ADDITIONAL_WALL_HEIGHT_MODIF) >= WALL_H2) {
                 tab_wall_div[i] = 0;
             } else {
-                tab_wall_div[i] = WALL_H2 - div;
+                tab_wall_div[i] = WALL_H2 - div - ADDITIONAL_WALL_HEIGHT_MODIF;
             }
         }
 

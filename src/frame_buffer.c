@@ -233,7 +233,7 @@ void write_vline (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
 
-	// Draw a solid vertical line
+	// Draw a solid vertical line from TOP to BOTTOM
 	if (h2 == 0) {
 		// C version
 		/*for (u16 y = 0; y < VERTICAL_ROWS*TILEMAP_COLUMNS; y+=TILEMAP_COLUMNS) {

@@ -274,16 +274,16 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
 
-	// Draw HALF a solid vertical line: from BOTTOM to TOP
+	// Draw HALF a solid vertical line from CENTER to BOTTOM
 	if (h2 == 0) {
 		// C version
-		/*for (u16 y = 0; y < VERTICAL_ROWS*TILEMAP_COLUMNS/2; y+=TILEMAP_COLUMNS) {
+		/*for (u16 y = 0; y < (VERTICAL_ROWS*TILEMAP_COLUMNS)/2; y+=TILEMAP_COLUMNS) {
 			column_ptr[y] = tileAttrib;
 		}*/
 
 		// ASM version
 		__asm volatile (
-			".set off,(%c[_VERTICAL_ROWS]*%c[_TILEMAP_COLUMNS]/2)*2\n" // *2 for byte addressing
+			".set off,((%c[_VERTICAL_ROWS]*%c[_TILEMAP_COLUMNS])/2)*2\n" // *2 for byte addressing
 			".rept %c[_VERTICAL_ROWS]/2\n"
 			"    move.w  %[tileAttrib],off(%[tilemap])\n"
 			"    .set off,off+%c[_TILEMAP_COLUMNS]*2\n" // *2 for byte addressing
@@ -317,7 +317,7 @@ void write_vline_halved (u16 h2, u16 tileAttrib)
         // Eg for VERTICAL_ROWS=24: 
         //  from [22*TILEMAP_COLUMNS] down to [12*TILEMAP_COLUMNS]
         ".wvl_table_%=:\n"
-        ".set offdown, (%c[_VERTICAL_ROWS] - 2) * %c[_TILEMAP_COLUMNS] * 2\n" // *2 for byte convertion
+        ".set offdown, ((%c[_VERTICAL_ROWS] - 2) * %c[_TILEMAP_COLUMNS]) * 2\n" // *2 for byte convertion
         ".rept (%c[_VERTICAL_ROWS] - 2) / 2\n"
         "    move.w  %[tileAttrib],offdown(%[tilemap])\n"
         "    nop\n" // 2 bytes op size

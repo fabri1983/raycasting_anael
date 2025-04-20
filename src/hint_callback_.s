@@ -19,7 +19,7 @@
 
 .macro macro_hint_callback_LABEL n, m
 hint_mirror_planes_callback_asm_LABEL_\n:
-#if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS == 1
+#if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS
     ;// Do a ramp color for the BG
     .if \n == 0
     move.l  #_CRAM_CMD,(0xC00004)
@@ -36,6 +36,11 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     .if \n == 90
     move.l  #_CRAM_CMD,(0xC00004)
     move.w  #0x0222,(0xC00000)
+    .endif
+#elif RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
+    .if \n == 90
+    move.l  #_CRAM_CMD,(0xC00004)
+    move.w  #0x0444,(0xC00000) ;// floor color
     .endif
 #endif
     ;// Apply VSCROLL on both planes (writing in one go on both planes)
@@ -157,7 +162,7 @@ macro_hint_callback_LABEL 94,95
 ;// Last hint callback addressed as label
 .irep n, 95
 hint_mirror_planes_callback_asm_LABEL_\n:
-#if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS == 1
+#if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS
     ;// Restore the floor color (BG color)
     move.l  #_CRAM_CMD,(0xC00004)
     move.w  #0x0666,(0xC00000)
@@ -169,7 +174,7 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     ;// Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next VDP's hint assertion.
     move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1);
     move.w  #hint_mirror_planes_last_scanline_callback,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
-#if IS_A5_RESERVED_FOR_CALLBACKS == 1
+#if IS_A5_RESERVED_FOR_CALLBACKS
     ;// Restore first 2 bytes that were overwritten in first callback
     move.w  #0x4EF9,hintCaller ;// jmp (xxx).l
 #endif
