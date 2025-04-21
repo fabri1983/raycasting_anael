@@ -8,23 +8,18 @@
 #include "consts.h"
 #include "consts_ext.h"
 #include "hud.h"
+#include "weapon_consts.h"
 #if PLANE_COLUMNS == 64
 #include "hud_320.h"
 #else
 #include "hud_256.h"
 #endif
-#include "weapons.h"
 #include "utils.h"
 #include "render.h"
 #include "hint_callback.h"
 
-#if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
-u32 restorePalA_addrForDMA;
-u32 restorePalB_addrForDMA;
-#endif
-
 #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-u8 hud_tilemap;
+u8 hud_tilemap_set;
 #endif
 
 static u8 tiles_elems;
@@ -45,11 +40,6 @@ static u16 vdpSpriteCache_lenInWord;
 
 void vint_reset ()
 {
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
-    restorePalA_addrForDMA = 0;
-    restorePalB_addrForDMA = 0;
-    #endif
-
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     hud_tilemap = 0;
     #endif
@@ -74,15 +64,7 @@ void vint_reset ()
 void vint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-    hud_tilemap = 1;
-    #endif
-}
-
-void vint_setPalToRestore (u16* pal_ptr)
-{
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
-    restorePalA_addrForDMA = (u32) (pal_ptr + 1) >> 1;
-    //restorePalB_addrForDMA = (u32) (pal_ptr + 16 + 1) >> 1;
+    hud_tilemap_set = 1;
     #endif
 }
 
@@ -113,7 +95,7 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
     #endif
 
@@ -130,27 +112,22 @@ void vint_callback ()
 
 	render_Z80_setBusProtection(FALSE);
 
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT | DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
+    #if HUD_RELOAD_WEAPON_PALS_AT_VINT | DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     #endif
 
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT
-	// Reload the palettes that were overriden by the HUD palettes
-    setupDMAForPals(15, restorePalA_addrForDMA);
-	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
-    // setupDMAForPals(15, restorePalB_addrForDMA);
-	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-    // *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
+    #if HUD_RELOAD_WEAPON_PALS_AT_VINT
+	// DMA the weapon pals that were overriden gy the HUD pals
+    doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2, VDP_DMA_CRAM_ADDR((WEAPON_BASE_PAL*16 + 1) * 2), 16*WEAPON_USED_PALS - 1);
     #endif
 
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     // Have any hud tilemaps to DMA?
-    if (hud_tilemap) {
-        hud_tilemap = 0;
+    if (hud_tilemap_set) {
+        hud_tilemap_set = 0;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif
@@ -194,7 +171,7 @@ void vint_callback ()
     render_copy_top_entries_in_VRAM();
     #endif
 
-    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT && !(RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS)
+    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT & !(RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS)
     hint_reset_change_bg_state();
     #endif
 }

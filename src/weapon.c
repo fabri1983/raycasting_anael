@@ -1,11 +1,12 @@
-#include "weapons.h"
+#include <types.h>
 #include <vdp_tile.h>
 #include <sprite_eng.h>
 #include <maths.h>
 #include <timer.h>
+#include "consts_ext.h"
+#include "weapon_consts.h"
+#include "weapon.h"
 #include "weapons_res.h"
-#include "hint_callback.h"
-#include "vint_callback.h"
 #include "hud.h"
 
 static u8 resetToIdle_timer;
@@ -58,8 +59,9 @@ void weapon_resetState ()
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
-    PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal_weapon_fist_anim.data + 1, 15, DMA);
-    //PAL_setColors((WEAPON_BASE_PAL+1)*16 + 1, sprDef_weapon_fist_anim.palette->data + 16 + 1, 15, DMA);
+    // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
+    memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal_weapon_fist_anim.data, (16*WEAPON_USED_PALS)*2); // *2 for byte addressing
+    PAL_setColors(WEAPON_BASE_PAL*16 + 1, (u16*)(RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2), 16*WEAPON_USED_PALS - 1, DMA);
 
     currWeaponId = 0; // Fist
     currWeaponAnimFireCooldownTimer = 0;
@@ -68,6 +70,10 @@ void weapon_resetState ()
     fire_coolDown_timer = 0;
     select_coolDown_timer = 0;
     changeWeaponEffect_timer = 0;
+}
+
+void weapon_free_pals_buffer () {
+    memsetU32((u32*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, 0, (16*WEAPON_USED_PALS)/2);
 }
 
 static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
@@ -84,13 +90,8 @@ static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually
 
-    // No need to enqueue the palette since it will be restored after the hud is displayed
-    //hint_enqueueWeaponPal(pal);
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-    hint_setPalToRestore(pal);
-    #else
-    vint_setPalToRestore(pal);
-    #endif
+    // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
+    memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal, (16*WEAPON_USED_PALS)*2); // *2 for byte addressing
 }
 
 void weapon_select (u8 weaponId)

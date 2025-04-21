@@ -9,7 +9,7 @@
 #define VDP_WRITE_VSRAM_ADDR(adr)   (((0x4000 + ((adr) & 0x7F)) << 16) + 0x10)
 #define _VSRAM_CMD VDP_WRITE_VSRAM_ADDR(0)
 
-#define _HINT_COUNTER 0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1)
+#define _HINT_COUNTER 0x8A00 | (HINT_SCANLINE_MID_SCREEN - 2)
 
 ;// If a5 register could be somehow reserved along all the callbacks execution then we can speed it up
 #define IS_A5_RESERVED_FOR_CALLBACKS 0
@@ -172,7 +172,7 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     .set _ROW_OFFSET, (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - (HMC_START_OFFSET_FACTOR + \n)*((2 << 16) | 2)
     move.l  #_ROW_OFFSET,(0xC00000)    ;// VDP_DATA_PORT: writes on both planes
     ;// Change the HInt counter to the amount of scanlines we want to jump from here. This takes effect next VDP's hint assertion.
-    move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1);
+    move.w  #_HINT_COUNTER,(0xC00004)  ;// VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 2);
     move.w  #hint_mirror_planes_last_scanline_callback,hintCaller+4 ;// SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
 #if IS_A5_RESERVED_FOR_CALLBACKS
     ;// Restore first 2 bytes that were overwritten in first callback

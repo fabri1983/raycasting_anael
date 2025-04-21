@@ -18,21 +18,6 @@
 #include "hint_callback.h"
 #include "vint_callback.h"
 
-#if HUD_TILEMAP_COMPRESSED
-static u16 hud_tilemap_src[HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H];
-
-static void decompressTilemap ()
-{
-    TileMap* src = img_hud_spritesheet.tilemap;
-    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, ((HUD_SOURCE_IMAGE_W) * (HUD_SOURCE_IMAGE_H)) * 2), (u8*) hud_tilemap_src);
-}
-#else
-static u16* hud_tilemap_src;
-#endif
-
-/// @brief Destination buffer where all the hud tilemap entries are correctly placed. Size is TILEMAP_COLUMNS*HUD_BG_H.
-static u16* hud_tilemap_dst;
-
 static u8 weaponInventoryBits;
 static u8 keyInventoryBits;
 static u8 faceExpressionTimer;
@@ -264,10 +249,10 @@ bool hud_isDead ()
 
 static void setHUDBg ()
 {
-    hud_tilemap_dst = (u16*) HUD_TILEMAP_DST_ADDRESS;
-
     // This sets the entire HUD BG tilemap
+    u16* hud_tilemap_src = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
     u16* from = hud_tilemap_src + (HUD_BG_Y*HUD_SOURCE_IMAGE_W + HUD_BG_X);
+    u16* hud_tilemap_dst = (u16*) RAM_FIXED_HUD_TILEMAP_DST_ADDRESS;
     u16* to = hud_tilemap_dst + (HUD_BG_YP*TILEMAP_COLUMNS + HUD_BG_XP);
     COPY_TILEMAP_DATA(from, to, HUD_BG_W, HUD_BG_H);
 }
@@ -289,6 +274,8 @@ static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
     // Ones have no empty tiles
     ones += 1;
 
+    u16* hud_tilemap_src = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
+    u16* hud_tilemap_dst = (u16*) RAM_FIXED_HUD_TILEMAP_DST_ADDRESS;
     u16* from;
     u16* to;
 
@@ -325,6 +312,9 @@ static void setHUDArmor ()
 
 static void setHUDWeapons ()
 {
+    u16* hud_tilemap_src = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
+    u16* hud_tilemap_dst = (u16*) RAM_FIXED_HUD_TILEMAP_DST_ADDRESS;
+
     // UPPER WEAPONS
 
     // has shotgun?
@@ -375,6 +365,9 @@ static void setHUDWeapons ()
 
 static void setHUDKeys ()
 {
+    u16* hud_tilemap_src = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
+    u16* hud_tilemap_dst = (u16*) RAM_FIXED_HUD_TILEMAP_DST_ADDRESS;
+
     // CARDS
 
     // has blue card?
@@ -461,23 +454,31 @@ static void setHUDFace ()
         face_X = HUD_FACE_X + faceExpressionCol*HUD_FACE_W;
     }
 
+    u16* hud_tilemap_src = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
     u16* from = hud_tilemap_src + (face_Y*HUD_SOURCE_IMAGE_W + face_X);
+    u16* hud_tilemap_dst = (u16*) RAM_FIXED_HUD_TILEMAP_DST_ADDRESS;
     u16* to = hud_tilemap_dst + (HUD_FACE_YP*TILEMAP_COLUMNS + HUD_FACE_XP);
     COPY_TILEMAP_DATA(from, to, HUD_FACE_W, HUD_FACE_H);
 }
 
 u16 hud_loadInitialState (u16 currentTileIndex)
 {
-    // We have already set in resource file the base tile index from which the tileset will be located in VRAM: VRAM_INDEX_AFTER_TILES
+    // We have already set at resource file the base tile index from which the tileset will be located in VRAM: VRAM_INDEX_AFTER_TILES
     currentTileIndex += img_hud_spritesheet.tileset->numTile;
+
+    // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
+    memcpy((void*)RAM_FIXED_HUD_PALETTES_ADDRESS, (void*)img_hud_spritesheet.palette->data, (16*HUD_USED_PALS)*2); // *2 for byte addressing
 
     // Loads all the tileset at specified VRAM location
 	VDP_loadTileSet(img_hud_spritesheet.tileset, VRAM_INDEX_AFTER_TILES, DMA);
 
+    // Decompress the source HUD tilemap into fixed RAM location
     #if HUD_TILEMAP_COMPRESSED
-    decompressTilemap(); // decompress it into hud_tilemap_src
+    unpackSelector(img_hud_spritesheet.tilemap->compression, 
+        (u8*) FAR_SAFE(img_hud_spritesheet.tilemap->tilemap, (HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H)*2), 
+        (u8*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS);
     #else
-    hud_tilemap_src = img_hud_spritesheet.tilemap->tilemap;
+    memcpy((void*)RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS, (void*)img_hud_spritesheet.tilemap->tilemap, (HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H)*2); // *2 for byte addressing
     #endif
 
     // Loads the HUD background, only once
@@ -493,20 +494,18 @@ u16 hud_loadInitialState (u16 currentTileIndex)
     return currentTileIndex;
 }
 
+void hud_free_src_buffer () {
+    #if HUD_TILEMAP_COMPRESSED
+    memsetU32((u32*)RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS, 0, (HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H)/2);
+    #endif
+}
+
 void hud_free_dst_buffer () {
-    memsetU32((u32*)hud_tilemap_dst, 0, (TILEMAP_COLUMNS*HUD_BG_H)/2);
+    memsetU32((u32*)RAM_FIXED_HUD_TILEMAP_DST_ADDRESS, 0, (TILEMAP_COLUMNS * HUD_BG_H)/2);
 }
 
-void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr)
-{
-    // NOTE: palettes in the resource image are located at the top
-    *palA_addr = (u32) (img_hud_spritesheet.palette->data + (0*16) + 1) >> 1;
-    *palB_addr = (u32) (img_hud_spritesheet.palette->data + (1*16) + 1) >> 1;
-}
-
-u16* hud_getTilemap ()
-{
-    return hud_tilemap_dst;
+void hud_free_pals_buffer () {
+    memsetU32((u32*)RAM_FIXED_HUD_PALETTES_ADDRESS, 0, (16*HUD_USED_PALS)/2);
 }
 
 static void updateFaceExpressionTimer ()
@@ -543,12 +542,11 @@ void hud_update ()
         #elif DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
         vint_enqueueHudTilemap();
         #elif DMA_HUD_TILEMAP_IMMEDIATELY
-        // PW_ADDR_AT_HUD comes with the correct base position in screen
         vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
-        u32 fromAddr = HUD_TILEMAP_DST_ADDRESS;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, fromAddr + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, 
+                VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
         #endif
     }

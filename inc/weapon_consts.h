@@ -1,10 +1,11 @@
-#ifndef _WEAPONS_H_
-#define _WEAPONS_H_
+#ifndef _WEAPONS_CONSTS_H_
+#define _WEAPONS_CONSTS_H_
 
 #include <types.h>
-#include "consts.h"
+#include <consts.h>
 
-#define WEAPON_BASE_PAL PAL3 // Use always PAL0 because the modified Sprite Engine now supports a palette per VDP Sprite.
+#define WEAPON_BASE_PAL PAL2
+#define WEAPON_USED_PALS 1
 
 #define WEAPON_SPRITE_X_CENTERED (TILEMAP_COLUMNS/2)*8
 #define WEAPON_SPRITE_Y_ABOVE_HUD (VERTICAL_ROWS)*8 - 0 // -1 scanline: used for hint DMA hud palettes when the VDP is turned off
@@ -40,24 +41,4 @@
 #define WEAPON_PLASMA_MAX_AMMO 600
 #define WEAPON_BFG_MAX_AMMO 600
 
-u16 weapon_biggerAnimTileNum ();
-
-u16 weapon_getVRAMLocation ();
-
-void weapon_resetState ();
-
-void weapon_select (u8 weaponId);
-
-void weapon_addAmmo (u8 weaponId, u16 amnt);
-
-/// @brief Loads next or previous available weapon in the inventory.
-/// @param sign 1: next weapon, -1: previous weapon
-void weapon_next (u8 sign);
-
-void weapon_updateSway (bool _isMoving);
-
-void weapon_fire ();
-
-void weapon_update ();
-
-#endif // _WEAPONS_H_
+#endif // _WEAPONS_CONSTS_H_

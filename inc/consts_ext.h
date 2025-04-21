@@ -3,6 +3,7 @@
 
 #include "consts.h"
 #include "hud_consts.h"
+#include "weapon_consts.h"
 
 #define PB_ADDR 0xC000 // Default Plane B address set in VDP_setPlaneSize(), and starting at 0,0
 #define PW_ADDR_AT_HUD (PLANE_COLUMNS == 64 ? 0xD000+0x0C00 : 0xC800+0x0E00) // As set in VDP_setPlaneSize() depending on the chosen plane size, plus HUD_XP and HUD_YP offsets
@@ -37,14 +38,25 @@
 #define LAST_FREE_BYTES_LENGTH ((PLANE_COLUMNS == 64 ? 0xFFFF : 0xDFFF) - LAST_FREE_VRAM_AT + 32)
 
 #include <memory_base.h>
-// This is the fixed address of the frame_buffer array, before the end of the heap.
-#define FRAME_BUFFER_ADDRESS (MEMORY_HIGH - (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2)
+
+// This is the fixed RAM address for the frame_buffer array, before the end of the heap.
+#define RAM_FIXED_FRAME_BUFFER_ADDRESS (MEMORY_HIGH - (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2)
 #if PLANE_COLUMNS == 64
 #include "hud_320.h"
 #else
 #include "hud_256.h"
 #endif
-// This is the fixed address of the hud_tilemap_dst array, before the frame_buffer.
-#define HUD_TILEMAP_DST_ADDRESS (FRAME_BUFFER_ADDRESS - (TILEMAP_COLUMNS*HUD_BG_H)*2)
+
+// This is the fixed RAM address for the hud_tilemap_src array.
+#define RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS (RAM_FIXED_FRAME_BUFFER_ADDRESS - (HUD_SOURCE_IMAGE_W*HUD_SOURCE_IMAGE_H)*2)
+
+// This is the fixed RAM address for the hud_tilemap_dst array.
+#define RAM_FIXED_HUD_TILEMAP_DST_ADDRESS (RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS - (TILEMAP_COLUMNS*HUD_BG_H)*2)
+
+// This is the fixed RAM address for the HUD palettes data.
+#define RAM_FIXED_HUD_PALETTES_ADDRESS (RAM_FIXED_HUD_TILEMAP_DST_ADDRESS - (16*HUD_USED_PALS)*2)
+
+// This is the fixed RAM address for the WEAPON palettes data.
+#define RAM_FIXED_WEAPON_PALETTES_ADDRESS (RAM_FIXED_HUD_PALETTES_ADDRESS - (16*WEAPON_USED_PALS)*2)
 
 #endif // _CONSTS_EXT_H_

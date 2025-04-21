@@ -10,8 +10,11 @@ fabri1983's notes (since Aug/18/2024)
 * Ray Casting: https://lodev.org/cgtutor/raycasting.html
 * DDA = Digital Differential Analysis.
 * Modified to display full screen in 320x224.
-* Only 6 button pad supported.
+* Only 6 button pad supported at the moment.
 * Rendered columns are 4 pixels wide, then effectively 256p/4=64 or 320p/4=80 "pixels" columns.
+* Using RAM_FIXED_xxx regions to store arrays. This way the setup for DMA operations can be prepared in fewer instructions.
+  You must only use MEM_pack() before any resource is setup/reset that uses RAM_FIXED_xxx regions, and also ensure SGDK's inner 
+  MEM_xxx() functions do too.
 * Moved clear_buffer() into inline ASM to take advantage of compiler optimizations => %1 saved in cpu usage.
 * clear_buffer() using SP (Stack Pointer) to point end of buffer => 60 cycles saved if PLANE_COLUMNS=32, and 
   150 cycles saved if PLANE_COLUMNS=64.
@@ -75,7 +78,7 @@ fabri1983's resources notes:
 #include "vint_callback.h"
 #include "hint_callback.h"
 #include "hud.h"
-#include "weapons.h"
+#include "weapon.h"
 #if DISPLAY_LOGOS_AT_START
 #include "teddyBearLogo.h"
 #endif
@@ -152,7 +155,7 @@ int main (bool hardReset)
 
 	SYS_disableInts();
 
-    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
+    #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
     #elif RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     hint_reset_change_bg_state();
@@ -166,13 +169,10 @@ int main (bool hardReset)
     VDP_setHIntCounter(0); // every scanline
     SYS_setHIntCallback(hint_mirror_planes_callback);
     #elif RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
-    // Scanline location for the HUD is (224-32)-2 (2 scanlines earlier to prepare dma and complete the HUD palettes load into VRAM).
-    // The color change between roof and floor has to be made at (224-32)/2 of framebuffer but at a scanline multiple of HUD location.
-    // 95 is approx at mid framebbufer, and 95*2 = (224-32)-2 which is the start of HUD loading palettes logic.
-    VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN);
+    VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1); // -1 because scanline counter is 0-based
     SYS_setHIntCallback(hint_change_bg_callback);
     #else
-    VDP_setHIntCounter(HINT_SCANLINE_START_PAL_SWAP-1); // additional -1 to account for DMA setup and so
+    VDP_setHIntCounter(HINT_SCANLINE_START_PAL_SWAP - 1); // -1 because scanline counter is 0-based
     SYS_setHIntCallback(hint_load_hud_pals_callback);
     #endif
     VDP_setHInterrupt(TRUE);
@@ -190,7 +190,10 @@ int main (bool hardReset)
     // ----------------------
 
     fb_free_frame_buffer();
+    hud_free_src_buffer();
     hud_free_dst_buffer();
+    hud_free_pals_buffer();
+    weapon_free_pals_buffer();
 
 	return 0;
 }

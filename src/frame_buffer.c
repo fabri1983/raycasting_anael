@@ -10,7 +10,7 @@ u16* column_ptr;
 
 void fb_allocate_frame_buffer ()
 {
-    frame_buffer = (u16*) FRAME_BUFFER_ADDRESS;
+    frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
 
     // Do not use clear_buffer() here because it doesn't save registers in the stack and at this moment in the execution they are actually being used
     memsetU32((u32*)frame_buffer, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
@@ -80,7 +80,7 @@ void clear_buffer_no_usp ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
+		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);
@@ -151,7 +151,7 @@ void clear_buffer ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
+		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);
@@ -223,7 +223,7 @@ void clear_buffer_sp ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
+		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		:
 	);

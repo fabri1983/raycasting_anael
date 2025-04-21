@@ -5,16 +5,16 @@
 
 #define HUD_HEIGHT 4 // In tiles unit
 
-#define HINT_SCANLINE_START_PAL_SWAP (224 - (HUD_HEIGHT*8) - 2) // -1 because hintCounter is 0 based, and additional -1 for the time taken by DMA of hud palettes
-// ((224-32)-2)/2 = 95. And additional -1 because hintCounter is 0 based
-#define HINT_SCANLINE_MID_SCREEN (HINT_SCANLINE_START_PAL_SWAP/2 - 1)
+#define HINT_SCANLINE_START_PAL_SWAP (224 - (HUD_HEIGHT*8)) // This formula is not 0-based.
+#define HINT_SCANLINE_MID_SCREEN (HINT_SCANLINE_START_PAL_SWAP/2) // Eg: ((224-32)-2)/2 = 96. This formula is not 0-based.
 
-#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT T
-#define HUD_RELOAD_OVERRIDEN_PALETTES_AT_VINT F
+#define HUD_RELOAD_WEAPON_PALS_AT_HINT T
+#define HUD_RELOAD_WEAPON_PALS_AT_VINT F
 
-#define HUD_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file
+#define HUD_BASE_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file
+#define HUD_USED_PALS 2
 // This value is the parameter map_base that has to go in the resource file if you modify one of the above. Currently is 16456.
-#define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_PAL, 1, FALSE, FALSE, VRAM_INDEX_AFTER_TILES)
+#define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_BASE_PAL, 1, FALSE, FALSE, VRAM_INDEX_AFTER_TILES)
 
 #define HUD_TILEMAP_COMPRESSED T // If TRUE then we decompress it into a buffer. Otherwise we use the uncompressed data from ROM.
 

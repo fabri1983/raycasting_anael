@@ -12,7 +12,7 @@
 #include "render.h"
 
 #include "hud.h"
-#include "weapons.h"
+#include "weapon.h"
 //#include <sprite_eng.h>
 #include "spr_eng_override.h"
 

@@ -253,20 +253,20 @@ void render_DMA_row_by_row_framebuffer ()
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
     #else
     #pragma GCC unroll 24 // Always set the max number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + i*TILEMAP_COLUMNS*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + i*TILEMAP_COLUMNS*2, 
             VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + i*TILEMAP_COLUMNS)*2, 
+        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + i*TILEMAP_COLUMNS)*2, 
             VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
     #endif

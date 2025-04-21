@@ -7,28 +7,17 @@
 #include <sys.h>
 #include "consts.h"
 #include "consts_ext.h"
+#include "weapon_consts.h"
 #include "hud.h"
 #if PLANE_COLUMNS == 64
 #include "hud_320.h"
 #else
 #include "hud_256.h"
 #endif
-#include "weapons.h"
 #include "frame_buffer.h"
 
-u32 hudPalA_addrForDMA;
-u32 hudPalB_addrForDMA;
-
-u32 weaponPalA_addrForDMA;
-u32 weaponPalB_addrForDMA;
-
-#if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-u32 restorePalA_addrForDMA;
-u32 restorePalB_addrForDMA;
-#endif
-
 #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
-u8 hud_tilemap;
+u8 hud_tilemap_set;
 #endif
 
 u16 tilesLenInWordTotalToDMA;
@@ -51,18 +40,8 @@ static u16 vdpSpriteCache_lenInWord;
 
 void hint_reset ()
 {
-    hud_setup_hint_pals(&hudPalA_addrForDMA, &hudPalB_addrForDMA);
-
-    weaponPalA_addrForDMA = 0;
-    weaponPalB_addrForDMA = 0;
-
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-    restorePalA_addrForDMA = 0;
-    restorePalB_addrForDMA = 0;
-    #endif
-
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
-    hud_tilemap = 0;
+    hud_tilemap_set = 0;
     #endif
 
     tilesLenInWordTotalToDMA = 0;
@@ -89,28 +68,10 @@ bool canDMAinHint (u16 lenInWord)
     return (tilesLenInWordTotalToDMA + lenInWord) <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
 }
 
-void hint_enqueueWeaponPal (u16* pal_ptr)
-{
-    // This was the old way
-    // PAL_setColors(WEAPON_BASE_PAL*16 + 1, pal_ptr + 1, 16, DMA_QUEUE);
-    // PAL_setColors((WEAPON_BASE_PAL+1)*16 + 1, pal_ptr + 16 + 1, 16, DMA_QUEUE);
-
-    weaponPalA_addrForDMA = (u32) (pal_ptr + 1) >> 1;
-    //weaponPalB_addrForDMA = (u32) (pal_ptr + 16 + 1) >> 1;
-}
-
-void hint_setPalToRestore (u16* pal_ptr)
-{
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-    restorePalA_addrForDMA = (u32) (pal_ptr + 1) >> 1;
-    //restorePalB_addrForDMA = (u32) (pal_ptr + 16 + 1) >> 1;
-    #endif
-}
-
 void hint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
-    hud_tilemap = 1;
+    hud_tilemap_set = 1;
     #endif
 }
 
@@ -181,19 +142,15 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
     *(vu16*)VDP_DATA_PORT = 0x0444; // palette_grey[2]=0x0444 floor color
     */
 
-    // ASM version.
+    // ASM version (register free so no push/pop from stack)
     __asm volatile (
-        // Change the hint callback to the normal one. This takes effect immediatelly.
-        "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         // Set BG to the floor color
-        "1:\n\t"
-        "cmp.b   %c[_HCOUNTER_PORT],%[hcLimit]\n\t" // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "bhi.s   1b\n\t"                            // loop back if n is lower than (0xC00009)
-        "move.l  %[_CRAM_CMD],(0xC00004)\n\t"       // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)"         // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]=0x0444 floor color
+        "move.l  %[_CRAM_CMD],(0xC00004)\n\t"      // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+        "move.w  %[floor_color],(0xC00000)\n\t"    // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]=0x0444 floor color
+        // Change the hint callback to the normal one. This takes effect immediatelly.
+        "move.w  %[hint_callback],%[hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
-        : [hcLimit] "d" (156), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1), // HCounter address is 0xC00009
-          [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
+        : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
           [hint_callback] "s" (hint_load_hud_pals_callback), [hintCaller] "m" (hintCaller)
         :
     );
@@ -203,17 +160,8 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
 {
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
-	// Prepare DMA source address for the 2 HUD palettes
-    //waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-    //turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-    setupDMAForPals(15 + 15 + 1, hudPalA_addrForDMA);
-    //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
-
-    waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-    //turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-    // Trigger DMA command
-    *vdpCtrl_ptr_l = VDP_DMA_CRAM_ADDR(((HUD_PAL+0) * 16 + 1) * 2); // trigger DMA transfer
-    //turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
+    // DMA the 2 HUD palettes immediately
+    doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_PALETTES_ADDRESS + 1*2, VDP_DMA_CRAM_ADDR((HUD_BASE_PAL*16 + 1) * 2), 16*HUD_USED_PALS - 1);
 
     // If case applies, change BG color to ceiling color
     #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
@@ -224,12 +172,12 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
 
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
     // Have any hud tilemaps to DMA?
-    if (hud_tilemap) {
-        hud_tilemap = 0;
+    if (hud_tilemap_set) {
+        hud_tilemap_set = 0;
         #pragma GCC unroll 4 // Always set the max number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
             // it relies on vdpCtrl_ptr_l
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif
@@ -263,44 +211,15 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     }
     #endif
 
-    // Have any weapon palette to DMA?
-    /*if (weaponPalA_addrForDMA) {
-
-        u32 palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-        waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-        setupDMAForPals(15, weaponPalA_addrForDMA);
-        waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-        turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-        *vdpCtrl_ptr_l = palCmd_weapon; // trigger DMA transfer
-        turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
-
-        // palCmd_weapon = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-        // waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-        // setupDMAForPals(15, weaponPalB_addrForDMA);
-        // waitHCounter_opt3(vdpCtrl_ptr_l, 152);
-        // turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-        // *vdpCtrl_ptr_l = palCmd_weapon; // trigger DMA transfer
-        // turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
-
-        weaponPalA_addrForDMA = NULL;
-    }*/
-
     // USE THIS TO SEE HOW MUCH DEEP IN THE HUD IMAGE ALL THE DMA GOES
     // turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
     // waitHCounter_opt3(vdpCtrl_ptr_l, 160);
     // turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
 
-    #if HUD_RELOAD_OVERRIDEN_PALETTES_AT_HINT
-	// Reload the palettes that were overriden by the HUD palettes
-	u32 palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+0) * 16 + 1) * 2); // target starting color index multiplied by 2
-    setupDMAForPals(15, restorePalA_addrForDMA);
-	waitVCounterReg(224);
-    turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-    *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
-	// palCmd_restore = VDP_DMA_CRAM_ADDR(((WEAPON_BASE_PAL+1) * 16 + 1) * 2); // target starting color index multiplied by 2
-    // setupDMAForPals(15, restorePalB_addrForDMA);
-    // *vdpCtrl_ptr_l = palCmd_restore; // trigger DMA transfer
-	turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
+    #if HUD_RELOAD_WEAPON_PALS_AT_HINT
+    waitVCounterReg(224);
+    // DMA the weapon pals that were overriden gy the HUD pals
+    doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2, VDP_DMA_CRAM_ADDR((WEAPON_BASE_PAL*16 + 1) * 2), 16*WEAPON_USED_PALS - 1);
     #endif
 }
 
@@ -314,7 +233,7 @@ void hint_reset_mirror_planes_state ()
     hintCaller.addr = hint_mirror_planes_callback_asm_0; //SYS_setHIntCallback(hint_mirror_planes_callback_asm_0);
     #elif RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     mirror_offset_rows = (((VERTICAL_ROWS*8) << 16) | (VERTICAL_ROWS*8)) - HMC_START_OFFSET_FACTOR*((2 << 16) | 2);
-    vCounterManual = HINT_SCANLINE_MID_SCREEN + 1; // +1 because we do --vCounterManual before condition check
+    vCounterManual = HINT_SCANLINE_MID_SCREEN;
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.
     hintCaller.addr = hint_mirror_planes_callback; //SYS_setHIntCallback(hint_mirror_planes_callback);
     #endif
@@ -338,7 +257,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
     --vCounterManual;
     if (vCounterManual == 0) {
         // Change the HInt counter to the HUD region. This takes effect next VDP's hint assertion.
-        *(vu16*)ctrl_l = 0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1); //VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1);
+        *(vu16*)ctrl_l = 0x8A00 | (HINT_SCANLINE_MID_SCREEN - 2); //VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 2);
         // Change to the hint callback with last operations
         hintCaller.addr = hint_mirror_planes_last_scanline_callback; //SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
     }
@@ -353,12 +272,12 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
         "subq.w  #1,%[vCounterManual]\n\t" // --vCounterManual;
         "bne.s   1f\n\t"
         // Change the HInt counter to the HUD region. This takes effect next VDP's hint assertion.
-        "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN-3);
+        "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 2);
         "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
         "1:"
         : [mirror_offset_rows] "+m" (mirror_offset_rows), [vCounterManual] "+m" (vCounterManual)
         : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [NEXT_ROW_OFFSET] "i" ((2 << 16) | 2),
-          [_HINT_COUNTER] "i" (0x8A00 | (HINT_SCANLINE_MID_SCREEN - 1)),
+          [_HINT_COUNTER] "i" (0x8A00 | (HINT_SCANLINE_MID_SCREEN - 2)),
           [hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [hintCaller] "m" (hintCaller)
         :
     );
@@ -379,10 +298,22 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
     *(vu16*)ctrl_l = 0x8A00 | 255; //VDP_setHIntCounter(255);
     // Change the hint callback to the normal one. This takes effect immediatelly.
     hintCaller.addr = hint_load_hud_pals_callback; //SYS_setHIntCallback(hint_load_hud_pals_callback);
+
+    // If case applies, change BG color to floor color
+    #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT & RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+    waitHCounter_opt1(156);
+    *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+    *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
+    #endif
     */
 
     // ASM version (register free so no push/pop from stack)
     __asm volatile (
+        // If case applies, change BG color to floor color
+        #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT & RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
+        "move.l  %[_CRAM_CMD],(0xC00004)\n\t" // *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
+        "move.w  %[floor_color],(0xC00000)\n\t"   // *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
+        #endif
         // Restore VSCROLL to 0 on both planes (writing in one go on both planes)
         "move.l  %[_VSRAM_CMD],(0xC00004)\n\t" // VDP_CTRL_PORT: 0: Plane A, 2: Plane B
         "move.l  #0,(0xC00000)\n\t" // VDP_DATA_PORT: writes on both planes
@@ -390,7 +321,8 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(255);
         "move.w  %[hint_callback],%[hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
-        : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
+        : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
+          [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
           [hint_callback] "s" (hint_load_hud_pals_callback), [hintCaller] "m" (hintCaller)
         :
     );

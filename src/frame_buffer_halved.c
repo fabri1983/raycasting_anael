@@ -76,7 +76,7 @@ void clear_buffer_halved_no_usp ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
+		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);
@@ -159,7 +159,7 @@ void clear_buffer_halved ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
+		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);
@@ -242,7 +242,7 @@ void clear_buffer_halved_sp ()
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		: 
-		: [frame_buffer_end] "i" (FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
+		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		:
 	);
@@ -467,12 +467,12 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
 
 void fb_mirror_planes_in_RAM ()
 {
-    u32 pA_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
-    u32 pA_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
+    u32 pA_bottom_half_start = RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
+    u32 pA_top_half_end = RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
     copy_bottom_half_into_top_half(pA_bottom_half_start, pA_top_half_end);
 
-    u32 pB_bottom_half_start = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
-    u32 pB_top_half_end = FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
+    u32 pB_bottom_half_start = RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
+    u32 pB_top_half_end = RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
     copy_bottom_half_into_top_half(pB_bottom_half_start, pB_top_half_end);
 
     copy_top_entries_in_RAM();
@@ -523,8 +523,8 @@ void fb_mirror_planes_in_VRAM ()
     VDP_setAutoInc(2);*/
 
     // ASM version
-    u32* pA_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
-    u32* pB_bottom_half_start = (u32*)(FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
+    u32* pA_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
+    u32* pB_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
 

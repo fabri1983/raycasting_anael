@@ -12,9 +12,9 @@ typedef struct {
 } Digits;
 
 u16 hud_loadInitialState (u16 currentTileIndex);
-void hud_free_dst_buffer();
-void hud_setup_hint_pals (u32* palA_addr, u32* palB_addr);
-u16* hud_getTilemap ();
+void hud_free_src_buffer ();
+void hud_free_dst_buffer ();
+void hud_free_pals_buffer ();
 
 void hud_resetAmmo ();
 void hud_setAmmo (u8 hundreds, u8 tens, u8 ones);

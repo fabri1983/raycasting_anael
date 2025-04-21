@@ -51,7 +51,10 @@
     "vram.h": "c",
     "sys.h": "c",
     "joy_6btn.h": "c",
-    "font.h": "c"
+    "font.h": "c",
+    "libres.h": "c",
+    "snd_pcm4.h": "c",
+    "snd_dpcm2.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {

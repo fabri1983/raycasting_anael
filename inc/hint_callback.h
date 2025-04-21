@@ -8,10 +8,6 @@ void hint_reset ();
 
 bool canDMAinHint (u16 lenInWord);
 
-void hint_enqueueWeaponPal (u16* pal);
-
-void hint_setPalToRestore (u16* pal);
-
 void hint_enqueueHudTilemap ();
 
 void hint_enqueueTiles (void *from, u16 toIndex, u16 lenInWord);
