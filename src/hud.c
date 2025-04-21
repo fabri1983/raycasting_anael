@@ -495,9 +495,7 @@ u16 hud_loadInitialState (u16 currentTileIndex)
 }
 
 void hud_free_src_buffer () {
-    #if HUD_TILEMAP_COMPRESSED
     memsetU32((u32*)RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS, 0, (HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H)/2);
-    #endif
 }
 
 void hud_free_dst_buffer () {
