@@ -330,7 +330,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
     fb_set_top_entries_column(column);
 
     // reset to the start of frame_buffer
-    column_ptr = frame_buffer;
+    column_ptr = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
 
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
     for (; column < PIXEL_COLUMNS; column += RENDER_COLUMNS_UNROLL) {

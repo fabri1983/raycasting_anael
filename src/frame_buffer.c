@@ -5,20 +5,17 @@
 #include <vdp_tile.h>
 #include <memory.h>
 
-u16* frame_buffer;
 u16* column_ptr;
 
 void fb_allocate_frame_buffer ()
 {
-    frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
-
     // Do not use clear_buffer() here because it doesn't save registers in the stack and at this moment in the execution they are actually being used
-    memsetU32((u32*)frame_buffer, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
+    memsetU32((u32*)RAM_FIXED_FRAME_BUFFER_ADDRESS, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
 }
 
 void fb_free_frame_buffer ()
 {
-    memsetU32((u32*)frame_buffer, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
+    memsetU32((u32*)RAM_FIXED_FRAME_BUFFER_ADDRESS, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
 }
 
 void clear_buffer_no_usp ()

@@ -9,11 +9,6 @@
 // Offset to access bottom entry. *2 for byte convertion.
 #define H2_FOR_BOTTOM_ENTRY ((VERTICAL_ROWS-1)*TILEMAP_COLUMNS)*2
 
-// 224 px display height, but only VERTICAL_ROWS height for the frame buffer (tilemap).
-// TILEMAP_COLUMNS is the width of the tilemap on screen.
-// Multiplied by 2 because is shared between the 2 planes BG_A and BG_B.
-extern u16* frame_buffer;
-
 void fb_allocate_frame_buffer ();
 void fb_free_frame_buffer ();
 

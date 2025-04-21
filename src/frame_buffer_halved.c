@@ -426,7 +426,9 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM
 
     // C version: set tilemap top entries (already inverted)
-    /*u16* entries_ptr = top_entries;
+    /*
+    u16* frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
+    u16* entries_ptr = top_entries;
     #pragma GCC unroll 80 // Always set the max number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = *entries_ptr++;
@@ -438,6 +440,7 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
     }*/
 
     // ASM version: set tilemap top entries (already inverted)
+    u16* frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
     u32* entries_ptr = (u32*) top_entries;
     u32 entry; // h2 in higher word, and val in lower word
     u16 offset;

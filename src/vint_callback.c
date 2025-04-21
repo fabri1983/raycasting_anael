@@ -41,7 +41,7 @@ static u16 vdpSpriteCache_lenInWord;
 void vint_reset ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-    hud_tilemap = 0;
+    hud_tilemap_set= 0;
     #endif
 
     memset(tiles_from, 0, DMA_MAX_QUEUE_CAPACITY);

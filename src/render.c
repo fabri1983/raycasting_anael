@@ -235,10 +235,10 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 void render_DMA_enqueue_framebuffer ()
 {
     // All the frame_buffer Plane A
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    DMA_queueDmaFast(DMA_VRAM, (void*) RAM_FIXED_FRAME_BUFFER_ADDRESS, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
  
     // All the frame_buffer Plane B
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    DMA_queueDmaFast(DMA_VRAM, (void*) RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 }
 
 void render_DMA_row_by_row_framebuffer ()
