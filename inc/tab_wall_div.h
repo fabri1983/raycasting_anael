@@ -27,7 +27,8 @@ fabri1983 changes
 // Additional column height modification. Positive value increases drawing column height. Negative value decreases it.
 #define ADDITIONAL_WALL_HEIGHT_MODIF 4
 
-u8 tab_wall_div[FP * (STEP_COUNT + 1)];
+// u16 so upper byte is 0 hence we can skip the clearing instruction in inline assembly.
+u16 tab_wall_div[FP * (STEP_COUNT + 1)];
 for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 	u32 v = (u32)TILEMAP_COLUMNS*FP / (i + 1);
 	u8 div = min(v, MAX_U8);
@@ -38,7 +39,8 @@ for (u16 i = 0; i < sizeof(tab_wall_div); i++) {
 }*/
 
 // Table body generated with script tab_wall_div_generator.js. Check correct values of constants before script execution.
-const u8 tab_wall_div[FP * (STEP_COUNT + 1)] = {
+// u16 so upper byte is 0 hence we can skip the clearing instruction in inline assembly.
+const u16 tab_wall_div[FP * (STEP_COUNT + 1)] = {
 0, 0, 0, 0, 0, 0, 0, 0,
 0, 0, 0, 0, 0, 0, 0, 0,
 0, 0, 0, 0, 0, 0, 0, 0,

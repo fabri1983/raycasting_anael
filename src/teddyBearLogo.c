@@ -74,7 +74,8 @@ void displayTeddyBearLogo ()
     }
 
     // Fade out all graphics to Black
-    PAL_fadeOutAll(30, FALSE);
+    // NOTE: SKIP THE FADE OUT TO AVOID ADDRESS ERROR WITH THE RAY CASTER
+    //PAL_fadeOutAll(30, FALSE);
 
     SPR_end();
     SYS_doVBlankProcess();

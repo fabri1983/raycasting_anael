@@ -463,11 +463,12 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 	u16 mapY = posY / FP;
 	const u8* map_ptr = &map[mapY][mapX];
 
-    // Now the actual DDA starts. It's a loop that increments the ray with 1 square every time, until a wall is hit.
+    // Now the actual DDA starts. It's a loop that increments the ray in 1 square every time, until a wall is hit.
 	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
 
-        // Jump to next map square, either in X or Y direction
-		// side X
+        // Jump into next map square, either in X or Y direction
+
+		// Side X
 		if (sideDistX < sideDistY) {
 			mapX += stepX;
 			map_ptr += stepX;
@@ -478,7 +479,7 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 			}
 			sideDistX += deltaDistX;
 		}
-		// side Y
+		// Side Y
 		else {
 			mapY += stepY;
 			map_ptr += stepYMS;
@@ -517,7 +518,7 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
 }
 #endif
 
-static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
+static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 {
     #if RENDER_SHOW_TEXCOORD
 
@@ -541,18 +542,19 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
     // u16 h2 = tab_wall_div[sideDistX]; // height halved
 
     // ASM version
-    u16* tab = (u16*) tab_color_d8_1_X_pals_shft;
     u16 h2;
+    u16* a_aux;
     __asm volatile (
         "andi.w  #1,%[tileAttrib]\n\t" // (mapY&1)
-        "add.w   %[sideDist],%[tileAttrib]\n\t"
-        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistX
+        "add.w   %[sideDist],%[sideDist]\n\t" // 2*sideDistX
+        "move.l  %[tab_wall_div],%[a_aux]\n\t" // u16* tab_wall_div
+        "move.w  (%[a_aux],%[sideDist].w),%[h2]\t\n" // h2 = tab_wall_div[sideDistX];
+        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistX + (mapY&1)
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
-        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]\n\t"
-        "moveq   #0,%[h2]\n\t" // clear upper byte
-        "move.b  (%[tab_wall_div],%[sideDist].w),%[h2]"
-        : [tileAttrib] "+d" (mapY), [h2] "=d" (h2), [sideDist] "+d" (sideDistX)
-        : [tab] "a" (tab), [tab_wall_div] "a" (tab_wall_div)
+        "move.l  %[tab_color_mem],%[a_aux]\n\t" // u16* tab_color_d8_1_X_pals_shft
+        "move.w  (%[a_aux],%[tileAttrib].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[2*sideDistX + (mapY&1)];
+        : [a_aux] "=a" (a_aux), [tileAttrib] "+d" (mapY), [h2] "=d" (h2), [sideDist] "+d" (sideDistX)
+        : [tab_wall_div] "s" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_X_pals_shft)
         :
     );
     u16 tileAttrib = mapY;
@@ -574,7 +576,7 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
     #endif
 }
 
-static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
+static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
     #if RENDER_SHOW_TEXCOORD
 
@@ -598,18 +600,19 @@ static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
     // u16 h2 = tab_wall_div[sideDistY]; // height halved
 
     // ASM version
-    u16* tab = (u16*) tab_color_d8_1_Y_pals_shft;
     u16 h2;
+    u16* a_aux;
     __asm volatile (
         "andi.w  #1,%[tileAttrib]\n\t" // (mapX&1)
-        "add.w   %[sideDist],%[tileAttrib]\n\t"
-        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistY
+        "add.w   %[sideDist],%[sideDist]\n\t" // 2*sideDistY
+        "move.l  %[tab_wall_div],%[a_aux]\n\t" // u16* tab_wall_div
+        "move.w  (%[a_aux],%[sideDist].w),%[h2]\t\n" // h2 = tab_wall_div[sideDistY];
+        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistY + (mapX&1)
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing by multiplying by 2
-        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]\n\t"
-        "moveq   #0,%[h2]\n\t" // clear upper byte
-        "move.b  (%[tab_wall_div],%[sideDist].w),%[h2]"
-        : [tileAttrib] "+d" (mapX), [h2] "=d" (h2), [sideDist] "+d" (sideDistY)
-        : [tab] "a" (tab), [tab_wall_div] "a" (tab_wall_div)
+        "move.l  %[tab_color_mem],%[a_aux]\n\t" // u16* tab_color_d8_1_Y_pals_shft;
+        "move.w  (%[a_aux],%[tileAttrib].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[2*sideDistY + (mapX&1)];
+        : [a_aux] "=a" (a_aux), [tileAttrib] "+d" (mapX), [h2] "=d" (h2), [sideDist] "+d" (sideDistY)
+        : [tab_wall_div] "s" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_Y_pals_shft)
         :
     );
     u16 tileAttrib = mapX;
