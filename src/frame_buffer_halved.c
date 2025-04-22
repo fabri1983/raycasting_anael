@@ -270,7 +270,7 @@ FORCE_INLINE void fb_increment_entries_column ()
     #endif
 }
 
-void write_vline_halved (u16 h2, u16 tileAttrib)
+FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
 

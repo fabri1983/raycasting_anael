@@ -79,8 +79,10 @@ void displayTeddyBearLogo ()
     SPR_end();
     SYS_doVBlankProcess();
 
+    // restore planes
+    VDP_clearPlane(BG_A, TRUE);
     // Restore SGDK's font palette (VDP_resetScreen() doesn't restore it accordingly)
     VDP_setTextPalette(PAL0);
-
-    VDP_resetScreen();
+    // restore SGDK's default palettes
+    PAL_setPalette(PAL3, palette_blue, CPU);
 }

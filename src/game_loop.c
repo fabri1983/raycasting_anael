@@ -332,6 +332,10 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
     // reset to the start of frame_buffer
     column_ptr = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
 
+    #if RENDER_COLUMNS_UNROLL == 1
+    s16 offset_xor = -VERTICAL_ROWS*TILEMAP_COLUMNS + 1;
+    #endif
+
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
     for (; column < PIXEL_COLUMNS; column += RENDER_COLUMNS_UNROLL) {
         #if RENDER_COLUMNS_UNROLL == 1
@@ -339,10 +343,9 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
         fb_increment_entries_column();
         map_hit_incrementColumn();
-        if ((column & 1) == 0)
-            column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
-        else
-            column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
+        // cycles between (-VERTICAL_ROWS*TILEMAP_COLUMNS + 1) and (VERTICAL_ROWS*TILEMAP_COLUMNS)
+        offset_xor ^= (-VERTICAL_ROWS*TILEMAP_COLUMNS + 1) ^ (VERTICAL_ROWS*TILEMAP_COLUMNS);
+        column_ptr += offset_xor;
 
         #elif RENDER_COLUMNS_UNROLL == 2
 
@@ -517,6 +520,7 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 {
     #if RENDER_SHOW_TEXCOORD
+
     // We only need the Texture X coordinate because we stay in the same vertical stripe of the screen.
     // Calculate the X coordinate where exactly the wall was hit (this is not the final Texture X coordinate)
     u16 wallTexX = posY + (mulu(sideDistX, rayDirAngleY) >> FS);
@@ -528,28 +532,40 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
     u16 tileAttrib;
     if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8 + (8*8);
     else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8
+    u16 h2 = tab_wall_div[sideDistX]; // height halved
+
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    //u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX + sideDistX + (mapY&1)];
-    u16 tileAttrib = mapY;
+
+    // C version
+    // u16 tileAttrib = tab_color_d8_1_X_pals_shft[2*sideDistX + (mapY&1)];
+    // u16 h2 = tab_wall_div[sideDistX]; // height halved
+
+    // ASM version
     u16* tab = (u16*) tab_color_d8_1_X_pals_shft;
+    u16 h2;
     __asm volatile (
-        "andi.w  #1,%[tileAttrib]\n\t"
+        "andi.w  #1,%[tileAttrib]\n\t" // (mapY&1)
         "add.w   %[sideDist],%[tileAttrib]\n\t"
-        "add.w   %[sideDist],%[tileAttrib]\n\t"
+        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistX
         "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
-        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
-        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistX)
-        : [tab] "a" (tab)
+        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]\n\t"
+        "moveq   #0,%[h2]\n\t" // clear upper byte
+        "move.b  (%[tab_wall_div],%[sideDist].w),%[h2]"
+        : [tileAttrib] "+d" (mapY), [h2] "=d" (h2), [sideDist] "+d" (sideDistX)
+        : [tab] "a" (tab), [tab_wall_div] "a" (tab_wall_div)
         :
     );
+    u16 tileAttrib = mapY;
+
     #else
+
     u8 d8_1 = tab_color_d8_1[sideDistX]; // the bigger the distant the darker the color is
     u16 tileAttrib;
     if (mapY&1) tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
     else tileAttrib = (PAL0 << TILE_ATTR_PALETTE_SFT) + d8_1;
-    #endif
-
     u16 h2 = tab_wall_div[sideDistX]; // height halved
+
+    #endif
 
     #if RENDER_HALVED_PLANES
     write_vline_halved(h2, tileAttrib);
@@ -561,6 +577,7 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
     #if RENDER_SHOW_TEXCOORD
+
     // We only need the Texture X coordinate because we stay in the same vertical stripe of the screen.
     // Calculate the X coordinate where exactly the wall was hit (this is not the final Texture X coordinate)
     u16 wallTexX = posX + (mulu(sideDistY, rayDirAngleX) >> FS);
@@ -572,28 +589,40 @@ static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
     u16 tileAttrib;
     if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8 + (8*8);
     else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + 1 + min(d, wallTexX)*8;
+    u16 h2 = tab_wall_div[sideDistY]; // height halved
+
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
-    //u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY + sideDistY + (mapX&1)];
-    u16 tileAttrib = mapX;
+
+    // C version
+    // u16 tileAttrib = tab_color_d8_1_Y_pals_shft[2*sideDistY + (mapX&1)];
+    // u16 h2 = tab_wall_div[sideDistY]; // height halved
+
+    // ASM version
     u16* tab = (u16*) tab_color_d8_1_Y_pals_shft;
+    u16 h2;
     __asm volatile (
-        "andi.w  #1,%[tileAttrib]\n\t"
+        "andi.w  #1,%[tileAttrib]\n\t" // (mapX&1)
         "add.w   %[sideDist],%[tileAttrib]\n\t"
-        "add.w   %[sideDist],%[tileAttrib]\n\t"
-        "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
-        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]"
-        : [tileAttrib] "+d" (tileAttrib), [sideDist] "+d" (sideDistY)
-        : [tab] "a" (tab)
+        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistY
+        "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing by multiplying by 2
+        "move.w  (%[tab],%[tileAttrib].w),%[tileAttrib]\n\t"
+        "moveq   #0,%[h2]\n\t" // clear upper byte
+        "move.b  (%[tab_wall_div],%[sideDist].w),%[h2]"
+        : [tileAttrib] "+d" (mapX), [h2] "=d" (h2), [sideDist] "+d" (sideDistY)
+        : [tab] "a" (tab), [tab_wall_div] "a" (tab_wall_div)
         :
     );
+    u16 tileAttrib = mapX;
+
     #else
+
     u8 d8_1 = tab_color_d8_1[sideDistY]; // the bigger the distant the darker the color is
     u16 tileAttrib;
     if (mapX&1) tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1 + (8*8); // use the tiles that point to second half of wall's palette
     else tileAttrib = (PAL1 << TILE_ATTR_PALETTE_SFT) + d8_1;
-    #endif
-
     u16 h2 = tab_wall_div[sideDistY]; // height halved
+
+    #endif
 
     #if RENDER_HALVED_PLANES
     write_vline_halved(h2, tileAttrib);

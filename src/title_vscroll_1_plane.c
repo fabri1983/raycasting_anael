@@ -337,7 +337,8 @@ static void drawBlackAboveScroll (u16 scanlineEffectPos, VDPPlane plane)
 {
     // Draw a row of black tiles above the applied scroll. 
     // This is applied at the end of screen since the VSCroll direction is downwards and we need to compensate the vertical offset.
-    VDP_fillTileMapRect(plane, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, 0), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
+    u16 black_tile_idx = 0;
+    VDP_fillTileMapRect(plane, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, black_tile_idx), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
 }
 
 void title_vscroll_1_plane_show ()
@@ -439,7 +440,6 @@ void title_vscroll_1_plane_show ()
     // Set the palettes from displaced columns image to be ready for HInt the next frame
     swapPalettesTitle();
 
-    u8 keyPressDelayPeriod = 10; // Helps to avoid a long pressed button in previous update loop to leek into next update loop
     u16 scanlineEffectPos = 0;
 
     // Melting screen update loop
@@ -459,13 +459,6 @@ void title_vscroll_1_plane_show ()
 
         if (scanlineEffectPos >= (224 + 2*MELTING_OFFSET_STEPPING))
             break;
-
-        const u16 joyState = JOY_readJoypad(JOY_1);
-        if (keyPressDelayPeriod == 0 && (joyState & BUTTON_START)) {
-            break;
-        }
-        if (keyPressDelayPeriod > 0)
-            --keyPressDelayPeriod;
     }
 
     SYS_disableInts();

@@ -226,7 +226,7 @@ void clear_buffer_sp ()
 	);
 }
 
-void write_vline (u16 h2, u16 tileAttrib)
+FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 {
 	// Tilemap width in tiles.
 
