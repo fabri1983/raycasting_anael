@@ -183,11 +183,20 @@ void waitVCounterReg (u16 n);
     )
 
 /**
- * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). Assumes fromAddr is a dynamic var.
+ * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
+ * Assumes len and fromAddr arguments dynamic vars.
  * \param len How many colors to move.
  * \param fromAddr Must come >> 1 (shifted to right) already.
 */
 void setupDMAForPals (u16 len, u32 fromAddr);
+
+/**
+ * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
+ * Assumes len argument is a constant and fromAddr is a dynamic var.
+ * \param len How many colors to move. Constant value.
+ * \param fromAddr Must come >> 1 (shifted to right) already.
+*/
+void setupDMAForPals_len_fixed (u32 len, u32 fromAddr);
 
 /// @brief Multiply and shift by FS using asm to directly return u16 data type.
 /// @param op1 

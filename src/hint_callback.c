@@ -187,13 +187,14 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
         --tiles_elems;
         u16 lenInWord = tiles_lenInWord[tiles_elems];
         tilesLenInWordTotalToDMA -= lenInWord;
-        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
+        // NOTE: this should be DMA_doDma() instead
+        DMA_doDmaFast(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
-        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, -1);
+        DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, vdpSpriteCache_lenInWord, -1);
         vdpSpriteCache_lenInWord = 0;
     }
     #endif

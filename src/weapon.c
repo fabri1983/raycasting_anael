@@ -8,6 +8,7 @@
 #include "weapon.h"
 #include "weapons_res.h"
 #include "hud.h"
+#include "spr_eng_override.h"
 
 static u8 resetToIdle_timer;
 static u8 fire_coolDown_timer;
@@ -55,7 +56,7 @@ void weapon_resetState ()
     u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
     // Loads fist sprite so we can avoid the check for NULL in other methods
-    spr_currWeapon = SPR_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, 
+    spr_currWeapon = spr_eng_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, 
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
@@ -86,7 +87,7 @@ static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
     // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
     u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
-    spr_currWeapon = SPR_addSpriteEx(sprDef, x, y, baseTileAttribs, 
+    spr_currWeapon = spr_eng_addSpriteEx(sprDef, x, y, baseTileAttribs, 
         SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
     SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually
 
@@ -309,7 +310,9 @@ void weapon_update ()
     if (fire_coolDown_timer != 0) {
         --fire_coolDown_timer;
         if ((weaponSwayX | weaponSwayY) != 0) {
-            SPR_setPosition(spr_currWeapon, currWeaponSpriteX, currWeaponSpriteY);
+            //SPR_setPosition(spr_currWeapon, currWeaponSpriteX, currWeaponSpriteY);
+            spr_currWeapon->x = currWeaponSpriteX + 0x80;
+            spr_currWeapon->y = currWeaponSpriteY + 0x80;
             weaponSwayX = 0;
             weaponSwayY = 0;
         }
@@ -326,7 +329,9 @@ void weapon_update ()
                 if (weaponSwayY > 0) weaponSwayY -= 1;
             }
             isMoving = FALSE;
-            SPR_setPosition(spr_currWeapon, currWeaponSpriteX + weaponSwayX, currWeaponSpriteY + weaponSwayY);
+            //SPR_setPosition(spr_currWeapon, currWeaponSpriteX + weaponSwayX, currWeaponSpriteY + weaponSwayY);
+            spr_currWeapon->x = currWeaponSpriteX + weaponSwayX + 0x80;
+            spr_currWeapon->y = currWeaponSpriteY + weaponSwayY + 0x80;
         }
     }
 

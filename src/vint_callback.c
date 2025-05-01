@@ -95,11 +95,12 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 
 void vint_callback ()
 {
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+	turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
+
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
     #endif
-
-	turnOffVDP(0x74);
 
     render_Z80_setBusProtection(TRUE);
     // delay enabled ? --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
@@ -111,10 +112,6 @@ void vint_callback ()
     render_DMA_row_by_row_framebuffer();
 
 	render_Z80_setBusProtection(FALSE);
-
-    #if HUD_RELOAD_WEAPON_PALS_AT_VINT | DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
-    #endif
 
     #if HUD_RELOAD_WEAPON_PALS_AT_VINT
 	// DMA the weapon pals that were overriden gy the HUD pals
@@ -136,13 +133,14 @@ void vint_callback ()
     while (tiles_elems) {
         --tiles_elems;
         u16 lenInWord = tiles_lenInWord[tiles_elems];
-        DMA_doDma(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
+        // NOTE: this should be DMA_doDma() instead
+        DMA_doDmaFast(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
-        DMA_doDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteCache_lenInWord, -1);
+        DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, vdpSpriteCache_lenInWord, -1);
         vdpSpriteCache_lenInWord = 0;
     }
     #endif
@@ -163,7 +161,7 @@ void vint_callback ()
     render_mirror_planes_in_VRAM();
     #endif
 
-    turnOnVDP(0x74);
+    turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
 
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
     // Called once the other half planes were effectively DMAed into VRAM.

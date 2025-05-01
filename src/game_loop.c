@@ -1,4 +1,3 @@
-#include "game_loop.h"
 #include <dma.h>
 #include <sys.h>
 #include <maths.h>
@@ -33,6 +32,8 @@
 #endif
 
 #include "map_hit_compressed.h"
+
+#include "game_loop.h"
 
 static void dda (u16 posX, u16 posY, u16* delta_a_ptr);
 #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
@@ -461,7 +462,7 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
     // Which box of the map we're in
     u16 mapX = posX / FP;
 	u16 mapY = posY / FP;
-	const u8* map_ptr = &map[mapY][mapX];
+	u8* map_ptr = (u8*) &map[mapY][mapX];
 
     // Now the actual DDA starts. It's a loop that increments the ray in 1 square every time, until a wall is hit.
 	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
@@ -475,7 +476,7 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 			u16 hit = *map_ptr; // map[mapY][mapX];
 			if (hit) {
                 hitOnSideX(sideDistX, mapY, posY, rayDirAngleY);
-				break;
+				return;
 			}
 			sideDistX += deltaDistX;
 		}
@@ -486,7 +487,7 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 			u16 hit = *map_ptr; // map[mapY][mapX];
 			if (hit) {
                 hitOnSideY(sideDistY, mapX, posX, rayDirAngleX);
-				break;
+				return;
 			}
 			sideDistY += deltaDistY;
 		}
@@ -507,18 +508,18 @@ static void hit_map_do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDist
     u16 hit_sideDistXY = (hit_value >> MAP_HIT_OFFSET_SIDEDISTXY);// & MAP_HIT_MASK_SIDEDISTXY;
 
     // Jump to next map square, either in X or Y direction
-    // side X
+    // Side X
     if (hit_sideDistXY < sideDistY) {
         hitOnSideX(hit_sideDistXY, hit_mapXY, posY, rayDirAngleY);
     }
-    // side Y
+    // Side Y
     else {
         hitOnSideY(hit_sideDistXY, hit_mapXY, posX, rayDirAngleX);
     }
 }
 #endif
 
-static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
+static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
 {
     #if RENDER_SHOW_TEXCOORD
 
@@ -542,22 +543,19 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     // u16 h2 = tab_wall_div[sideDistX]; // height halved
 
     // ASM version
+    u16 tileAttrib;
     u16 h2;
-    u16* a_aux;
     __asm volatile (
-        "andi.w  #1,%[tileAttrib]\n\t" // (mapY&1)
-        "add.w   %[sideDist],%[sideDist]\n\t" // 2*sideDistX
-        "move.l  %[tab_wall_div],%[a_aux]\n\t" // u16* tab_wall_div
-        "move.w  (%[a_aux],%[sideDist].w),%[h2]\t\n" // h2 = tab_wall_div[sideDistX];
-        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistX + (mapY&1)
-        "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing
-        "move.l  %[tab_color_mem],%[a_aux]\n\t" // u16* tab_color_d8_1_X_pals_shft
-        "move.w  (%[a_aux],%[tileAttrib].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[2*sideDistX + (mapY&1)];
-        : [a_aux] "=a" (a_aux), [tileAttrib] "+d" (mapY), [h2] "=d" (h2), [sideDist] "+d" (sideDistX)
-        : [tab_wall_div] "s" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_X_pals_shft)
+        "andi.w  #1, %[mapY]\n\t"                       // mapY &= 1
+        "add.w   %[sideDistX], %[sideDistX]\n\t"        // sideDistX *= 2 (word offset)
+        "move.w  (%[tab_wall_div],%[sideDistX].w), %[h2]\n\t" // h2 = tab_wall_div[sideDistX]
+        "add.w   %[mapY], %[sideDistX]\n\t"             // index = 2*sideDistX + (mapY & 1)
+        "add.w   %[sideDistX], %[sideDistX]\n\t"        // byte offset (multiply by 2 again)
+        "move.w  (%[tab_color_mem],%[sideDistX].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
+        : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistX] "+d" (sideDistX), [mapY] "+d" (mapY)
+        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "a" (tab_color_d8_1_X_pals_shft)
         :
     );
-    u16 tileAttrib = mapY;
 
     #else
 
@@ -576,7 +574,7 @@ static FORCE_INLINE void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayD
     #endif
 }
 
-static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
+static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
 {
     #if RENDER_SHOW_TEXCOORD
 
@@ -600,22 +598,19 @@ static FORCE_INLINE void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayD
     // u16 h2 = tab_wall_div[sideDistY]; // height halved
 
     // ASM version
+    u16 tileAttrib;
     u16 h2;
-    u16* a_aux;
     __asm volatile (
-        "andi.w  #1,%[tileAttrib]\n\t" // (mapX&1)
-        "add.w   %[sideDist],%[sideDist]\n\t" // 2*sideDistY
-        "move.l  %[tab_wall_div],%[a_aux]\n\t" // u16* tab_wall_div
-        "move.w  (%[a_aux],%[sideDist].w),%[h2]\t\n" // h2 = tab_wall_div[sideDistY];
-        "add.w   %[sideDist],%[tileAttrib]\n\t" // 2*sideDistY + (mapX&1)
-        "add.w   %[tileAttrib],%[tileAttrib]\n\t" // convert word adressing into byte addressing by multiplying by 2
-        "move.l  %[tab_color_mem],%[a_aux]\n\t" // u16* tab_color_d8_1_Y_pals_shft;
-        "move.w  (%[a_aux],%[tileAttrib].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[2*sideDistY + (mapX&1)];
-        : [a_aux] "=a" (a_aux), [tileAttrib] "+d" (mapX), [h2] "=d" (h2), [sideDist] "+d" (sideDistY)
-        : [tab_wall_div] "s" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_Y_pals_shft)
+        "andi.w  #1, %[mapX]\n\t"                       // mapX &= 1
+        "add.w   %[sideDistY], %[sideDistY]\n\t"        // sideDistY *= 2 (word offset)
+        "move.w  (%[tab_wall_div],%[sideDistY].w), %[h2]\n\t" // h2 = tab_wall_div[sideDistY]
+        "add.w   %[mapX], %[sideDistY]\n\t"             // index = 2*sideDistY + (mapX & 1)
+        "add.w   %[sideDistY], %[sideDistY]\n\t"        // byte offset (multiply by 2 again)
+        "move.w  (%[tab_color_mem],%[sideDistY].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
+        : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistY] "+d" (sideDistY), [mapX] "+d" (mapX)
+        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "a" (tab_color_d8_1_Y_pals_shft)
         :
     );
-    u16 tileAttrib = mapX;
 
     #else
 

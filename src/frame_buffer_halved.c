@@ -300,15 +300,16 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
     // ASM version.
     // This block of code sets tileAttrib which points to a colored tile.
     // This block of code sets bottom tilemap entry and save the top value into an array for later use.
-    u16 h2_aux2 = h2;
+    u16 h2_aux = h2;
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     u16* top_entries_ptr = top_entries + top_entries_current_col;
     #endif
     __asm volatile (
-        // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
-        // we can use it as a multiple of the block size (8 bytes) we'll jump into
+        // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits and then 
+        // divided by 2 so we can use it as a multiple of the block size (4 bytes) we'll jump into
         "    andi.w  %[CLEAR_BITS_OFFSET],%[h2]\n" // (h2 & ~(8-1))
-        // Jump into table using h2
+        "    lsr.w   #1,%[h2]\n"
+        // Jump into instruction using h2/2
         "    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
         // Assignment ranges:
         //  from [(VERTICAL_ROWS-2)*TILEMAP_COLUMNS] down to [(((VERTICAL_ROWS-2)/2)+1)*TILEMAP_COLUMNS]
@@ -318,12 +319,12 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
         //  from [22*TILEMAP_COLUMNS] down to [12*TILEMAP_COLUMNS]
         ".wvl_table_%=:\n"
         ".set offdown, ((%c[_VERTICAL_ROWS] - 2) * %c[_TILEMAP_COLUMNS]) * 2\n" // *2 for byte convertion
-        ".rept (%c[_VERTICAL_ROWS] - 2) / 2\n"
+        ".rept ((%c[_VERTICAL_ROWS] - 2) / 2)\n"
         "    move.w  %[tileAttrib],offdown(%[tilemap])\n"
-        "    nop\n" // 2 bytes op size
-        "    nop\n" // 2 bytes op size
         "    .set offdown, offdown - (%c[_TILEMAP_COLUMNS] * 2)\n" // *2 for byte convertion
         ".endr\n"
+        // restore h2
+        "    lsl.w   #1,%[h2]\n"
 
         // Setup for top and bottom tilemap entries
         "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7); // h2 % 8
@@ -348,12 +349,12 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
         #endif
 
         // Bottom tilemap entry
-        "    or.w    %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
+        "    ori.w   %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
         "    neg.w   %[h2]\n"
         "    addi.w  %[H2_BOTTOM],%[h2]\n" // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
         "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)"
 
-        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
+        : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux)
           #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
           , [top_entries_ptr] "+a" (top_entries_ptr)
           #endif

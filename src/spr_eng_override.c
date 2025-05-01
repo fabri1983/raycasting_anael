@@ -1,8 +1,11 @@
-#include "spr_eng_override.h"
+#include <types.h>
+#include <vram.h>
 #include <sprite_eng.h>
 #include <tools.h>
 #include <mapper.h>
 #include <sys.h>
+#include "spr_eng_override.h"
+#include "consts_ext.h"
 #include "consts.h"
 #include "hint_callback.h"
 #include "vint_callback.h"
@@ -18,6 +21,108 @@
 #define NEED_TILES_UPLOAD                   0x0004
 
 #define STATE_ANIMATION_DONE                0x0010
+
+extern Sprite* firstSprite;
+extern Sprite* lastSprite;
+
+static Sprite* allocateSprite(u16 head)
+{
+    Sprite* result;
+
+    // allocate
+    result = POOL_allocate(spritesPool);
+
+    if (head)
+    {
+        // add the new sprite at the beginning of the chained list
+        if (firstSprite) firstSprite->prev = result;
+        result->prev = NULL;
+        result->next = firstSprite;
+        // update first and last sprite
+        if (lastSprite == NULL) lastSprite = result;
+        firstSprite = result;
+    }
+    else
+    {
+        // add the new sprite at the end of the chained list
+        if (lastSprite) lastSprite->next = result;
+        result->prev = lastSprite;
+        result->next = NULL;
+        // update first and last sprite
+        if (firstSprite == NULL) firstSprite = result;
+        lastSprite = result;
+    }
+
+    // mark as allocated --> this is done after allocate call, not needed here
+    // result->status = ALLOCATED;
+
+    return result;
+}
+
+// VRAM region allocated for the Sprite Engine
+extern VRAMRegion vram;
+
+Sprite* spr_eng_addSpriteEx(const SpriteDefinition* spriteDef, s16 x, s16 y, u16 attribut, u16 flag)
+{
+    Sprite* sprite;
+
+    // allocate new sprite
+    sprite = allocateSprite(flag & SPR_FLAG_INSERT_HEAD);
+
+    sprite->status = ALLOCATED | (flag & SPR_FLAG_MASK);
+
+    // fabri1983: currently I'm not using SPR_FLAG_AUTO_VISIBILITY
+    // auto visibility ?
+    /*if (flag & SPR_FLAG_AUTO_VISIBILITY) sprite->visibility = 0;
+    // otherwise we set it to visible by default
+    else*/ sprite->visibility = VISIBILITY_ON;
+    // initialized with specified flag
+    sprite->definition = spriteDef;
+    sprite->onFrameChange = NULL;
+
+//    FIXME: not needed
+//    sprite->animation = NULL;
+    sprite->frame = NULL;
+
+    sprite->animInd = -1;
+    sprite->frameInd = -1;
+//    sprite->seqInd = -1;
+
+    // may not be reset in SPR_setAnimAndFrame(..) so we have to reset it here
+    sprite->timer = 0;
+
+    sprite->x = x + 0x80;
+    sprite->y = y + 0x80;
+    // depending sprite position (first or last) we set its default depth
+    if (flag & SPR_FLAG_INSERT_HEAD) sprite->depth = SPR_MIN_DEPTH;
+    else sprite->depth = SPR_MAX_DEPTH;
+
+    // fabri1983: currently I'm not setting SPR_FLAG_AUTO_VRAM_ALLOC flag when adding the sprites
+    sprite->attribut = attribut;
+    // fabri1983: therefor next logic is not neeed
+    // auto VRAM alloc enabled ?
+    /*if (flag & SPR_FLAG_AUTO_VRAM_ALLOC)
+    {
+        // allocate VRAM
+        ind = VRAM_alloc(&vram, spriteDef->maxNumTile);
+        // not enough --> release sprite and return NULL
+        if (ind < 0)
+        {
+            releaseSprite(sprite);
+            return NULL;
+        }
+
+        // set VRAM index and preserve specific attributs from parameter
+        sprite->attribut = ind | (attribut & TILE_ATTR_MASK);
+    }
+    // just use the given attribut
+    else sprite->attribut = attribut;*/
+
+    // set anim and frame to 0 (important to do it after sprite->attribut has been set)
+    SPR_setAnimAndFrame(sprite, 0, 0);
+
+    return sprite;
+}
 
 static void setVisibility(Sprite* sprite, u16 newVisibility)
 {
@@ -284,7 +389,7 @@ void NO_INLINE spr_eng_update()
 {
     Sprite* sprite = firstSprite;
     // SAT pointer
-    VDPSprite* vdpSprite = vdpSpriteCache;
+    VDPSprite* vdpSprite = (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS; //vdpSpriteCache;
     // VDP sprite index (for link field)
     u8 vdpSpriteInd = 1;
 
