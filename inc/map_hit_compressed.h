@@ -33,14 +33,4 @@ void map_hit_setIndexForStartingColumn (u16 column);
 void map_hit_incrementColumn ();
 u16 map_hit_decompressAt ();
 
-#define MAP_HIT_COMPRESSED_BLOCK_SIZE (PIXEL_COLUMNS*4)
-
-const u16 map_hit_compressed[] = {
-0
-};
-
-const u32 map_hit_lookup[] = {
-0
-};
-
 #endif // _TAB_MAP_HIT_H_

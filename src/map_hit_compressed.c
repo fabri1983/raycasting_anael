@@ -3,6 +3,17 @@
 #include "map_hit_compressed.h"
 #include "utils.h"
 
+#define MAP_HIT_COMPRESSED_BLOCK_SIZE (PIXEL_COLUMNS*4)
+
+const u16 map_hit_compressed[] = {
+0
+};
+
+// values grouped by same delta (might be useful for further compression?)
+const u32 map_hit_lookup[] = {
+0
+};
+
 static u32 row;
 static u32 index;
 // static u32 blockIndex;

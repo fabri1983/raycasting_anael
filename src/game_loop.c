@@ -31,22 +31,26 @@
     #include "tab_deltas.h"
 #endif
 
-#if USE_MAP_HIT_COMPRESSED
+#if RENDER_USE_MAP_HIT_COMPRESSED
 #include "map_hit_compressed.h"
 #endif
 
 #include "game_loop.h"
 
 static void dda (u16 posX, u16 posY, u16* delta_a_ptr);
+
 #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
 static void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u32 sideDistX_l0, u32 sideDistX_l1, u32 sideDistY_l0, u32 sideDistY_l1);
 #else
 static void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u16 sideDistX_l0, u16 sideDistX_l1, u16 sideDistY_l0, u16 sideDistY_l1);
 #endif
+
+#if RENDER_USE_MAP_HIT_COMPRESSED
+static void do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY);
+#else
 static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY);
-#if USE_MAP_HIT_COMPRESSED
-static void do_stepping_with_hit_map (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY);
 #endif
+
 static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY);
 static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX);
 
@@ -89,7 +93,7 @@ void game_loop ()
 	u16 angle = 0; 
     u16* delta_a_ptr = (u16*)tab_deltas;
 
-    #if USE_MAP_HIT_COMPRESSED
+    #if RENDER_USE_MAP_HIT_COMPRESSED
     map_hit_reset_vars();
     map_hit_setRow(posX, posY, angle / (1024/AP));
     #endif
@@ -202,7 +206,7 @@ void game_loop ()
             u16 a = angle / (1024/AP); // a range is [0, 128)
             delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
 
-            #if USE_MAP_HIT_COMPRESSED
+            #if RENDER_USE_MAP_HIT_COMPRESSED
             map_hit_setRow(posX, posY, a);
             #endif
 
@@ -333,7 +337,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
     // If the target display dimensions are lower than full screen (except the hud) then just adjust PA_ADDR and PB_ADDR.
     u8 column = 0;
 
-    #if USE_MAP_HIT_COMPRESSED
+    #if RENDER_USE_MAP_HIT_COMPRESSED
     map_hit_setIndexForStartingColumn(column);
     #endif
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
@@ -355,7 +359,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         // cycles between (-VERTICAL_ROWS*TILEMAP_COLUMNS + 1) and (VERTICAL_ROWS*TILEMAP_COLUMNS)
@@ -368,7 +372,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
@@ -377,7 +381,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
@@ -388,7 +392,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
@@ -397,7 +401,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
@@ -406,7 +410,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         column_ptr += VERTICAL_ROWS*TILEMAP_COLUMNS; // jumps into Plane B region of framebuffer
@@ -415,7 +419,7 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         fb_increment_entries_column();
         #endif
-        #if USE_MAP_HIT_COMPRESSED
+        #if RENDER_USE_MAP_HIT_COMPRESSED
         map_hit_incrementColumn();
         #endif
         column_ptr += -VERTICAL_ROWS*TILEMAP_COLUMNS + 1; // go back to Plane A region of framebuffer and advance one tilemap entry
@@ -489,12 +493,36 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 	}
 
     #if RENDER_USE_MAP_HIT_COMPRESSED
-    do_stepping_with_hit_map(posX, posY, sideDistX, sideDistY, rayDirAngleX, rayDirAngleY);
+    do_stepping(posX, posY, sideDistX, sideDistY, rayDirAngleX, rayDirAngleY);
     #else
     do_stepping(posX, posY, deltaDistX, deltaDistY, sideDistX, sideDistY, stepX, stepY, stepYMS, rayDirAngleX, rayDirAngleY);
     #endif
 }
 
+#if RENDER_USE_MAP_HIT_COMPRESSED
+static void do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
+{
+    u16 hit_value = map_hit_decompressAt();
+    // if (hit_value == 0)
+    //     return;
+
+    // The value is compacted as next layout:
+    //   16 bits:  dddddddddddd    mmmm
+    //              sideDistXY     mapXY
+    u16 hit_mapXY = (hit_value >> MAP_HIT_OFFSET_MAPXY) & MAP_HIT_MASK_MAPXY;
+    u16 hit_sideDistXY = (hit_value >> MAP_HIT_OFFSET_SIDEDISTXY);// & MAP_HIT_MASK_SIDEDISTXY;
+
+    // Jump to next map square, either in X or Y direction
+    // Side X
+    if (hit_sideDistXY < sideDistY) {
+        hitOnSideX(hit_sideDistXY, hit_mapXY, posY, rayDirAngleY);
+    }
+    // Side Y
+    else {
+        hitOnSideY(hit_sideDistXY, hit_mapXY, posX, rayDirAngleX);
+    }
+}
+#else
 static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     // Which box of the map we're in
@@ -530,30 +558,6 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 			sideDistY += deltaDistY;
 		}
 	}
-}
-
-#if USE_MAP_HIT_COMPRESSED
-static void do_stepping_with_hit_map (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 rayDirAngleX, s16 rayDirAngleY)
-{
-    u16 hit_value = map_hit_decompressAt();
-    // if (hit_value == 0)
-    //     return;
-
-    // The value is compacted as next layout:
-    //   16 bits:  dddddddddddd    mmmm
-    //              sideDistXY     mapXY
-    u16 hit_mapXY = (hit_value >> MAP_HIT_OFFSET_MAPXY) & MAP_HIT_MASK_MAPXY;
-    u16 hit_sideDistXY = (hit_value >> MAP_HIT_OFFSET_SIDEDISTXY);// & MAP_HIT_MASK_SIDEDISTXY;
-
-    // Jump to next map square, either in X or Y direction
-    // Side X
-    if (hit_sideDistXY < sideDistY) {
-        hitOnSideX(hit_sideDistXY, hit_mapXY, posY, rayDirAngleY);
-    }
-    // Side Y
-    else {
-        hitOnSideY(hit_sideDistXY, hit_mapXY, posX, rayDirAngleX);
-    }
 }
 #endif
 
