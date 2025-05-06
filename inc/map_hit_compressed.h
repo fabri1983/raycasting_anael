@@ -2,6 +2,7 @@
 #define _TAB_MAP_HIT_H_
 
 #include <types.h>
+#include "consts.h"
 
 /**
  * First you need to generate the hit map with script tab_map_hit_generator.js. Check correct values of constants before script execution.
@@ -31,5 +32,15 @@ void map_hit_setRow (u16 posX, u16 posY, u16 a);
 void map_hit_setIndexForStartingColumn (u16 column);
 void map_hit_incrementColumn ();
 u16 map_hit_decompressAt ();
+
+#define MAP_HIT_COMPRESSED_BLOCK_SIZE (PIXEL_COLUMNS*4)
+
+const u16 map_hit_compressed[] = {
+0
+};
+
+const u32 map_hit_lookup[] = {
+0
+};
 
 #endif // _TAB_MAP_HIT_H_

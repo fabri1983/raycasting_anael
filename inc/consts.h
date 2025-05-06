@@ -85,12 +85,13 @@
 #define MAP_FRACTION 32 // How much we allow the player to be close to any wall
 #define MIN_POS_XY (FP + MAP_FRACTION)
 #define MAX_POS_XY (FP*(MAP_SIZE-1) - MAP_FRACTION)
+
+#define ANGLE_DIR_NORMALIZATION 24
+
 #define MAP_HIT_MASK_MAPXY (16-1)
 #define MAP_HIT_MASK_SIDEDISTXY (4096-1)
 #define MAP_HIT_OFFSET_MAPXY 0
 #define MAP_HIT_OFFSET_SIDEDISTXY 4
 #define MAP_HIT_MIN_CALCULATED_INDEX 174080
-
-#define ANGLE_DIR_NORMALIZATION 24
 
 #endif // _CONSTS_H_

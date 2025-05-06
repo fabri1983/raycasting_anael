@@ -9,8 +9,8 @@ const {
     MAX_U32, MAP_HIT_MIN_CALCULATED_INDEX
 } = require('./consts');
 
-const tabDeltasFile = '../inc/tab_deltas.h';
-const mapMatrixFile = '../src/map_matrix.c';
+const tabDeltasFile = '../inc/tab_deltas.h'; // input
+const mapMatrixFile = '../src/map_matrix.c'; // input
 const outputFile = 'tab_map_hit_OUTPUT.txt';
 
 const MAX_JOBS = 256;
@@ -41,6 +41,7 @@ function calculateHitMapEntry (mapX, mapY, a, column, sideDistXY, mapXY) {
     // The value is calculated in next layout:
     //   16 bits:  dddddddddddd    mmmm
     //              sideDistXY     mapXY
+	//              (12 bits)    (4 bits)
     let value = ((sideDistXY & MAP_HIT_MASK_SIDEDISTXY) << MAP_HIT_OFFSET_SIDEDISTXY) 
                     | ((mapXY & MAP_HIT_MASK_MAPXY) << MAP_HIT_OFFSET_MAPXY);
     value &= 0xFFFF;

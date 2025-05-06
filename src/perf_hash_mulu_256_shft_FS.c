@@ -274,10 +274,10 @@ const u16 tab_mulu_256_shft_FS[(256+1) * MPH_VALUES_DELTADIST_NKEYS] = {
 
 FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
 {
-    // These instructions needs to be beat: 
+    // These instructions needs to be speed up: 
     //   d6=op1, d7=op2
-    //   op1 * op2  =>  mulu  d6,d7    38~70 cycles
-    //   op1 >> FS  =>  lsr.l #8,d7    24 cycles
+    //   op1 * op2  =>  mulu  d6,d7    (38~70 cycles)
+    //   op1 >> FS  =>  lsr.l #8,d7    (24 cycles)
     // Result stored in op2 (d7).
     // High word of the mulu result is important for the >> FS instruction.
     // Where d6 = 0..256 and d7 = 182..65535, but d7 is only 915 different values.
@@ -296,15 +296,16 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     // u16* ptr = (u16*) (conv.i + op1_rowStride + op2_index);
     // return *ptr;
 
-    // 22 cycles (+ the load of table into ax)
-    // u16* table_ptr = conv.p;
-    // u16 result;
-    // __asm volatile (
-    //     "adda.l  %[rowStride],%[table_ptr]\n\t"        // table_ptr += rowStride
-    //     "move.w  (%[table_ptr],%[index].w),%[result]"  // result = table_ptr[index]
-    //     : [result] "=d" (result), [table_ptr] "+a" (table_ptr)
-    //     : [rowStride] "d" (op1_rowStride), [index] "d" (op2_index)
-    //     :
-    // );
-    // return result;
+    // 34 cycles
+    /*u16* table_ptr;
+    u16 result;
+    __asm volatile (
+        "movea.l %[table_symbol],%[table_ptr]\n\t"     // table_ptr = tab_mulu_256_shft_FS
+        "adda.l  %[rowStride],%[table_ptr]\n\t"        // table_ptr += rowStride
+        "move.w  (%[table_ptr],%[index].w),%[result]"  // result = table_ptr[index]
+        : [result] "=d" (result), [table_ptr] "=a" (table_ptr)
+        : [table_symbol] "s" (tab_mulu_256_shft_FS), [rowStride] "d" (op1_rowStride), [index] "d" (op2_index)
+        :
+    );
+    return result;*/
 }
