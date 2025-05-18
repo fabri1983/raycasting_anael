@@ -14,50 +14,69 @@ const u32 map_hit_lookup[] = {
 0
 };
 
+#define MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX FALSE
+
+#if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
+static u32 blockIndex;
+static u16 elemIndex;
+#else
 static u32 row;
 static u32 index;
-// static u32 blockIndex;
-// static u16 elemIndex;
+#endif
 
 void map_hit_reset_vars ()
 {
+    #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
     // To avoid repetitive calculations while traversing pixel columns we can initialize some vars
-    // elemIndex = MAP_HIT_COMPRESSED_BLOCK_SIZE;
+    elemIndex = MAP_HIT_COMPRESSED_BLOCK_SIZE;
+    #endif
 }
 
 FORCE_INLINE void map_hit_setRow(u16 posX, u16 posY, u16 a)
 {
     u16 mapX = posX / FP;
     u16 mapY = posY / FP;
-    row = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS) - MAP_HIT_MIN_CALCULATED_INDEX;
+    #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
     // The compressed array has a row length of MAP_HIT_COMPRESSED_BLOCK_SIZE = PIXEL_COLUMNS * k.
     // So we just divide by that length to get the row into the lookup index.
-    // u32 row = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS) - MAP_HIT_MIN_CALCULATED_INDEX;
-    // blockIndex = divu(row, MAP_HIT_COMPRESSED_BLOCK_SIZE);
+    u32 row = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS) - MAP_HIT_MIN_CALCULATED_INDEX;
+    blockIndex = divu(row, MAP_HIT_COMPRESSED_BLOCK_SIZE);
+    #else
+    row = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS) - MAP_HIT_MIN_CALCULATED_INDEX;
+    #endif
 }
 
 FORCE_INLINE void map_hit_setIndexForStartingColumn (u16 column)
 {
-    index = row + column;
+    #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
     // The compressed array has a row length of MAP_HIT_COMPRESSED_BLOCK_SIZE = PIXEL_COLUMNS * k.
     // So once the column exceed that length we need to wrap up. The correct thing should be % MAP_HIT_COMPRESSED_BLOCK_SIZE
     // but we know before hand that parameter "column" is smaller than MAP_HIT_COMPRESSED_BLOCK_SIZE.
-    // if (elemIndex >= MAP_HIT_COMPRESSED_BLOCK_SIZE)
-    //     elemIndex = column;
+    if (elemIndex >= MAP_HIT_COMPRESSED_BLOCK_SIZE)
+        elemIndex = column;
+    #else
+    index = row + column;
+    #endif
 }
 
 FORCE_INLINE void map_hit_incrementColumn ()
 {
-    ++index;
+    #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
     // The compressed array has a row length of MAP_HIT_COMPRESSED_BLOCK_SIZE = PIXEL_COLUMNS * k.
     // And since we are incrementing columns by 1 then we can just leave the wrap up of elemIndex to map_hit_setIndexForStartingColumn().
-    // ++elemIndex;
+    ++elemIndex;
+    #else
+    ++index;
+    #endif
 }
 
 u16 map_hit_decompressAt ()
 {
+    #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
+    #else
     u32 blockIndex = divu(index, MAP_HIT_COMPRESSED_BLOCK_SIZE);
     u16 elemIndex = modu(index, MAP_HIT_COMPRESSED_BLOCK_SIZE);
+    #endif
 
     u32 blockStart = map_hit_lookup[blockIndex];
     u16 base = map_hit_compressed[blockStart];

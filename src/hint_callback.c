@@ -187,7 +187,7 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
         --tiles_elems;
         u16 lenInWord = tiles_lenInWord[tiles_elems];
         tilesLenInWordTotalToDMA -= lenInWord;
-        // NOTE: this should be DMA_doDma() instead
+        // NOTE: this should be DMA_doDma() because tiles might be in in a bank > 4MB
         DMA_doDmaFast(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
     }
 

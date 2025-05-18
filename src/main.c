@@ -102,7 +102,6 @@ int main (bool hardReset)
 
     #if DISPLAY_LOGOS_AT_START
     displayTeddyBearLogo();
-    waitMs_(200);
     #endif
 
     #if DISPLAY_TITLE_SCREEN
