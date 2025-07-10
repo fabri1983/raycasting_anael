@@ -123,9 +123,9 @@ void hint_reset_change_bg_state ()
     // ASM version
     __asm volatile (
         // Change the hint callback to the one that changes the BG color. This takes effect immediatelly.
-        "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_change_bg_callback);
+        "move.w  %[_hint_callback],%[_hintCaller]+4\n\t" // SYS_setHIntCallback(hint_change_bg_callback);
         :
-        : [hint_callback] "s" (hint_change_bg_callback), [hintCaller] "m" (hintCaller)
+        : [_hint_callback] "s" (hint_change_bg_callback), [_hintCaller] "m" (hintCaller)
         :
     );
 }
@@ -148,10 +148,10 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
         "move.l  %[_CRAM_CMD],(0xC00004)\n\t"      // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
         "move.w  %[floor_color],(0xC00000)\n\t"    // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]=0x0444 floor color
         // Change the hint callback to the normal one. This takes effect immediatelly.
-        "move.w  %[hint_callback],%[hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
+        "move.w  %[_hint_callback],%[_hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
         : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
-          [hint_callback] "s" (hint_load_hud_pals_callback), [hintCaller] "m" (hintCaller)
+          [_hint_callback] "s" (hint_load_hud_pals_callback), [_hintCaller] "m" (hintCaller)
         :
     );
 }
@@ -174,7 +174,7 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemap_set) {
         hud_tilemap_set = 0;
-        #pragma GCC unroll 4 // Always set the max number since it does not accept defines
+        #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
             // it relies on vdpCtrl_ptr_l
             doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
@@ -274,12 +274,12 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
         "bne.s   1f\n\t"
         // Change the HInt counter to the HUD region. This takes effect next VDP's hint assertion.
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 2);
-        "move.w  %[hint_callback],%[hintCaller]+4\n\t" // SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
+        "move.w  %[_hint_callback],%[_hintCaller]+4\n\t" // SYS_setHIntCallback(hint_mirror_planes_last_scanline_callback);
         "1:"
         : [mirror_offset_rows] "+m" (mirror_offset_rows), [vCounterManual] "+m" (vCounterManual)
         : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [NEXT_ROW_OFFSET] "i" ((2 << 16) | 2),
           [_HINT_COUNTER] "i" (0x8A00 | (HINT_SCANLINE_MID_SCREEN - 2)),
-          [hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [hintCaller] "m" (hintCaller)
+          [_hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [_hintCaller] "m" (hintCaller)
         :
     );
 }
@@ -320,11 +320,11 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         "move.l  #0,(0xC00000)\n\t" // VDP_DATA_PORT: writes on both planes
         // Disable the HInt by setting the max positive value as the HintCounter. This takes effect next VDP's hint assertion.
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(255);
-        "move.w  %[hint_callback],%[hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
+        "move.w  %[_hint_callback],%[_hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
         : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
           [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
-          [hint_callback] "s" (hint_load_hud_pals_callback), [hintCaller] "m" (hintCaller)
+          [_hint_callback] "s" (hint_load_hud_pals_callback), [_hintCaller] "m" (hintCaller)
         :
     );
 }

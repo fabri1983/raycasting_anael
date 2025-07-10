@@ -445,7 +445,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
     // Value from 0 up to 65535 (unsigned), but only 717 signed different values in [-360, 360]
 	const s16 rayDirAngleX = (s16) delta_a_ptr[2], rayDirAngleY = (s16) delta_a_ptr[3];
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-    // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster ASM access
+    // 0..MPH_VALUES_DELTADIST_NKEYS-1 multiplied by 2 for faster memory access in ASM
     const u16 deltaDistX_perf_hash = delta_a_ptr[4], deltaDistY_perf_hash = delta_a_ptr[5];
     #endif
 
@@ -594,9 +594,10 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
         "move.w  (%[tab_wall_div],%[sideDistX].w), %[h2]\n\t" // h2 = tab_wall_div[sideDistX]
         "add.w   %[mapY], %[sideDistX]\n\t"             // index = 2*sideDistX + (mapY & 1)
         "add.w   %[sideDistX], %[sideDistX]\n\t"        // byte offset (multiply by 2 again)
-        "move.w  (%[tab_color_mem],%[sideDistX].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
+        "move.l  %[tab_color_mem],%[tab_wall_div]\n\t"  // this way we save one register
+        "move.w  (%[tab_wall_div],%[sideDistX].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
         : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistX] "+d" (sideDistX), [mapY] "+d" (mapY)
-        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "a" (tab_color_d8_1_X_pals_shft)
+        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_X_pals_shft)
         :
     );
 
@@ -649,9 +650,10 @@ static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
         "move.w  (%[tab_wall_div],%[sideDistY].w), %[h2]\n\t" // h2 = tab_wall_div[sideDistY]
         "add.w   %[mapX], %[sideDistY]\n\t"             // index = 2*sideDistY + (mapX & 1)
         "add.w   %[sideDistY], %[sideDistY]\n\t"        // byte offset (multiply by 2 again)
-        "move.w  (%[tab_color_mem],%[sideDistY].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
+        "move.l  %[tab_color_mem],%[tab_wall_div]\n\t"  // this way we save one register
+        "move.w  (%[tab_wall_div],%[sideDistY].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
         : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistY] "+d" (sideDistY), [mapX] "+d" (mapX)
-        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "a" (tab_color_d8_1_Y_pals_shft)
+        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_Y_pals_shft)
         :
     );
 

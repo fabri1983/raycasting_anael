@@ -430,7 +430,7 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
     /*
     u16* frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
     u16* entries_ptr = top_entries;
-    #pragma GCC unroll 80 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = *entries_ptr++;
         u16 h2 = *entries_ptr++;
@@ -486,7 +486,7 @@ static void clear_buffer_row (u32* ptr)
 {
     // C version
     /*u32 zero = 0;
-    #pragma GCC unroll 40 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i = 0; i < TILEMAP_COLUMNS/2; ++i) { // /2 because we are using a u32* pointer, so updating long words
         *ptr++ = zero;
     }*/
@@ -512,7 +512,7 @@ void fb_mirror_planes_in_VRAM ()
 
     // C version
     /*VDP_setAutoInc(1);
-    #pragma GCC unroll 24 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
         clear_buffer_row(pA_bottom_half_start);
@@ -532,7 +532,7 @@ void fb_mirror_planes_in_VRAM ()
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
 
-    #pragma GCC unroll 24 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
@@ -559,7 +559,7 @@ void fb_copy_top_entries_in_VRAM ()
 
     // C version: set tilemap top entries (already inverted)
     u16* entries_ptr = top_entries;
-    #pragma GCC unroll 80 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = (*entries_ptr++);
         u16 h2 = (*entries_ptr++);

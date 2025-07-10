@@ -54,13 +54,14 @@
     "font.h": "c",
     "libres.h": "c",
     "snd_pcm4.h": "c",
-    "snd_dpcm2.h": "c"
+    "snd_dpcm2.h": "c",
+    "weapon_consts.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {
     "editor.rulers": []
 },
 "editor.detectIndentation": false,
-"gens.path": "D:\\Games\\retro\\blastem-win64-0.6.3-pre-1fdf7acc5165\\blastem.exe",
+"gens.path": "D:\\Games\\retro\\blastem-win64-0.6.3-pre-b42f00a3a937\\blastem.exe",
 "GDK": "C:\\sgdk_master"
 }

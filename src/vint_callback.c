@@ -122,7 +122,7 @@ void vint_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemap_set) {
         hud_tilemap_set = 0;
-        #pragma GCC unroll 4 // Always set the max number since it does not accept defines
+        #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
             doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }

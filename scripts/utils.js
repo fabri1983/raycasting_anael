@@ -12,7 +12,6 @@ class Tile {
     constructor() {
         // Initialize a tile with 32 bytes (8x8 pixel tile with 4-bit color depth)
         this.data = new Uint8Array(32); // initialized to zero by default
-        
     }
 }
 

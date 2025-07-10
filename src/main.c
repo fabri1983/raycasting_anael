@@ -100,6 +100,11 @@ int main (bool hardReset)
 		SYS_hardReset();
 	}
 
+    // Ensure our constants has correct values
+    if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS)
+        return 0;
+    //acá: check for correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
+
     #if DISPLAY_LOGOS_AT_START
     displayTeddyBearLogo();
     #endif

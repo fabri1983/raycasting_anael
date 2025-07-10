@@ -155,7 +155,7 @@ void render_DMA_flushQueue ()
 
     vu32* vdpCtrl_ptr_l = (u32*) VDP_CTRL_PORT;
     __asm volatile (
-        "subq.w  #1,%2\n\t"       // prepare for dbra
+        "subq.w  #1,%2\n"         // prepare for dbra
         ".fq_loop_%=:\n\t"
         "move.l  (%0)+,(%1)\n\t"
         "move.l  (%0)+,(%1)\n\t"
@@ -252,7 +252,7 @@ void render_DMA_row_by_row_framebuffer ()
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
-    #pragma GCC unroll 24 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
         doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 

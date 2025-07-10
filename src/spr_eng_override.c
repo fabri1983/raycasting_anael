@@ -25,7 +25,7 @@
 extern Sprite* firstSprite;
 extern Sprite* lastSprite;
 
-static Sprite* allocateSprite(u16 head)
+static Sprite* allocateSprite (u16 head)
 {
     Sprite* result;
 
@@ -62,7 +62,7 @@ static Sprite* allocateSprite(u16 head)
 // VRAM region allocated for the Sprite Engine
 extern VRAMRegion vram;
 
-Sprite* spr_eng_addSpriteEx(const SpriteDefinition* spriteDef, s16 x, s16 y, u16 attribut, u16 flag)
+Sprite* spr_eng_addSpriteEx (const SpriteDefinition* spriteDef, s16 x, s16 y, u16 attribut, u16 flag)
 {
     Sprite* sprite;
 
@@ -124,13 +124,13 @@ Sprite* spr_eng_addSpriteEx(const SpriteDefinition* spriteDef, s16 x, s16 y, u16
     return sprite;
 }
 
-static void setVisibility(Sprite* sprite, u16 newVisibility)
+static void setVisibility (Sprite* sprite, u16 newVisibility)
 {
     // set new visibility
     sprite->visibility = newVisibility;
 }
 
-static u16 updateVisibility(Sprite* sprite, u16 status)
+static u16 updateVisibility (Sprite* sprite, u16 status)
 {
     // fabri1983: sprites are always visible, they are unloaded when not used.
     // set the new computed visibility
@@ -272,7 +272,7 @@ static u16 updateVisibility(Sprite* sprite, u16 status)
     return status & ~NEED_VISIBILITY_UPDATE;
 }
 
-static u16 updateFrame(Sprite* sprite, u16 status)
+static u16 updateFrame (Sprite* sprite, u16 status)
 {
     AnimationFrame* frame = sprite->animation->frames[sprite->frameInd];
 
@@ -385,7 +385,7 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
     }
 }
 
-void NO_INLINE spr_eng_update()
+NO_INLINE void spr_eng_update ()
 {
     Sprite* sprite = firstSprite;
     // SAT pointer

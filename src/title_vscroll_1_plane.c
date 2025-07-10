@@ -119,7 +119,7 @@ static void dmaRowByRowTitle256cTilemap (u32 tilemapAddr, VDPPlane plane)
 {
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
-    #pragma GCC unroll 28 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < TITLE_256C_HEIGHT/8; ++i) {
         if (plane == BG_A) {
             doDMAfast_fixed_args(vdpCtrl_ptr_l, 
@@ -195,7 +195,7 @@ static void clearPlaneBFromLogoImmediately ()
     // DMA Fill sets 1 byte at a time
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1;
 
-    #pragma GCC unroll 19 // Always set the max number since it does not accept defines
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < TITLE_LOGO_HEIGHT_TILES; ++i) {
         DMA_doVRamFill(PLANE_B_ADDR + (TITLE_LOGO_Y_POS_TILES*64)*2 + TITLE_LOGO_X_POS_TILES*2 + (i*64)*2, TITLE_LOGO_WIDTH_TILES*2, 0, -1);
         while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
@@ -254,7 +254,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA ()
 
     u32 palCmdForDMA;
     u32 fromAddrForDMA;
-    u16 fromAddrForDMA_hi;
+    //u16 fromAddrForDMA_hi;
     const u8 hcLimit = 154;
 
     // Value under current conditions is always 0x74
@@ -262,62 +262,59 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA ()
     // NOTE: here is OK to call VDP_getReg(0x01) only if we didn't previously change the VDP's reg 1 using direct access without VDP_setReg()
 
     fromAddrForDMA = (u32) title256cPalsPtr >> 1; // here we manipulate the memory address not its content
-    fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
+    //fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
+    MEMORY_BARRIER();
 
-MEMORY_BARRIER();
     waitHCounter_opt2(hcLimit);
-    //setupDMAForPals(TITLE_256C_COLORS_PER_STRIP/3, fromAddrForDMA);
     // Setup DMA length (in long word here): low at higher word, high at lower word
     *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)(TITLE_256C_COLORS_PER_STRIP/3)) << 16) |
             (0x9400 | (u8)((TITLE_256C_COLORS_PER_STRIP/3) >> 8));
     // Setup DMA address
     *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
     *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
-    *((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
+    //*((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
 
     title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
     palCmdForDMA = palIdx == 0 ? 0xC0000080 : 0xC0400080;
-MEMORY_BARRIER();
+    MEMORY_BARRIER();
+
     waitHCounter_opt2(hcLimit);
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmdForDMA; // Trigger DMA transfer
     turnOnVDP(0x74);
 
     fromAddrForDMA = (u32) title256cPalsPtr >> 1; // here we manipulate the memory address not its content
-    fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
+    //fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
 
-MEMORY_BARRIER();
     waitHCounter_opt2(hcLimit);
-    //setupDMAForPals(TITLE_256C_COLORS_PER_STRIP/3, fromAddrForDMA);
     // Setup DMA length (in long word here): low at higher word, high at lower word
     *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)(TITLE_256C_COLORS_PER_STRIP/3)) << 16) |
             (0x9400 | (u8)((TITLE_256C_COLORS_PER_STRIP/3) >> 8));
     // Setup DMA address
     *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
     *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
-    *((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
+    //*((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
 
     title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
     palCmdForDMA = palIdx == 0 ? 0xC0140080 : 0xC0540080;
-MEMORY_BARRIER();
+    MEMORY_BARRIER();
+
     waitHCounter_opt2(hcLimit);
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmdForDMA; // Trigger DMA transfer
     turnOnVDP(0x74);
 
     fromAddrForDMA = (u32) title256cPalsPtr >> 1; // here we manipulate the memory address not its content
-    fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
+    //fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
 
-MEMORY_BARRIER();
     waitHCounter_opt2(hcLimit);
-    //setupDMAForPals(TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3), fromAddrForDMA);
     // Setup DMA length (in long word here): low at higher word, high at lower word
     *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)(TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3))) << 16) |
             (0x9400 | (u8)((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) >> 8));
     // Setup DMA address
     *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
     *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
-    *((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
+    //*((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
 
     title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3);
     palCmdForDMA = palIdx == 0 ? 0xC0280080 : 0xC0680080;
@@ -326,7 +323,8 @@ MEMORY_BARRIER();
     vcounterManual += TITLE_256C_STRIP_HEIGHT;
     //title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP; // advance to next strip's palettes (if pointer wasn't incremented previously)
     palIdx ^= TITLE_256C_COLORS_PER_STRIP; // cycles between 0 and 32
-MEMORY_BARRIER();
+    MEMORY_BARRIER();
+
     waitHCounter_opt2(hcLimit);
     turnOffVDP(0x74);
     *((vu32*) VDP_CTRL_PORT) = palCmdForDMA; // Trigger DMA transfer
