@@ -153,15 +153,8 @@ static void unpackPalettesTitle ()
 {
     palettesData = (u16*) MEM_alloc(TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP * 2);
 
-    if (pal_title_bg_full.compression != COMPRESSION_NONE) {
-        // No FAR_SAFE() macro needed here. Palette data is always stored at near region.
-        unpackSelector(pal_title_bg_full.compression, (u8*) pal_title_bg_full.data, (u8*) palettesData);
-    }
-    else {
-        const u16 size = (TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP) * 2;
-        // No FAR_SAFE() macro needed here. Palette data is always stored at near region.
-        memcpy((u8*) palettesData, pal_title_bg_full.data, size);
-    }
+    // No FAR_SAFE() macro needed here. Palette data is always stored at near region.
+    unpackSelector(COMPRESSION_APLIB, (u8*) pal_title_bg_full.data, (u8*) palettesData);
 }
 
 static void freePalettesTitle ()

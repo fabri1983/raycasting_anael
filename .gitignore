@@ -20,3 +20,4 @@ build/
 scripts/*OUTPUT*
 scripts/*PARTIAL*
 scripts/*FULL*
+assets/temp_*

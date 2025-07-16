@@ -1,7 +1,3 @@
-# Split in strips of 320x8
-mkdir strips >nul 2>&1
-magick doom_title_screen_full.png -unique -depth 8 -colors 256 -crop 320x8 -define png:format=png8 -define histogram:unique-colors=false strips/doom_title_screen_full_0_%d.png
-
 
 # Quantize every chunk using imagemagick tool and 2 (32 colors) palettes per chunk:
 magick doom_title_screen_full.png ^

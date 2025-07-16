@@ -14,6 +14,10 @@ set split_shift_dir=temp_split_shift_dir
 rmdir /s /q %split_shift_dir% >nul 2>&1
 mkdir %split_shift_dir% >nul 2>&1
 
+set strips_dir=%split_shift_dir%\temp_strips
+rmdir /s /q %strips_dir% >nul 2>&1
+mkdir %strips_dir% >nul 2>&1
+
 :: Pixels wide for each column
 set column_width=8
 
@@ -81,7 +85,11 @@ if not exist %split_shift_dir%\%output_image% (
 :: Cleanup temporary files
 rmdir /s /q %columns_dir%
 
-echo Now generating splits from %split_shift_dir%\%output_image% while continue doing the shifting all the way down
+
+:: ###############################################################
+
+
+echo Now generating splits from %split_shift_dir%\%output_image% while continue doing the shifting all the way down ...
 
 set /a MELTING_OFFSET_STEPPING=4
 
@@ -106,3 +114,16 @@ del /f /q %split_shift_dir%\%output_image%
 
 echo Shifted images saved to %split_shift_dir%\%target_img_name%_*.png
 
+
+:: ###############################################################
+
+
+set rowsPerStrip=8
+echo Now for each shifted image we gonna split them in strips of %image_width%x8 ...
+
+:: for each file with name pattern %target_img_name%_*.png located at %split_shift_dir% folder run next command
+for %%f in ("%split_shift_dir%\%target_img_name%_*.png") do (
+    magick "%%f" -set filename:base "%%[basename]" -unique -depth 8 -colors 256 -crop %image_width%x%rowsPerStrip% -define png:format=png8 -define histogram:unique-colors=false "%strips_dir%\%%[filename:base]_%%d.png"
+)
+
+echo Strips images saved to %strips_dir%

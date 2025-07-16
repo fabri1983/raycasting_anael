@@ -182,9 +182,7 @@ typedef struct {
 } Palette32AllStripsSplit3CompField;
 
 extern const Image img_title_logo;
-extern const TileSet cache_titleBGTiles;
-
 extern const ImageNoPalsCompField img_title_bg_full;
-extern const Palette32AllStripsCompField pal_title_bg_full;
+extern const Palette32AllStrips pal_title_bg_full;
 
 #endif // _RES_TITLE_RES_H_
