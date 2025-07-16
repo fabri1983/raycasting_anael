@@ -14,7 +14,7 @@
 // in case you were to split any calculation over the colors of strip by an odd divisor
 #define TITLE_256C_COLORS_PER_STRIP_REMAINDER(n) (TITLE_256C_COLORS_PER_STRIP % n)
 
-#define MELTING_OFFSET_STEPPING 4
+#define MELTING_OFFSET_STEPPING_PIXELS 4
 
 #define PLANE_B_ADDR 0xC000 // SGDK's default Plane B location for a screen size 64*32
 #define PLANE_A_ADDR 0xE000 // SGDK's default Plane A location for a screen size 64*32
@@ -32,7 +32,5 @@
 #define TITLE_MELTDOWN_TILEMAP_ADDRESS (TITLE_FULL_TILEMAP_ADDRESS - ((TITLE_256C_HEIGHT/8)*(TITLE_256C_WIDTH/8)*2))
 
 void title_vscroll_2_planes_show ();
-
-void title_vscroll_1_plane_show ();
 
 #endif // _TITLE_H_

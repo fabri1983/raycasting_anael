@@ -111,7 +111,6 @@ int main (bool hardReset)
 
     #if DISPLAY_TITLE_SCREEN
     title_vscroll_2_planes_show();
-    //title_vscroll_1_plane_show();
     #endif
 
     // Restart DMA with this settings

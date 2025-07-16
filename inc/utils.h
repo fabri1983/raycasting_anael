@@ -93,7 +93,7 @@ void turnOnVDP (u8 reg01);
     __asm volatile ( \
         "1:\n\t" \
         "cmpi.b  %[_n],%c[_HCOUNTER_PORT]\n\t" /* cmpi: (0xC00009) - n. Compares byte because hcLimit won't be > 160 for our practical cases */ \
-        "blo.s   1b"                           /* loop back if n is lower than (0xC00009) */ \
+        "blo.s   1b"                           /* loop back if n < (0xC00009) */ \
         : \
         : [_n] "i" (n), [_HCOUNTER_PORT] "i" (VDP_HVCOUNTER_PORT + 1) /* HCounter address is 0xC00009 */ \
         : \
@@ -117,7 +117,7 @@ void waitHCounter_opt2 (u8 n);
     __asm volatile ( \
         "1:\n\t" \
         "cmpi.b  %[_n],5(%[_ctrl_port])\n\t" /* cmpi: (0xC00009) - n. Compares byte because hcLimit won't be > 160 for our practical cases */ \
-        "blo.s   1b"                         /* loop back if n is lower than (0xC00009) */ \
+        "blo.s   1b"                         /* loop back if n < (0xC00009) */ \
         : \
         : [_n] "i" (n), [_ctrl_port] "a" (ctrl_port) \
         : \

@@ -172,12 +172,14 @@ static void freePalettesTitle ()
 // Clears a VDPPlane only the region where the DOOM logo appears.
 static void clearPlaneBFromLogoImmediately ()
 {
+    /*
     // Do the DMA fill it in one command, considering the extending width up to 64 tiles
     VDP_clearTileMap(PLANE_B_ADDR + (TITLE_LOGO_Y_POS_TILES*64)*2 + TITLE_LOGO_X_POS_TILES*2, 0, 
         TITLE_LOGO_HEIGHT_TILES*64 - (64-(320/8)) - (TITLE_LOGO_Y_POS_TILES*64) - TITLE_LOGO_X_POS_TILES, TRUE);
     VDP_setAutoInc(2); // restore VDP's AutoInc back to 2 since DMA fill performs 1 byte stepping
+    */
 
-    /*vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
     // DMA Fill sets 1 byte at a time
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1;
@@ -189,7 +191,7 @@ static void clearPlaneBFromLogoImmediately ()
     }
 
     // Important to restore VDP's AutoInc back to 2 since DMA fill performs 1 byte stepping
-    *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;*/
+    *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;
 }
 
 static u16 screenRowPos;
@@ -199,7 +201,7 @@ static void enqueueTwoFirstPalsTitle (u16 startingScreenRowPos)
     screenRowPos = startingScreenRowPos;
     // Calculates starting offset into the palettes array
     u16 stripN = min(TITLE_256C_HEIGHT/TITLE_256C_STRIP_HEIGHT - 1, screenRowPos/TITLE_256C_STRIP_HEIGHT);
-    // load 2 first palettes from the stripN position
+    // enqueue 2 first palettes from the stripN position
     PAL_setColors(0, palettesData + (stripN * TITLE_256C_COLORS_PER_STRIP), TITLE_256C_COLORS_PER_STRIP * 2, DMA_QUEUE);
 }
 
@@ -214,7 +216,7 @@ static void resetVIntOnTitle256c ()
     vcounterManual = TITLE_256C_STRIP_HEIGHT - 1;
     // Calculates starting offset into the palettes array
     u16 stripN = min(TITLE_256C_HEIGHT/TITLE_256C_STRIP_HEIGHT - 1, screenRowPos/TITLE_256C_STRIP_HEIGHT + 2);
-    title256cPalsPtr = palettesData + (stripN * TITLE_256C_COLORS_PER_STRIP); // 2 first palettes where loaded in display loop
+    title256cPalsPtr = palettesData + (stripN * TITLE_256C_COLORS_PER_STRIP); // 2 first palettes where enqueue in display loop
 }
 
 static void vintOnTitle256cCallback ()
@@ -527,12 +529,12 @@ void title_vscroll_2_planes_show ()
         // Draw Black tiles above every column to cover the rolled back tiles of Title Screen due to VScroll effect
         drawBlackAboveScroll(scanlineEffectPos);
         // Advance to the next scanline where the Title Screen will be scrolled to
-        scanlineEffectPos += MELTING_OFFSET_STEPPING;
+        scanlineEffectPos += MELTING_OFFSET_STEPPING_PIXELS;
 
         SYS_doVBlankProcess();
 
-        updateColumnOffsets(MELTING_OFFSET_STEPPING);
-        if (scanlineEffectPos >= (224 + 2*MELTING_OFFSET_STEPPING))
+        updateColumnOffsets(MELTING_OFFSET_STEPPING_PIXELS);
+        if (scanlineEffectPos >= (224 + 2*MELTING_OFFSET_STEPPING_PIXELS))
             break;
     }
 

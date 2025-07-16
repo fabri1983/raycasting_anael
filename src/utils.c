@@ -26,7 +26,7 @@ FORCE_INLINE void waitHCounter_opt1 (u8 n)
     __asm volatile (
         "1:\n"
         "    cmp.b     (%0),%1\n" // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "    bhi.s     1b"        // loop back if n is higher than (0xC00009)
+        "    bhi.s     1b"        // loop back if n > (0xC00009)
             // bhi is for unsigned comparisons
         :
         : "a" (regA), "d" (n)
@@ -41,7 +41,7 @@ FORCE_INLINE void waitHCounter_opt2 (u8 n)
         "    move.l    #0xC00009,%0\n" // Load HCounter (VDP_HVCOUNTER_PORT + 1 = 0xC00009) into an An register
         "1:\n" 
         "    cmp.b     (%0),%1\n"      // cmp: n - (0xC00009). Compares byte because hcLimit won't be > 160 for our practical cases
-        "    bhi.s     1b"             // loop back if n is higher than (0xC00009)
+        "    bhi.s     1b"             // loop back if n > (0xC00009)
             // bhi is for unsigned comparisons
         : "=a" (regA)
         : "d" (n)
