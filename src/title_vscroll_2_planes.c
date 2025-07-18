@@ -104,6 +104,7 @@ static void copyInterleavedHalvedTilemaps (TileMap* tilemap, u16 currTileIndex)
     u16* src = tilemap->tilemap;
     u16* dstA = (u16*) TITLE_HALVED_TILEMAP_A_ADDRESS;
     u16* dstB = (u16*) TITLE_HALVED_TILEMAP_B_ADDRESS;
+    #pragma GCC unroll 0 // do not unroll
     for (u16 i = 0; i < ((TITLE_256C_HEIGHT/8)*(TITLE_256C_WIDTH/8))/2; ++i) {
         // halved tilemap A contains even entries from src
         *dstA++ = baseor | (*src + baseinc);
@@ -217,99 +218,174 @@ static void vintOnTitle256cCallback ()
     resetVIntOnTitle256c();
 }
 
-static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA ()
+static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
 {
-    if (vcounterManual < screenRowPos)
-        return;
-
     /*
-        With 3 DMA commands:
-        Every command is CRAM address to start DMA MOVIE_DATA_COLORS_PER_STRIP/3 colors
-        u32 palCmdForDMA_A = VDP_DMA_CRAM_ADDR(((u32)palIdx + 0) * 2);
+        With 3 DMA commands and different DMA lenghts:
+        Every command is CRAM address to start DMA TITLE_256C_COLORS_PER_STRIP/3. The last one issues TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER.
+        u32 palCmdForDMA_A = VDP_DMA_CRAM_ADDR((u32)(palIdx + 0) * 2);
         u32 palCmdForDMA_B = VDP_DMA_CRAM_ADDR(((u32)palIdx + TITLE_256C_COLORS_PER_STRIP/3) * 2);
-        u32 palCmdForDMA_C = VDP_DMA_CRAM_ADDR(((u32)palIdx + 2*(TITLE_256C_COLORS_PER_STRIP/3)) * 2);
+        u32 palCmdForDMA_C = VDP_DMA_CRAM_ADDR(((u32)palIdx + (TITLE_256C_COLORS_PER_STRIP/3)*2) * 2);
         cmd     palIdx = 0      palIdx = 32
         A       0xC0000080      0xC0400080
         B       0xC0140080      0xC0540080
         C       0xC0280080      0xC0680080
     */
 
-    u32 palCmdForDMA;
-    u32 fromAddrForDMA;
-    //u16 fromAddrForDMA_hi;
-    const u8 hcLimit = 154;
+    __asm volatile (
+        "   move.w      %[vcounterManual],%%d0\n"  // d0: vcounterManual
+        "   cmp.w       %[screenRowPos],%%d0\n"    // if (vcounterManual < screenRowPos)
+        "   bmi         .quit_hint_%=\n"           // return
+        "   addq.w      %[_TITLE_256C_STRIP_HEIGHT],%%d0\n"  // d0: vcounterManual += TITLE_256C_STRIP_HEIGHT;
+        "   move.w      %%d0,%[vcounterManual]\n"  // store current value of vcounterManual
 
-    // Value under current conditions is always 0x74
-    //u8 reg01 = VDP_getReg(0x01); // Holds current VDP register 1 value (NOTE: it holds other bits than VDP ON/OFF status)
-    // NOTE: here is OK to call VDP_getReg(0x01) only if we didn't previously change the VDP's reg 1 using direct access without VDP_setReg()
+        // prepare_regs
+        "   move.l      %c[title256cPalsPtr],%%a0\n" // a0: title256cPalsPtr
+        "   lea         0xC00004,%%a1\n"          // a1: VDP_CTRL_PORT 0xC00004
+        "   lea         5(%%a1),%%a2\n"           // a2: HCounter address 0xC00009 (VDP_HVCOUNTER_PORT + 1)
+        "   move.w      %[turnOff],%%d3\n"        // d3: VDP's register with display OFF value
+        "   move.w      %[turnOn],%%d4\n"         // d4: VDP's register with display ON value
+        "   move.b      %[hcLimit],%%d6\n"        // d6: HCounter limit
+        "   move.l      #0x140000,%%a3\n"         // a3: 0x140000 is the command offset for 10 colors (TITLE_256C_COLORS_PER_STRIP/3) sent to the VDP, used as: cmdAddress += 0x140000
+        "   move.w      %[_TITLE_256C_COLORS_PER_STRIP_DIV_3]*2,%%d7\n"
 
-    fromAddrForDMA = (u32) title256cPalsPtr >> 1; // here we manipulate the memory address not its content
-    //fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
-    MEMORY_BARRIER();
+        // DMA batch 1
+        "   move.l      %%a0,%%d2\n"            // d2: title256cPalsPtr
+        "   adda.w      %%d7,%%a0\n"            // title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
+        // palCmdForDMA = palIdx == 0 ? 0xC0000080 : 0xC0400080;
+        // set base command address once and then we'll add the right offset in next sets
+		"   move.l      #0xC0000080,%%d5\n"     // d5: palCmdForDMA = 0xC0000080
+		"   tst.b       %[palIdx]\n"            // palIdx == 0?
+		"   beq.s       0f\n"
+		"   move.l      #0xC0400080,%%d5\n"     // d5: palCmdForDMA = 0xC0400080
+        "0:\n"
+        // Setup DMA command
+        "   lsr.w       #1,%%d2\n"              // d2: fromAddrForDMA = (u32) title256cPalsPtr >> 1;
+            // NOTE: previous lsr.l can be replaced by lsr.w in case we don't need to use d2: fromAddrForDMA >> 16
+        "   move.w      #0x9500,%%d0\n"         // d0: 0x9500
+        "   or.b        %%d2,%%d0\n"            // d0: 0x9500 | (u8)(fromAddrForDMA)
+        "   move.w      %%d2,-(%%sp)\n"
+        "   move.w      #0x9600,%%d1\n"         // d1: 0x9600
+        "   or.b        (%%sp)+,%%d1\n"         // d1: 0x9600 | (u8)(fromAddrForDMA >> 8)
+        //"   swap        %%d2\n"                 // d2: fromAddrForDMA >> 16
+        //"   andi.w      #0x007f,%%d2\n"         // d2: (fromAddrForDMA >> 16) & 0x7f
+            // NOTE: previous & 0x7f operation might be discarded if higher bits are somehow already zeroed
+        //"   ori.w       #0x9700,%%d2\n"         // d2: 0x9700 | (u8)((fromAddrForDMA >> 16) & 0x7f)
+        // Setup DMA length (in word here)
+        "   move.w      %[_DMA_9300_LEN_DIV_3],(%%a1)\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3) & 0xff);
+        //"   move.w      %[_DMA_9400_LEN_DIV_3],(%%a1)\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3) >> 8) & 0xff);
+        // Setup DMA address
+        "   move.w      %%d0,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
+        "   move.w      %%d1,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
+        //"   move.w      %%d2,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9700 | (u8)((fromAddrForDMA >> 16) & 0x7f);
+        // wait HCounter
+        "1:\n"
+        "   cmp.b       (%%a2),%%d6\n"          // cmp: d6 - (a2). Compare byte size given that d6 won't be > 160 for our practical cases
+        "   bhi.s       1b\n"                   // loop back if d6 > (a2)
+		// turn off VDP
+		"   move.w      %%d3,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 & ~0x40);
+        // trigger DMA transfer
+        "   move.l      %%d5,(%%a1)\n"          // *((vu32*) VDP_CTRL_PORT) = palCmdForDMA;
+		// turn on VDP
+		"   move.w      %%d4,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
 
-    waitHCounter_opt2(hcLimit);
-    // Setup DMA length (in long word here): low at higher word, high at lower word
-    *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)(TITLE_256C_COLORS_PER_STRIP/3)) << 16) |
-            (0x9400 | (u8)((TITLE_256C_COLORS_PER_STRIP/3) >> 8));
-    // Setup DMA address
-    *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
-    *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
-    //*((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
+        // DMA batch 2
+        "   move.l      %%a0,%%d2\n"            // d2: title256cPalsPtr
+        "   adda.w      %%d7,%%a0\n"            // title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
+        // palCmdForDMA = palIdx == 0 ? 0xC0140080 : 0xC0540080;
+		"   add.l       %%a3,%%d5\n"            // d5: palCmdForDMA += 0x140000 // previous batch advanced 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
+        // Setup DMA command
+        "   lsr.w       #1,%%d2\n"              // d2: fromAddrForDMA = (u32) title256cPalsPtr >> 1;
+            // NOTE: previous lsr.l can be replaced by lsr.w in case we don't need to use d2: fromAddrForDMA >> 16
+        "   move.w      #0x9500,%%d0\n"         // d0: 0x9500
+        "   or.b        %%d2,%%d0\n"            // d0: 0x9500 | (u8)(fromAddrForDMA)
+        "   move.w      %%d2,-(%%sp)\n"
+        "   move.w      #0x9600,%%d1\n"         // d1: 0x9600
+        "   or.b        (%%sp)+,%%d1\n"         // d1: 0x9600 | (u8)(fromAddrForDMA >> 8)
+        //"   swap        %%d2\n"                 // d2: fromAddrForDMA >> 16
+        //"   andi.w      #0x007f,%%d2\n"         // d2: (fromAddrForDMA >> 16) & 0x7f
+            // NOTE: previous & 0x7f operation might be discarded if higher bits are somehow already zeroed
+        //"   ori.w       #0x9700,%%d2\n"         // d2: 0x9700 | (u8)((fromAddrForDMA >> 16) & 0x7f)
+        // Setup DMA length (in word here)
+        "   move.w      %[_DMA_9300_LEN_DIV_3],(%%a1)\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3) & 0xff);
+        //"   move.w      %[_DMA_9400_LEN_DIV_3],(%%a1)\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3) >> 8) & 0xff);
+        // Setup DMA address
+        "   move.w      %%d0,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
+        "   move.w      %%d1,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
+        //"   move.w      %%d2,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9700 | (u8)((fromAddrForDMA >> 16) & 0x7f);
+        // wait HCounter
+        "1:\n"
+        "   cmp.b       (%%a2),%%d6\n"          // cmp: d6 - (a2). Compare byte size given that d6 won't be > 160 for our practical cases
+        "   bhi.s       1b\n"                   // loop back if d6 > (a2)
+		// turn off VDP
+		"   move.w      %%d3,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 & ~0x40);
+        // trigger DMA transfer
+        "   move.l      %%d5,(%%a1)\n"          // *((vu32*) VDP_CTRL_PORT) = palCmdForDMA;
+		// turn on VDP
+		"   move.w      %%d4,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
 
-    title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
-    palCmdForDMA = palIdx == 0 ? 0xC0000080 : 0xC0400080;
-    MEMORY_BARRIER();
+        // DMA batch 3
+        "   move.l      %%a0,%%d2\n"            // d2: title256cPalsPtr
+        "   addq.w      %[_TITLE_256C_COLORS_PER_STRIP_DIV_3_REM_ONLY]*2,%%d7\n"  // TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER
+        "   adda.w      %%d7,%%a0\n"            // title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER;
+        // palCmdForDMA = palIdx == 0 ? 0xC0280080 : 0xC0680080;
+		"   add.l       %%a3,%%d5\n"            // d5: palCmdForDMA += 0x140000 // previous batch advanced 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
+        // Setup DMA command
+        "   lsr.w       #1,%%d2\n"              // d2: fromAddrForDMA = (u32) title256cPalsPtr >> 1;
+            // NOTE: previous lsr.l can be replaced by lsr.w in case we don't need to use d2: fromAddrForDMA >> 16
+        "   move.w      #0x9500,%%d0\n"         // d0: 0x9500
+        "   or.b        %%d2,%%d0\n"            // d0: 0x9500 | (u8)(fromAddrForDMA)
+        "   move.w      %%d2,-(%%sp)\n"
+        "   move.w      #0x9600,%%d1\n"         // d1: 0x9600
+        "   or.b        (%%sp)+,%%d1\n"         // d1: 0x9600 | (u8)(fromAddrForDMA >> 8)
+        //"   swap        %%d2\n"                 // d2: fromAddrForDMA >> 16
+        //"   andi.w      #0x007f,%%d2\n"         // d2: (fromAddrForDMA >> 16) & 0x7f
+            // NOTE: previous & 0x7f operation might be discarded if higher bits are somehow already zeroed
+        //"   ori.w       #0x9700,%%d2\n"         // d2: 0x9700 | (u8)((fromAddrForDMA >> 16) & 0x7f)
+        // Setup DMA length (in word here)
+        "   move.w      %[_DMA_9300_LEN_DIV_3_REM],(%%a1)\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER) & 0xff);
+        //"   move.w      %[_DMA_9400_LEN_DIV_3_REM],(%%a1)\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER) >> 8) & 0xff);
+        // Setup DMA address
+        "   move.w      %%d0,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
+        "   move.w      %%d1,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
+        //"   move.w      %%d2,(%%a1)\n"          // *((vu16*) VDP_CTRL_PORT) = 0x9700 | (u8)((fromAddrForDMA >> 16) & 0x7f);
+        // Prepare vars for next HInt here so we can aliviate the waitHCounter loop and exit the HInt sooner
+        "   eori.b      %[_TITLE_256C_COLORS_PER_STRIP],%c[palIdx]\n"  // palIdx ^= TITLE_256C_COLORS_PER_STRIP // cycles between 0 and 32
+        "   move.l      %%a0,%c[title256cPalsPtr]\n"                   // store current pointer value of a0 into variable title256cPalsPtr
+        // wait HCounter
+        "1:\n"
+        "   cmp.b       (%%a2),%%d6\n"          // cmp: d6 - (a2). Compare byte size given that d6 won't be > 160 for our practical cases
+        "   bhi.s       1b\n"                   // loop back if d6 > (a2)
+		// turn off VDP
+		"   move.w      %%d3,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 & ~0x40);
+        // trigger DMA transfer
+        "   move.l      %%d5,(%%a1)\n"          // *((vu32*) VDP_CTRL_PORT) = palCmdForDMA;
+		// turn on VDP
+		"   move.w      %%d4,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
 
-    waitHCounter_opt2(hcLimit);
-    turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmdForDMA; // Trigger DMA transfer
-    turnOnVDP(0x74);
-
-    fromAddrForDMA = (u32) title256cPalsPtr >> 1; // here we manipulate the memory address not its content
-    //fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
-
-    waitHCounter_opt2(hcLimit);
-    // Setup DMA length (in long word here): low at higher word, high at lower word
-    *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)(TITLE_256C_COLORS_PER_STRIP/3)) << 16) |
-            (0x9400 | (u8)((TITLE_256C_COLORS_PER_STRIP/3) >> 8));
-    // Setup DMA address
-    *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
-    *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
-    //*((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
-
-    title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
-    palCmdForDMA = palIdx == 0 ? 0xC0140080 : 0xC0540080;
-    MEMORY_BARRIER();
-
-    waitHCounter_opt2(hcLimit);
-    turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmdForDMA; // Trigger DMA transfer
-    turnOnVDP(0x74);
-
-    fromAddrForDMA = (u32) title256cPalsPtr >> 1; // here we manipulate the memory address not its content
-    //fromAddrForDMA_hi = 0x9700 | ((fromAddrForDMA >> 16) & 0x7f);
-
-    waitHCounter_opt2(hcLimit);
-    // Setup DMA length (in long word here): low at higher word, high at lower word
-    *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)(TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3))) << 16) |
-            (0x9400 | (u8)((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) >> 8));
-    // Setup DMA address
-    *((vu16*) VDP_CTRL_PORT) = 0x9500 | (u8)(fromAddrForDMA);
-    *((vu16*) VDP_CTRL_PORT) = 0x9600 | (u8)(fromAddrForDMA >> 8);
-    //*((vu16*) VDP_CTRL_PORT) = fromAddrForDMA_hi;
-
-    title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3);
-    palCmdForDMA = palIdx == 0 ? 0xC0280080 : 0xC0680080;
-    
-    // Prepare vars for next HInt here so we can aliviate the waitHCounter loop and exit the HInt sooner
-    vcounterManual += TITLE_256C_STRIP_HEIGHT;
-    //title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP; // advance to next strip's palettes (if pointer wasn't incremented previously)
-    palIdx ^= TITLE_256C_COLORS_PER_STRIP; // cycles between 0 and 32
-
-    waitHCounter_opt2(hcLimit);
-    turnOffVDP(0x74);
-    *((vu32*) VDP_CTRL_PORT) = palCmdForDMA; // Trigger DMA transfer
-    turnOnVDP(0x74);
+        // Label to exit the hint from the vcounterManual conditions at the beginning of the method
+        ".quit_hint_%=:"
+		: 
+		[title256cPalsPtr] "+m" (title256cPalsPtr),
+		[palIdx] "+m" (palIdx),
+        [vcounterManual] "+m" (vcounterManual)
+		: 
+        [screenRowPos] "m" (screenRowPos),
+		[turnOff] "i" (0x8100 | (0x74 & ~0x40)), // 0x8134
+		[turnOn] "i" (0x8100 | (0x74 | 0x40)), // 0x8174
+        [hcLimit] "i" (156),
+        [_DMA_9300_LEN_DIV_3] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3) & 0xff)),
+        [_DMA_9400_LEN_DIV_3] "i" (0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3) >> 8) & 0xff)),
+        [_DMA_9300_LEN_DIV_3_REM] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) & 0xff)),
+        [_DMA_9400_LEN_DIV_3_REM] "i" (0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) >> 8) & 0xff)),
+		[_TITLE_256C_COLORS_PER_STRIP] "i" (TITLE_256C_COLORS_PER_STRIP),
+        [_TITLE_256C_COLORS_PER_STRIP_DIV_3] "i" (TITLE_256C_COLORS_PER_STRIP/3),
+        [_TITLE_256C_COLORS_PER_STRIP_DIV_3_REM_ONLY] "i" (TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)),
+        [_TITLE_256C_STRIP_HEIGHT] "i" (TITLE_256C_STRIP_HEIGHT)
+		:
+        // backup registers used in the asm implementation including the scratch pad since this code is used in an interrupt call.
+		"d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","a3","cc","memory"
+    );
 }
 
 // Current offsets for each column (in pixels) for Plane A
@@ -390,6 +466,7 @@ static void updateColumnOffsets (u16 offsetAmnt)
         :
     );
 
+    #pragma GCC unroll 0 // do not unroll
     for (u16 i = 0; i < (320/16)/2; i++) {
         colA_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
         colB_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
@@ -472,7 +549,7 @@ void title_vscroll_2_planes_show ()
     SYS_disableInts();
         SYS_setVBlankCallback(vintOnTitle256cCallback);
         VDP_setHIntCounter(TITLE_256C_STRIP_HEIGHT - 1);
-        SYS_setHIntCallback(hintOnTitle256cCallback_DMA);
+        SYS_setHIntCallback(hintOnTitle256cCallback_DMA_asm);
         VDP_setHInterrupt(TRUE);
     SYS_enableInts();
 

@@ -48,9 +48,17 @@
 #include "hud_256.h"
 #endif
 
-// This address comes from VDPSprite vdpSpriteCache variable at vdp_spr.c and may change if the SGDK lib also changes.
+// This address comes from VDPSprite vdpSpriteCache variable at vdp_spr.c and may change if the SGDK lib or our code changes.
 // We have a check at the beginning of the game. Take a look at it if game doesn't show.
+#if DISPLAY_LOGOS_AT_START == F && DISPLAY_TITLE_SCREEN == F
+#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF022A
+#elif DISPLAY_LOGOS_AT_START == T && DISPLAY_TITLE_SCREEN == F
+#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF02AC
+#elif DISPLAY_LOGOS_AT_START == F && DISPLAY_TITLE_SCREEN == T
+#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF02B2
+#else
 #define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF0278
+#endif
 
 // This is the fixed RAM address for the hud_tilemap_src array.
 #define RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS (RAM_FIXED_FRAME_BUFFER_ADDRESS - (HUD_SOURCE_IMAGE_W*HUD_SOURCE_IMAGE_H)*2)

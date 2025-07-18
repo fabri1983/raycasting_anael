@@ -56,6 +56,7 @@ hint_mirror_planes_callback_asm_LABEL_\n:
     .endif
     move.w  #hint_mirror_planes_callback_asm_LABEL_\m,a5
 #endif
+
     rte
 .endm
 

@@ -52,6 +52,7 @@ fabri1983's notes (since Aug/18/2024)
 
 fabri1983's resources notes:
 ----------------------------
+* RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS set in consts_ext.h: check this constant everytime you get a black screen when running the game.
 * HUD: the hud is treated as an image. The resource definition in hud_res.res file expects a map base attribute value which is 
   calculated before hand. See HUD_BASE_TILE_ATTRIB in hud.h.
 * HUD: if resource is compressed then also set const HUD_TILEMAP_COMPRESSED in hud.h.
@@ -96,13 +97,14 @@ int main (bool hardReset)
 	// On soft reset we do a hard reset
 	if (!hardReset) {
 		VDP_waitDMACompletion(); // avoids some glitches as per Genesis Manual's Addendum section
-        SPR_end();
 		SYS_hardReset();
 	}
 
     // Ensure our constants has correct values
-    if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS)
+    if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS) {
+        //KLog_U2("", (u32)vdpSpriteCache, " ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS);
         return 0;
+    }
     //acá: check for correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
 
     #if DISPLAY_LOGOS_AT_START

@@ -73,7 +73,8 @@ void weapon_resetState ()
     changeWeaponEffect_timer = 0;
 }
 
-void weapon_free_pals_buffer () {
+void weapon_free_pals_buffer ()
+{
     memsetU32((u32*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, 0, (16*WEAPON_USED_PALS)/2);
 }
 
