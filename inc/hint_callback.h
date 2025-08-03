@@ -10,7 +10,7 @@ bool canDMAinHint (u16 lenInWord);
 
 void hint_enqueueHudTilemap ();
 
-void hint_enqueueTiles (void *from, u16 toIndex, u16 lenInWord);
+extern void hint_enqueueTiles (void *from, u16 toIndex, u16 lenInWord);
 
 void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord);
 

@@ -1,5 +1,6 @@
 ;// ** Makro MULUQW \multiplicator \src \scratch **
-;// ---------------------------
+;// High word of result is not important.
+;// -----------------------------------------------
 ;// \multiplicator as a constant
 ;// \src      rx1.w source operand and result of the multiplication
 ;//           (can be an address register if there is no shift command used, but
@@ -650,7 +651,8 @@
 .endm
 
 ;// ** Makro MULUQL \multiplicator \src \scratch **
-;// ---------------------------
+;// High word of result is important.
+;// -----------------------------------------------
 ;// \multiplicator as a constant
 ;// \src      rx1.w source operand and result of the multiplication
 ;//           (can be an address register if there is no shift command used)

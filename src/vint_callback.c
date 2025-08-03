@@ -61,14 +61,14 @@ void vint_reset ()
     #endif
 }
 
-void vint_enqueueHudTilemap ()
+FORCE_INLINE void vint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     hud_tilemap_set = 1;
     #endif
 }
 
-void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
+FORCE_INLINE void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 {
     tiles_from[tiles_elems] = from;
     tiles_toIndex[tiles_elems] = toIndex;
@@ -76,7 +76,7 @@ void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
     ++tiles_elems;
 }
 
-void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
+FORCE_INLINE void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
     #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
@@ -86,7 +86,7 @@ void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
     #endif
 }
 
-void vint_enqueueVdpSpriteCache (u16 lenInWord)
+FORCE_INLINE void vint_enqueueVdpSpriteCache (u16 lenInWord)
 {
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     vdpSpriteCache_lenInWord = lenInWord;
@@ -94,13 +94,13 @@ void vint_enqueueVdpSpriteCache (u16 lenInWord)
 }
 
 void vint_callback ()
-{
-    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
-	turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
-
+{    
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     hint_reset_mirror_planes_state();
     #endif
+
+    vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+	turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
 
     render_Z80_setBusProtection(TRUE);
     // delay enabled ? --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
@@ -122,9 +122,23 @@ void vint_callback ()
     // Have any hud tilemaps to DMA?
     if (hud_tilemap_set) {
         hud_tilemap_set = 0;
+
+        // Setup DMA address ONLY ONCE
+        u32 from = RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + 0*TILEMAP_COLUMNS*2;
+        from >>= 1;
+        *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+        from >>= 8;
+        *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+        from >>= 8;
+        *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
+
+        // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+        *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+        // DMA length low has to be set every time before triggering the DMA command
+
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif

@@ -469,7 +469,7 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
     #endif
 }
 
-void fb_mirror_planes_in_RAM ()
+FORCE_INLINE void fb_mirror_planes_in_RAM ()
 {
     u32 pA_bottom_half_start = RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2;
     u32 pA_top_half_end = RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2 - TILEMAP_COLUMNS)*2;
@@ -482,7 +482,7 @@ void fb_mirror_planes_in_RAM ()
     copy_top_entries_in_RAM();
 }
 
-static void clear_buffer_row (u32* ptr)
+static FORCE_INLINE void clear_buffer_row (u32* ptr)
 {
     // C version
     /*u32 zero = 0;
@@ -505,7 +505,7 @@ static void clear_buffer_row (u32* ptr)
     );
 }
 
-void fb_mirror_planes_in_VRAM ()
+FORCE_INLINE void fb_mirror_planes_in_VRAM ()
 {
     // Mirror bottom half Plane A and B region into top half Plane A and B
     // Arguments must be in byte addressing mode
@@ -527,19 +527,26 @@ void fb_mirror_planes_in_VRAM ()
     VDP_setAutoInc(2);*/
 
     // ASM version
-    u32* pA_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
-    u32* pB_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 1; // Set VDP stepping to 1
 
+    u32* pA_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
+
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+        // Plane A row
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pA_bottom_half_start);
         pA_bottom_half_start += (TILEMAP_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
         while (GET_VDP_STATUS(VDP_DMABUSY_FLAG)); // wait DMA completion
+    }
 
+    u32* pB_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
+
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
+    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+        // Plane B row
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pB_bottom_half_start);
@@ -550,7 +557,7 @@ void fb_mirror_planes_in_VRAM ()
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2; // Set VDP stepping back to 2
 }
 
-void fb_copy_top_entries_in_VRAM ()
+FORCE_INLINE void fb_copy_top_entries_in_VRAM ()
 {
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
 

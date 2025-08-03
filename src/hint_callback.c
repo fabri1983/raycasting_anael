@@ -63,28 +63,28 @@ void hint_reset ()
     #endif
 }
 
-bool canDMAinHint (u16 lenInWord)
+FORCE_INLINE bool canDMAinHint (u16 lenInWord)
 {
     return (tilesLenInWordTotalToDMA + lenInWord) <= DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT;
 }
 
-void hint_enqueueHudTilemap ()
+FORCE_INLINE void hint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
     hud_tilemap_set = 1;
     #endif
 }
 
-void hint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
+FORCE_INLINE void hint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 {
-    tiles_from[tiles_elems] = from;
-    tiles_toIndex[tiles_elems] = toIndex;
-    tiles_lenInWord[tiles_elems] = lenInWord;
     ++tiles_elems;
+    tiles_from[tiles_elems-1] = from;
+    tiles_toIndex[tiles_elems-1] = toIndex;
+    tiles_lenInWord[tiles_elems-1] = lenInWord;
     tilesLenInWordTotalToDMA += lenInWord;
 }
 
-void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
+FORCE_INLINE void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
     #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
     tiles_buf_toIndex[tiles_buf_elems] = toIndex;
@@ -95,7 +95,7 @@ void hint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
     #endif
 }
 
-void hint_enqueueVdpSpriteCache (u16 lenInWord)
+FORCE_INLINE void hint_enqueueVdpSpriteCache (u16 lenInWord)
 {
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_HINT
     vdpSpriteCache_lenInWord = lenInWord;
@@ -114,7 +114,7 @@ typedef union
 
 extern InterruptCaller hintCaller; // Declared in sys.c
 
-void hint_reset_change_bg_state ()
+FORCE_INLINE void hint_reset_change_bg_state ()
 {
     // C version
     // Change the hint callback to the one that changes the BG color. This takes effect immediatelly.
@@ -130,7 +130,7 @@ void hint_reset_change_bg_state ()
     );
 }
 
-HINTERRUPT_CALLBACK hint_change_bg_callback ()
+FORCE_INLINE HINTERRUPT_CALLBACK hint_change_bg_callback ()
 {
     /*
     // C version
@@ -167,17 +167,36 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
 	//waitHCounter_opt3(vdpCtrl_ptr_l, 156); // We can avoid the waiting here since this happens in the HUD region so any CRAM dot is barely noticeable
     *vdpCtrl_ptr_l = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0;
-    *(vu16*)VDP_DATA_PORT = 0x0222; // palette_grey[1]=0x0222 roof color
+    //*(vu16*)VDP_DATA_PORT = 0x222; // palette_grey[1]=0x222 roof color
+    __asm volatile (
+        "move.w  #0x222,-4(%0)"   // 4 cycles faster than move.w #0x222,(VDP_DATA_PORT)
+        :
+        : "a" (vdpCtrl_ptr_l)
+        :
+    );
     #endif
 
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_HINT
     // Have any hud tilemaps to DMA?
     if (hud_tilemap_set) {
         hud_tilemap_set = 0;
+
+        // Setup DMA address ONLY ONCE
+        u32 from = RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + 0*TILEMAP_COLUMNS*2;
+        from >>= 1;
+        *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+        from >>= 8;
+        *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+        from >>= 8;
+        *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
+
+        // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+        *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+        // DMA length low has to be set every time before triggering the DMA command
+
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u8 i=0; i < HUD_BG_H; ++i) {
-            // it relies on vdpCtrl_ptr_l
-            doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif
@@ -227,7 +246,7 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
 static u16 vCounterManual;
 static u32 mirror_offset_rows; // positive numbers move planes upward
 
-void hint_reset_mirror_planes_state ()
+FORCE_INLINE void hint_reset_mirror_planes_state ()
 {
     #if RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
     // Change the hint callback to one that mirror halved planes. This takes effect immediatelly.

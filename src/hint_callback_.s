@@ -14,9 +14,6 @@
 ;// If a5 register could be somehow reserved along all the callbacks execution then we can speed it up
 #define IS_A5_RESERVED_FOR_CALLBACKS 0
 
-.extern hintCaller
-.extern hint_mirror_planes_last_scanline_callback
-
 .macro macro_hint_callback_LABEL n, m
 hint_mirror_planes_callback_asm_LABEL_\n:
 #if RENDER_SET_ROOF_COLOR_RAMP_ONLY_HINT_MULTI_CALLBACKS

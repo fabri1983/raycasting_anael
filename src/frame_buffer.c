@@ -393,17 +393,17 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
         // Top tilemap entry
-        // #if H2_FOR_TOP_ENTRY == 10
-        // "    move.w	%[h2],%[h2_aux]\n"
-        // "    add.w	%[h2],%[h2]\n"
-        // "    add.w	%[h2],%[h2]\n"
-        // "    add.w	%[h2_aux],%[h2]\n"
-        // "    add.w	%[h2],%[h2]\n"
-        // #elif H2_FOR_TOP_ENTRY == 8
-        // "    lsl.w   #3,%[h2]\n"
-        // #else
+        #if H2_FOR_TOP_ENTRY == 10
+        "    move.w	%[h2],%[h2_aux]\n"
+        "    add.w	%[h2],%[h2]\n"
+        "    add.w	%[h2],%[h2]\n"
+        "    add.w	%[h2_aux],%[h2]\n"
+        "    add.w	%[h2],%[h2]\n"
+        #elif H2_FOR_TOP_ENTRY == 8
+        "    lsl.w   #3,%[h2]\n"
+        #else
         "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
-        // #endif
+        #endif
         "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)\n"
 
         // Bottom tilemap entry

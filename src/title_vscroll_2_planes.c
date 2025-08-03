@@ -13,6 +13,66 @@
 #include "title_res.h"
 #include "utils.h"
 
+const Palette32AllStrips* pal_title_bg_full_shifted_ptrs[224/MELTING_OFFSET_STEPPING_PIXELS + 1] = {
+    &pal_title_bg_full_shifted_0,
+    &pal_title_bg_full_shifted_1,
+    &pal_title_bg_full_shifted_2,
+    &pal_title_bg_full_shifted_3,
+    &pal_title_bg_full_shifted_4,
+    &pal_title_bg_full_shifted_5,
+    &pal_title_bg_full_shifted_6,
+    &pal_title_bg_full_shifted_7,
+    &pal_title_bg_full_shifted_8,
+    &pal_title_bg_full_shifted_9,
+    &pal_title_bg_full_shifted_10,
+    &pal_title_bg_full_shifted_11,
+    &pal_title_bg_full_shifted_12,
+    &pal_title_bg_full_shifted_13,
+    &pal_title_bg_full_shifted_14,
+    &pal_title_bg_full_shifted_15,
+    &pal_title_bg_full_shifted_16,
+    &pal_title_bg_full_shifted_17,
+    &pal_title_bg_full_shifted_18,
+    &pal_title_bg_full_shifted_19,
+    &pal_title_bg_full_shifted_20,
+    &pal_title_bg_full_shifted_21,
+    &pal_title_bg_full_shifted_22,
+    &pal_title_bg_full_shifted_23,
+    &pal_title_bg_full_shifted_24,
+    &pal_title_bg_full_shifted_25,
+    &pal_title_bg_full_shifted_26,
+    &pal_title_bg_full_shifted_27,
+    &pal_title_bg_full_shifted_28,
+    &pal_title_bg_full_shifted_29,
+    &pal_title_bg_full_shifted_30,
+    &pal_title_bg_full_shifted_31,
+    &pal_title_bg_full_shifted_32,
+    &pal_title_bg_full_shifted_33,
+    &pal_title_bg_full_shifted_34,
+    &pal_title_bg_full_shifted_35,
+    &pal_title_bg_full_shifted_36,
+    &pal_title_bg_full_shifted_37,
+    &pal_title_bg_full_shifted_38,
+    &pal_title_bg_full_shifted_39,
+    &pal_title_bg_full_shifted_40,
+    &pal_title_bg_full_shifted_41,
+    &pal_title_bg_full_shifted_42,
+    &pal_title_bg_full_shifted_43,
+    &pal_title_bg_full_shifted_44,
+    &pal_title_bg_full_shifted_45,
+    &pal_title_bg_full_shifted_46,
+    &pal_title_bg_full_shifted_47,
+    &pal_title_bg_full_shifted_48,
+    &pal_title_bg_full_shifted_49,
+    &pal_title_bg_full_shifted_50,
+    &pal_title_bg_full_shifted_51,
+    &pal_title_bg_full_shifted_52,
+    &pal_title_bg_full_shifted_53,
+    &pal_title_bg_full_shifted_54,
+    &pal_title_bg_full_shifted_55,
+    &pal_title_bg_full_shifted_56
+};
+
 static TileSet* allocateTilesetInternal (VOID_OR_CHAR* adr)
 {
     TileSet *result = (TileSet*) adr;
@@ -150,12 +210,15 @@ static void dmaRowByRowTitle256cHalvedTilemaps ()
 
 static u16* palettesData;
 
-static void unpackPalettesTitle ()
+static void allocatePalettesTitle ()
 {
     palettesData = (u16*) MEM_alloc(TITLE_256C_STRIPS_COUNT * TITLE_256C_COLORS_PER_STRIP * 2);
+}
 
+static void unpackPalettesTitle (u16 *data, u8 compression)
+{
     // No FAR_SAFE() macro needed here. Palette data is always stored at near region.
-    unpackSelector(COMPRESSION_APLIB, (u8*) pal_title_bg_full.data, (u8*) palettesData);
+    unpackSelector(compression, (u8*) data, (u8*) palettesData);
 }
 
 static void freePalettesTitle ()
@@ -188,29 +251,19 @@ static void clearPlaneBFromLogoImmediately ()
     *(vu16*)vdpCtrl_ptr_l = 0x8F00 | 2;
 }
 
-static u16 screenRowPos;
-
-static void enqueueTwoFirstPalsTitle (u16 startingScreenRowPos)
+static void enqueueTwoFirstPalsTitle ()
 {
-    screenRowPos = startingScreenRowPos;
-    // Calculates starting offset into the palettes array
-    u16 stripN = min(TITLE_256C_HEIGHT/TITLE_256C_STRIP_HEIGHT - 1, screenRowPos/TITLE_256C_STRIP_HEIGHT);
-    // enqueue 2 first palettes from the stripN position
-    PAL_setColors(0, palettesData + (stripN * TITLE_256C_COLORS_PER_STRIP), TITLE_256C_COLORS_PER_STRIP * 2, DMA_QUEUE);
+    // Enqueue 2 first palettes from the stripN position
+    PAL_setColors(0, palettesData, TITLE_256C_COLORS_PER_STRIP * 2, DMA_QUEUE);
 }
 
-static u16 vcounterManual;
 static u16* title256cPalsPtr; // 1st and 2nd strip's palette are loaded at the beginning of the display loop, so it points to 3rd strip
 static u8 palIdx; // which pallete the title256cPalsPtr uses
 
 static void resetVIntOnTitle256c ()
 {
-    // On even strips we know we use [PAL0,PAL1] so starts with palIdx=0. On odd strips is [PAL1,PAL2] so starts with palIdx=32.
-    palIdx = ((screenRowPos/TITLE_256C_STRIP_HEIGHT) % 2) == 0 ? 0 : TITLE_256C_COLORS_PER_STRIP;
-    vcounterManual = TITLE_256C_STRIP_HEIGHT - 1;
-    // Calculates starting offset into the palettes array
-    u16 stripN = min(TITLE_256C_HEIGHT/TITLE_256C_STRIP_HEIGHT - 1, screenRowPos/TITLE_256C_STRIP_HEIGHT + 2);
-    title256cPalsPtr = palettesData + (stripN * TITLE_256C_COLORS_PER_STRIP); // 2 first palettes where enqueue in display loop
+    palIdx = 0; // We know we always start with palettes [PAL0,PAL1]
+    title256cPalsPtr = palettesData + (2 * TITLE_256C_COLORS_PER_STRIP); // 2 first palettes where enqueue in display loop
 }
 
 static void vintOnTitle256cCallback ()
@@ -233,12 +286,6 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
     */
 
     __asm volatile (
-        "   move.w      %[vcounterManual],%%d0\n"  // d0: vcounterManual
-        "   cmp.w       %[screenRowPos],%%d0\n"    // if (vcounterManual < screenRowPos)
-        "   bmi         .quit_hint_%=\n"           // return
-        "   addq.w      %[_TITLE_256C_STRIP_HEIGHT],%%d0\n"  // d0: vcounterManual += TITLE_256C_STRIP_HEIGHT;
-        "   move.w      %%d0,%[vcounterManual]\n"  // store current value of vcounterManual
-
         // prepare_regs
         "   move.l      %c[title256cPalsPtr],%%a0\n" // a0: title256cPalsPtr
         "   lea         0xC00004,%%a1\n"          // a1: VDP_CTRL_PORT 0xC00004
@@ -362,15 +409,10 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
         "   move.l      %%d5,(%%a1)\n"          // *((vu32*) VDP_CTRL_PORT) = palCmdForDMA;
 		// turn on VDP
 		"   move.w      %%d4,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
-
-        // Label to exit the hint from the vcounterManual conditions at the beginning of the method
-        ".quit_hint_%=:"
 		: 
 		[title256cPalsPtr] "+m" (title256cPalsPtr),
-		[palIdx] "+m" (palIdx),
-        [vcounterManual] "+m" (vcounterManual)
+		[palIdx] "+m" (palIdx)
 		: 
-        [screenRowPos] "m" (screenRowPos),
 		[turnOff] "i" (0x8100 | (0x74 & ~0x40)), // 0x8134
 		[turnOn] "i" (0x8100 | (0x74 | 0x40)), // 0x8174
         [hcLimit] "i" (156),
@@ -395,8 +437,8 @@ static s16* columnOffsetsB;
 
 static void allocateMeltingEffectArrays ()
 {
-    columnOffsetsA = MEM_alloc((320/16) * 2);
-    columnOffsetsB = MEM_alloc((320/16) * 2);
+    columnOffsetsA = MEM_alloc((320/16) * 2); // columns span 2 tiles each, hence 16px
+    columnOffsetsB = MEM_alloc((320/16) * 2); // columns span 2 tiles each, hence 16px
 }
 
 static void initializeMeltingEffectArrays ()
@@ -493,7 +535,8 @@ void title_vscroll_2_planes_show ()
     memsetU32((u32*)TITLE_HALVED_TILEMAP_A_ADDRESS, 0, ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2) / 4);
 
     // Do the unpack of the Title palettes here to avoid display glitches (unknown reason)
-    unpackPalettesTitle();
+    allocatePalettesTitle();
+    unpackPalettesTitle(pal_title_bg_full.data, COMPRESSION_APLIB);
 
     PAL_setColors(0, palette_black, 64, DMA);
 
@@ -544,14 +587,14 @@ void title_vscroll_2_planes_show ()
     
     VDP_setEnable(TRUE);
 
-    enqueueTwoFirstPalsTitle(0); // Load 1st and 2nd strip's palette
-
     SYS_disableInts();
         SYS_setVBlankCallback(vintOnTitle256cCallback);
         VDP_setHIntCounter(TITLE_256C_STRIP_HEIGHT - 1);
         SYS_setHIntCallback(hintOnTitle256cCallback_DMA_asm);
         VDP_setHInterrupt(TRUE);
     SYS_enableInts();
+
+    enqueueTwoFirstPalsTitle(); // Load 1st and 2nd strip's palette
 
     // Force to empty DMA queue.
     // NOTE: DMA will leak into next frame's active display, but resources are correctly sorted to dma in such an order that no visible glitch is noticeable.
@@ -564,7 +607,7 @@ void title_vscroll_2_planes_show ()
     // Title screen display loop
     for (;;)
     {
-        enqueueTwoFirstPalsTitle(0); // Load 1st and 2nd strip's palette
+        enqueueTwoFirstPalsTitle(); // Load 1st and 2nd strip's palette
 
         SYS_doVBlankProcess();
 
@@ -590,21 +633,27 @@ void title_vscroll_2_planes_show ()
     // Melting screen update loop
     for (;;)
     {
-        enqueueTwoFirstPalsTitle(scanlineEffectPos); // Load 1st and 2nd strip's palette
+        enqueueTwoFirstPalsTitle(); // Load 1st and 2nd strip's palette
 
-        // Enqueue the current column offsets to the VSRAM
+        // Enqueue for DMA the current column offsets to the VSRAM, for next frame
         VDP_setVerticalScrollTile(BG_A, 0, columnOffsetsA, 320/16, DMA_QUEUE);
         VDP_setVerticalScrollTile(BG_B, 0, columnOffsetsB, 320/16, DMA_QUEUE);
 
+        // update column offsets for next frame
+        updateColumnOffsets(MELTING_OFFSET_STEPPING_PIXELS);
+
         // Draw Black tiles above every column to cover the rolled back tiles of Title Screen due to VScroll effect
         drawBlackAboveScroll(scanlineEffectPos);
+
         // Advance to the next scanline where the Title Screen will be scrolled to
         scanlineEffectPos += MELTING_OFFSET_STEPPING_PIXELS;
 
+        // Unpack palettes for next frame
+        unpackPalettesTitle(pal_title_bg_full_shifted_ptrs[scanlineEffectPos/MELTING_OFFSET_STEPPING_PIXELS]->data, COMPRESSION_LZ4W);
+
         SYS_doVBlankProcess();
 
-        updateColumnOffsets(MELTING_OFFSET_STEPPING_PIXELS);
-        if (scanlineEffectPos >= (224 + 2*MELTING_OFFSET_STEPPING_PIXELS))
+        if (scanlineEffectPos >= 224)
             break;
     }
 

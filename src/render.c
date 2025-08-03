@@ -133,7 +133,7 @@ void render_loadWallPalettes ()
     PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, DMA);
 }
 
-void render_Z80_setBusProtection (bool value)
+FORCE_INLINE void render_Z80_setBusProtection (bool value)
 {
     Z80_requestBus(FALSE);
 	u16 busProtectSignalAddress = (Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
@@ -144,7 +144,7 @@ void render_Z80_setBusProtection (bool value)
 
 extern DMAOpInfo *dmaQueues;
 
-void render_DMA_flushQueue ()
+FORCE_INLINE void render_DMA_flushQueue ()
 {
     u16 queueIndex = DMA_getQueueSize();
     if (queueIndex == 0)
@@ -195,7 +195,7 @@ static u32 vtimerStart;
 static u16 vcnt;
 static u16 blank;
 
-static void render_setupFrameLoadCalculation ()
+static FORCE_INLINE void render_setupFrameLoadCalculation ()
 {
     // For frame CPU load calculation
     vtimerStart = vtimer;
@@ -205,7 +205,7 @@ static void render_setupFrameLoadCalculation ()
     blank = *pw & VDP_VBLANK_FLAG;
 }
 
-static void render_calculateFrameLoad ()
+static FORCE_INLINE void render_calculateFrameLoad ()
 {
     // update CPU frame load
     addFrameLoad(getAdjustedVCounterInternal(blank, vcnt), vtimerStart);
@@ -243,7 +243,7 @@ void render_DMA_enqueue_framebuffer ()
     DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
 }
 
-void render_DMA_row_by_row_framebuffer ()
+FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
 {
     // Arguments must be in byte addressing mode.
     // Except the lenght since DMA RAM to VRAM copies 2 bytes on every cycle.
@@ -252,34 +252,102 @@ void render_DMA_row_by_row_framebuffer ()
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
 
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT || RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
+
+    // Plane A rows
+
+    // Setup DMA address ONLY ONCE
+    u32 from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
+    from >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
+
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // DMA length low has to be set every time before triggering the DMA command
+
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
-            VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
-        // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + i*TILEMAP_COLUMNS)*2, 
-            VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
+
+    // Plane B rows
+
+    // Setup DMA address ONLY ONCE
+    from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
+    from >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
+
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // DMA length low has to be set every time before triggering the DMA command
+
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
+    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+        // Plane B row
+        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+    }
+
     #else
-    #pragma GCC unroll 24 // Always set the max number since it does not accept defines
+
+    // Plane A rows
+
+    // Setup DMA address ONLY ONCE
+    u32 from = RAM_FIXED_FRAME_BUFFER_ADDRESS + 0*TILEMAP_COLUMNS*2;
+    from >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
+
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // DMA length low has to be set every time before triggering the DMA command
+
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u8 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + i*TILEMAP_COLUMNS*2, 
-            VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
-        // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + i*TILEMAP_COLUMNS)*2, 
-            VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
+
+    // Plane B rows
+
+    // Setup DMA address ONLY ONCE
+    from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + 0*TILEMAP_COLUMNS)*2;
+    from >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    from >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
+
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // DMA length low has to be set every time before triggering the DMA command
+
+    #pragma GCC unroll 256 // Always set a big number since it does not accept defines
+    for (u8 i=0; i < VERTICAL_ROWS; ++i) {
+        // Plane B row
+        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+    }
+
     #endif
 }
 
-void render_mirror_planes_in_VRAM ()
+FORCE_INLINE void render_mirror_planes_in_VRAM ()
 {
     fb_mirror_planes_in_VRAM();
 }
 
-void render_copy_top_entries_in_VRAM ()
+FORCE_INLINE void render_copy_top_entries_in_VRAM ()
 {
     fb_copy_top_entries_in_VRAM();
 }

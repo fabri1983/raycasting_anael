@@ -97,13 +97,13 @@ set /a MELTING_OFFSET_STEPPING=4
 set target_img_name=%output_image:.png=%
 echo Shifted image name prefix is: %target_img_name%
 
-:: Calculate number of shifts needed to move image fully off canvas
+:: Calculate number of vertical shifts needed to move image fully off canvas
 :: Each shift is MELTING_OFFSET_STEPPING pixels
-set /a num_shifts=%image_height% / %MELTING_OFFSET_STEPPING% + 1
+set /a num_vert_shifts=(%image_height% + (%MELTING_OFFSET_STEPPING%-1)) / %MELTING_OFFSET_STEPPING%
 
 :: Generate shifted images
 echo Generating shifted images in %split_shift_dir% ...
-for /l %%i in (0,1,%num_shifts%) do (
+for /l %%i in (0,1,%num_vert_shifts%) do (
 	set /a offset=%%i * %MELTING_OFFSET_STEPPING%
 	magick convert %split_shift_dir%\%output_image% -background "rgba(0,0,0,0)" -gravity North ^
 		-splice 0x!offset! -crop %image_width%x%image_height%+0+0 +repage ^

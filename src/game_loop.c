@@ -231,8 +231,10 @@ void game_loop_auto ()
 
     const u16 posStepping = 1;
 
+    #pragma GCC unroll 0 // do not unroll
     for (u16 posX = MIN_POS_XY; posX <= MAX_POS_XY; posX += posStepping) {
 
+        #pragma GCC unroll 0 // do not unroll
         for (u16 posY = MIN_POS_XY; posY <= MAX_POS_XY; posY += posStepping) {
 
             // Current location (normalized)
