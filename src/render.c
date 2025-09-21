@@ -136,7 +136,7 @@ void render_loadWallPalettes ()
 FORCE_INLINE void render_Z80_setBusProtection (bool value)
 {
     Z80_requestBus(FALSE);
-	u16 busProtectSignalAddress = (Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
+	u16 busProtectSignalAddress = (u16)(Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
     vu8* pb = (u8*) (Z80_RAM + busProtectSignalAddress); // See Z80_useBusProtection() reference in z80_ctrl.c
     *pb = value?1:0;
 	Z80_releaseBus();
@@ -237,10 +237,10 @@ void render_DMA_enqueue_framebuffer ()
     u16* frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
 
     // All the frame_buffer Plane A
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer, PA_ADDR, (u16)(VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), (u16)2);
  
     // All the frame_buffer Plane B
-    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (VERTICAL_ROWS*PLANE_COLUMNS) - (PLANE_COLUMNS-TILEMAP_COLUMNS), 2);
+    DMA_queueDmaFast(DMA_VRAM, frame_buffer + (VERTICAL_ROWS*PLANE_COLUMNS), PB_ADDR, (u16)(VERTICAL_ROWS*PLANE_COLUMNS) - (u16)(PLANE_COLUMNS-TILEMAP_COLUMNS), (u16)2);
 }
 
 FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
@@ -269,7 +269,7 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // DMA length low has to be set every time before triggering the DMA command
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
         doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
@@ -290,7 +290,7 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // DMA length low has to be set every time before triggering the DMA command
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane B row
         doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
@@ -313,7 +313,7 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // DMA length low has to be set every time before triggering the DMA command
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane A row
         doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
@@ -334,7 +334,7 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // DMA length low has to be set every time before triggering the DMA command
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane B row
         doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }

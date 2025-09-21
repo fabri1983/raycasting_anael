@@ -92,6 +92,8 @@ fabri1983's resources notes:
 //#pragma GCC optimize ("unroll-loops")
 #pragma GCC optimize ("no-unroll-loops")
 
+#include <tools.h>
+
 int main (bool hardReset)
 {
 	// On soft reset we do a hard reset
@@ -102,10 +104,10 @@ int main (bool hardReset)
 
     // Ensure our constants has correct values
     if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS) {
-        //KLog_U2("", (u32)vdpSpriteCache, " ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS);
+        KLog_U2("RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS mismatch: ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, " ", (u32)vdpSpriteCache);
         return 0;
     }
-    //acá: check for correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
+    //acá: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
 
     #if DISPLAY_LOGOS_AT_START
     displayTeddyBearLogo();
@@ -128,7 +130,7 @@ int main (bool hardReset)
     hint_reset();
 	u16 currentTileIndex = render_loadTiles();
 	currentTileIndex = hud_loadInitialState(currentTileIndex);
-    SPR_initEx(weapon_biggerAnimTileNum()); // NOTE: + others xxx_biggerAnimTileNum()
+    SPR_initEx(weapon_biggestAnimTileNum()); // NOTE: + others xxx_biggerAnimTileNum()
     weapon_resetState();
 
     hud_addWeapon(WEAPON_FIST);

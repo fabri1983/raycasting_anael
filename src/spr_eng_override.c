@@ -67,15 +67,15 @@ Sprite* spr_eng_addSpriteEx (const SpriteDefinition* spriteDef, s16 x, s16 y, u1
     Sprite* sprite;
 
     // allocate new sprite
-    sprite = allocateSprite(flag & SPR_FLAG_INSERT_HEAD);
+    sprite = allocateSprite(flag & (u16)SPR_FLAG_INSERT_HEAD);
 
-    sprite->status = ALLOCATED | (flag & SPR_FLAG_MASK);
+    sprite->status = (u16)ALLOCATED | (flag & (u16)SPR_FLAG_MASK);
 
-    // fabri1983: currently I'm not using SPR_FLAG_AUTO_VISIBILITY
+    // fabri1983: currently I'm not using (u16)SPR_FLAG_AUTO_VISIBILITY
     // auto visibility ?
-    /*if (flag & SPR_FLAG_AUTO_VISIBILITY) sprite->visibility = 0;
+    /*if (flag & (u16)SPR_FLAG_AUTO_VISIBILITY) sprite->visibility = 0;
     // otherwise we set it to visible by default
-    else*/ sprite->visibility = VISIBILITY_ON;
+    else*/ sprite->visibility = (u16)VISIBILITY_ON;
     // initialized with specified flag
     sprite->definition = spriteDef;
     sprite->onFrameChange = NULL;
@@ -94,14 +94,14 @@ Sprite* spr_eng_addSpriteEx (const SpriteDefinition* spriteDef, s16 x, s16 y, u1
     sprite->x = x + 0x80;
     sprite->y = y + 0x80;
     // depending sprite position (first or last) we set its default depth
-    if (flag & SPR_FLAG_INSERT_HEAD) sprite->depth = SPR_MIN_DEPTH;
-    else sprite->depth = SPR_MAX_DEPTH;
+    if (flag & (u16)SPR_FLAG_INSERT_HEAD) sprite->depth = (s16)SPR_MIN_DEPTH;
+    else sprite->depth = (s16)SPR_MAX_DEPTH;
 
     // fabri1983: currently I'm not setting SPR_FLAG_AUTO_VRAM_ALLOC flag when adding the sprites
     sprite->attribut = attribut;
     // fabri1983: therefor next logic is not neeed
     // auto VRAM alloc enabled ?
-    /*if (flag & SPR_FLAG_AUTO_VRAM_ALLOC)
+    /*if (flag & (u16)SPR_FLAG_AUTO_VRAM_ALLOC)
     {
         // allocate VRAM
         ind = VRAM_alloc(&vram, spriteDef->maxNumTile);
@@ -134,9 +134,9 @@ static u16 updateVisibility (Sprite* sprite, u16 status)
 {
     // fabri1983: sprites are always visible, they are unloaded when not used.
     // set the new computed visibility
-    setVisibility(sprite, VISIBILITY_ON);
+    setVisibility(sprite, (u16)VISIBILITY_ON);
     // visibility update done !
-    return status & ~NEED_VISIBILITY_UPDATE;
+    return status & (u16)~NEED_VISIBILITY_UPDATE;
 
 
     u16 visibility;
@@ -154,25 +154,25 @@ static u16 updateVisibility (Sprite* sprite, u16 status)
 
     // fabri1983: we don't use flag SPR_FLAG_FAST_AUTO_VISIBILITY
     // fast visibility computation ?
-    /*if (status & SPR_FLAG_FAST_AUTO_VISIBILITY)
+    /*if (status & (u16)SPR_FLAG_FAST_AUTO_VISIBILITY)
     {
         // compute global visibility for sprite ('unsigned' allow merged <0 test)
         if (((u16)(x + w) < (u16)(sw + w)) && ((u16)(y + h) < (u16)(sh + h)))
-            visibility = VISIBILITY_ON;
+            visibility = (u16)VISIBILITY_ON;
         else
-            visibility = VISIBILITY_OFF;
+            visibility = (u16)VISIBILITY_OFF;
     }
     else*/
     {
         // sprite is fully visible ? --> set all sprite visible ('unsigned' allow merged <0 test)
         if ((x < (u16)(sw - w)) && (y < (u16)(sh - h)))
         {
-            visibility = VISIBILITY_ON;
+            visibility = (u16)VISIBILITY_ON;
         }
         // sprite is fully hidden ? --> set all sprite to hidden ('unsigned' allow merged <0 test)
         else if (((u16)(x + w) >= (u16)(sw + w)) || ((u16)(y + h) >= (u16)(sh + h)))
         {
-            visibility = VISIBILITY_OFF;
+            visibility = (u16)VISIBILITY_OFF;
         }
         else
         {
@@ -269,7 +269,7 @@ static u16 updateVisibility (Sprite* sprite, u16 status)
     setVisibility(sprite, visibility);
 
     // visibility update done !
-    return status & ~NEED_VISIBILITY_UPDATE;
+    return status & (u16)~NEED_VISIBILITY_UPDATE;
 }
 
 static u16 updateFrame (Sprite* sprite, u16 status)
@@ -278,7 +278,7 @@ static u16 updateFrame (Sprite* sprite, u16 status)
 
     // fabri1983: we don't delay frame update, plus we handle DMA in hint and vint
     // we need to transfert tiles data for this sprite and frame delay is not disabled ?
-    /*if ((status & (SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE)) == SPR_FLAG_AUTO_TILE_UPLOAD)
+    /*if ((status & (u16)(SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE)) == (u16)SPR_FLAG_AUTO_TILE_UPLOAD)
     {
         // not enough DMA capacity to transfer sprite tile data ?
         const u16 dmaCapacity = DMA_getMaxTransferSize();
@@ -311,15 +311,15 @@ static u16 updateFrame (Sprite* sprite, u16 status)
     }*/
 
     // require tile data upload
-    if (status & SPR_FLAG_AUTO_TILE_UPLOAD)
-        status |= NEED_TILES_UPLOAD;
+    if (status & (u16)SPR_FLAG_AUTO_TILE_UPLOAD)
+        status |= (u16)NEED_TILES_UPLOAD;
     // fabri1983: we don't use flag SPR_FLAG_AUTO_VISIBILITY
     // require visibility update
-    /*if (status & SPR_FLAG_AUTO_VISIBILITY)
-        status |= NEED_VISIBILITY_UPDATE;*/
+    /*if (status & (u16)SPR_FLAG_AUTO_VISIBILITY)
+        status |= (u16)NEED_VISIBILITY_UPDATE;*/
 
     // frame update done, also clear ANIMATION_DONE state
-    status &= ~(NEED_FRAME_UPDATE | STATE_ANIMATION_DONE);
+    status &= (u16)~(NEED_FRAME_UPDATE | STATE_ANIMATION_DONE);
 
     return status;
 }
@@ -350,7 +350,7 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
                 unpackSelector(compression, (u8*) FAR_SAFE(tileset->tiles, lenInWord * 2), buf);
                 // enqueue in sprite's queue
                 render_spr_queueDmaFastBuffered(buf, (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord);
-                //DMA_queueDmaFast(DMA_VRAM, buf, (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord, 2);
+                //DMA_queueDmaFast(DMA_VRAM, buf, (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord, (u16)2);
                 //DMA_releaseTemp(lenInWord);
 
                 u16 baseIndex = (sprite->attribut & TILE_INDEX_MASK);
@@ -368,8 +368,8 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
         {
             // just DMA operation to transfer tileset data to VRAM
             // enqueue in sprite's queue
-            //render_spr_queueDma(FAR_SAFE(tileset->tiles, lenInWord * 2), (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord);
-            //DMA_queueDma(DMA_VRAM, FAR_SAFE(tileset->tiles, lenInWord * 2), (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord, 2);
+            //render_spr_queueDma(FAR_SAFE(tileset->tiles, lenInWord * 2), (sprite->attribut & (u16)TILE_INDEX_MASK) * (u16)32, lenInWord);
+            //DMA_queueDma(DMA_VRAM, FAR_SAFE(tileset->tiles, lenInWord * 2), (sprite->attribut & (u16)TILE_INDEX_MASK) * (u16)32, lenInWord, (u16)2);
 
             u16 baseIndex = (sprite->attribut & TILE_INDEX_MASK);
             if (canDMAinHint(lenInWord)) {
@@ -377,9 +377,9 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
             }
             else {
                 hint_enqueueTiles(FAR_SAFE(tileset->tiles, DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT * 2), 
-                    baseIndex * 32, DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
+                    baseIndex * (u16)32, (u16)DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
                 vint_enqueueTiles(FAR_SAFE(tileset->tiles + DMA_TILES_THRESHOLD_FOR_HINT*8, (lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT) * 2), 
-                    baseIndex * 32 + DMA_TILES_THRESHOLD_FOR_HINT * 32, lenInWord - DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
+                    baseIndex * (u16)32 + (u16)DMA_TILES_THRESHOLD_FOR_HINT * 32, lenInWord - (u16)DMA_LENGTH_IN_WORD_THRESHOLD_FOR_HINT);
             }
         }
     }
@@ -606,7 +606,7 @@ NO_INLINE void spr_eng_update ()
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
         vint_enqueueVdpSpriteCache(vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE
-        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), 2);
+        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2), (u16)2);
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE
         render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #endif
@@ -623,7 +623,7 @@ NO_INLINE void spr_eng_update ()
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
         vint_enqueueVdpSpriteCache(1 * (sizeof(VDPSprite) / 2));
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE
-        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), 2);
+        DMA_queueDmaFast(DMA_VRAM, vdpSpriteCache, VDP_SPRITE_TABLE, 1 * (sizeof(VDPSprite) / 2), (u16)2);
         #elif DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE
         render_spr_queueDmaFast(vdpSpriteCache, VDP_SPRITE_TABLE, vdpSpriteInd * (sizeof(VDPSprite) / 2));
         #endif

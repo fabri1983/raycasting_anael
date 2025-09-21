@@ -34,15 +34,15 @@ void map_hit_reset_vars ()
 
 FORCE_INLINE void map_hit_setRow(u16 posX, u16 posY, u16 a)
 {
-    u16 mapX = posX / FP;
-    u16 mapY = posY / FP;
+    u16 mapX = posX / (u16)FP;
+    u16 mapY = posY / (u16)FP;
     #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
     // The compressed array has a row length of MAP_HIT_COMPRESSED_BLOCK_SIZE = PIXEL_COLUMNS * k.
     // So we just divide by that length to get the row into the lookup index.
-    u32 row = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS) - MAP_HIT_MIN_CALCULATED_INDEX;
-    blockIndex = divu(row, MAP_HIT_COMPRESSED_BLOCK_SIZE);
+    u32 row = (((mapX * (u16)MAP_SIZE + mapY) * (u16)(1024/(1024/AP)) + a) * (u16)PIXEL_COLUMNS) - (u16)MAP_HIT_MIN_CALCULATED_INDEX;
+    blockIndex = divu(row, (u16)MAP_HIT_COMPRESSED_BLOCK_SIZE);
     #else
-    row = (((mapX * MAP_SIZE + mapY) * (1024/(1024/AP)) + a) * PIXEL_COLUMNS) - MAP_HIT_MIN_CALCULATED_INDEX;
+    row = (((mapX * (u16)MAP_SIZE + mapY) * (u16)(1024/(1024/AP)) + a) * (u16)PIXEL_COLUMNS) - (u16)MAP_HIT_MIN_CALCULATED_INDEX;
     #endif
 }
 
@@ -52,7 +52,7 @@ FORCE_INLINE void map_hit_setIndexForStartingColumn (u16 column)
     // The compressed array has a row length of MAP_HIT_COMPRESSED_BLOCK_SIZE = PIXEL_COLUMNS * k.
     // So once the column exceed that length we need to wrap up. The correct thing should be % MAP_HIT_COMPRESSED_BLOCK_SIZE
     // but we know before hand that parameter "column" is smaller than MAP_HIT_COMPRESSED_BLOCK_SIZE.
-    if (elemIndex >= MAP_HIT_COMPRESSED_BLOCK_SIZE)
+    if (elemIndex >= (u16)MAP_HIT_COMPRESSED_BLOCK_SIZE)
         elemIndex = column;
     #else
     index = row + column;
@@ -74,8 +74,8 @@ u16 map_hit_decompressAt ()
 {
     #if MAP_HIT_COMPRESSED_PRE_CALCULATE_INDEX
     #else
-    u32 blockIndex = divu(index, MAP_HIT_COMPRESSED_BLOCK_SIZE);
-    u16 elemIndex = modu(index, MAP_HIT_COMPRESSED_BLOCK_SIZE);
+    u32 blockIndex = divu(index, (u16)MAP_HIT_COMPRESSED_BLOCK_SIZE);
+    u16 elemIndex = modu(index, (u16)MAP_HIT_COMPRESSED_BLOCK_SIZE);
     #endif
 
     u32 blockStart = map_hit_lookup[blockIndex];

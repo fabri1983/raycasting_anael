@@ -20,4 +20,5 @@ build/
 scripts/*OUTPUT*
 scripts/*PARTIAL*
 scripts/*FULL*
+scripts/*.class
 assets/temp_*

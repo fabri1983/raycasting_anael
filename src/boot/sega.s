@@ -95,14 +95,14 @@ SkipInit:
 _INT:
         movem.l %d0-%d1/%a0-%a1,-(%sp)
         move.l  intCB, %a0
-        jsr    (%a0)
+        jsr     (%a0)
         movem.l (%sp)+,%d0-%d1/%a0-%a1
         rte
 
 _EXTINT:
         movem.l %d0-%d1/%a0-%a1,-(%sp)
         move.l  eintCB, %a0
-        jsr    (%a0)
+        jsr     (%a0)
         movem.l (%sp)+,%d0-%d1/%a0-%a1
         rte
 
@@ -161,12 +161,11 @@ no_bmp_task:
 * Custom version of the _VINT vector which discards User tasks, Bitmap tasks, XGM tasks. 
 * Uses usp to backup a0, and immediately calls user's VInt callback.
 _VINT_lean:
-        * 92 cycles (or 84 cycles if vintCB is replaced by #constant)
-        move.l  a0, usp
+        move.l  %a0, %usp
         *ori.w   #0x0001, intTrace           /* in V-Int */
         addq.l  #1, vtimer
-        move.l  vintCB, a0
-        jsr     (a0)
+        move.l  vintCB, %a0
+        jsr     (%a0)
         *andi.w  #0xFFFE, intTrace           /* out V-Int */
-        move.l  usp, a0
+        move.l  %usp, %a0
         rte

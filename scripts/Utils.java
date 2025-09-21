@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -150,10 +151,11 @@ public class Utils {
         final int ADDITIONAL_WALL_HEIGHT_MODIF = 4;
 
         // Initialize the tab_wall_div array
-        List<Integer> tabWallDiv = new ArrayList<>(Consts.FP * (Consts.STEP_COUNT + 1));
+        int length = Consts.FP * (Consts.STEP_COUNT + 1);
+        List<Integer> tabWallDiv = new ArrayList<>(length);
 
         // Populate the tab_wall_div array
-        for (int i = 0; i < tabWallDiv.size(); i++) {
+        for (int i = 0; i < length; i++) {
             int v = (Consts.TILEMAP_COLUMNS * Consts.FP) / (i + 1);
             int div = Math.round(Math.min(v, Consts.MAX_U8));
             if ((div + ADDITIONAL_WALL_HEIGHT_MODIF) >= WALL_H2) {
@@ -172,14 +174,14 @@ public class Utils {
      */
     public static TileRenderResult renderLoadTiles ()
     {
-        // Create an array to store the tiles (vram)
-        List<Tile> vram = new ArrayList<>();
+        // Create an array to store the tiles like it was vram, up to 2048 Tile elements
+        Tile[] vram = new Tile[2048];
         // Keep track of max index used
         int maxTileIndex = 0;
 
         // Create initial zero tile (height 0)
         Tile zeroTile = new Tile();
-        vram.add(zeroTile);
+        vram[0] = zeroTile;
 
         // ORDERING: tiles are created in groups of 8 tiles except first one which is the empty tile.
         // Each group goes from Highest to Smallest, and then each group goes from Darkest to Brightest.
@@ -190,7 +192,9 @@ public class Utils {
 
             // 8 tiles per set
             for (int t = 1; t <= 8; t++) {
+
                 Tile tile = new Tile();
+
                 // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors going from darker to lighter
                 for (int c = 0; c < 8; c++) {
                     // Visit the height of each tile in current set. Height here is 0 based.
@@ -220,11 +224,7 @@ public class Utils {
 
                     // Calculate the tile index and store the tile
                     int tileIndex = t + c * 8 + (pass * (8 * 8));
-                    if (tileIndex >= vram.size()) {
-                        vram.add(tile);
-                    } else {
-                        vram.set(tileIndex, tile);
-                    }
+                    vram[tileIndex] = tile;
 
                     if (tileIndex > maxTileIndex) {
                         maxTileIndex = tileIndex;
@@ -233,7 +233,7 @@ public class Utils {
             }
         }
 
-        return new TileRenderResult(vram, maxTileIndex);
+        return new TileRenderResult(Arrays.asList(vram), maxTileIndex);
     }
 
     public static void cleanFramebuffer (int[] framebuffer)

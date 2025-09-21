@@ -26,7 +26,7 @@ extern u16* column_ptr;
 void write_vline (u16 h2, u16 tileAttrib);
 void write_vline_halved (u16 h2, u16 tileAttrib);
 
-void fb_set_top_entries_column (u8 pixel_column);
+void fb_set_top_entries_column (u16 pixel_column);
 void fb_increment_entries_column ();
 
 /// @brief Mirrors in inverted fashion the bottom half region of frame_buffer's Plane A and B into their respective top half region.

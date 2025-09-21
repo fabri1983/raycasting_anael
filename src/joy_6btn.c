@@ -56,7 +56,7 @@ static u16 read6Btn_port1 ()
     // if (((v2 & 0x0F00) != 0x0000) || ((val & 0x0C00) == 0x0000))
     //     v2 = (JOY_TYPE_PAD3 << JOY_TYPE_SHIFT) | 0x0F00; /* three button pad */
     // else
-        v2 = (JOY_TYPE_PAD6 << JOY_TYPE_SHIFT) | ((v2 & 0x000F) << 8); /* six button pad */
+        v2 = (u16)(JOY_TYPE_PAD6 << JOY_TYPE_SHIFT) | ((v2 & 0x000F) << 8); /* six button pad */
 
     val = ((v1 & 0x3000) >> 6) | (v1 & 0x003F);   /* 0 0 0 0 0 0 0 0 s a c b r l d u  */
     val |= v2;                                    /* 0 0 0 1 m x y z s a c b r l d u  or  0 0 0 0 1 1 1 1 s a c b r l d u */
@@ -76,7 +76,7 @@ void joy_update_6btn ()
     //SYS_disableInts();
 
     u16 val = read6Btn_port1();
-    u16 newstate = val & BUTTON_ALL;
+    u16 newstate = val & (u16)BUTTON_ALL;
     //u16 change = joyState_joy1 ^ newstate;
     joyState_joy1 = newstate;
 

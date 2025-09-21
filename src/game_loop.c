@@ -81,6 +81,114 @@ static void clearBuffer ()
     #endif
 }
 
+static void handle_input(u16* posX, u16* posY, u16* angle, u16** delta_a_ptr)
+{
+    u16 joyState = joy_readJoypad_joy1();
+    // if (joyState & BUTTON_START)
+    //     break;
+
+    if (joyState & (u16)BUTTON_X) {
+        weapon_next(-1);
+    }
+    else if (joyState & (u16)BUTTON_Y) {
+        weapon_next(1);
+    }
+    else if (joyState & (u16)BUTTON_A) {
+        weapon_fire();
+    }
+
+    // movement and collisions
+    if (joyState & (u16)(BUTTON_UP | BUTTON_DOWN | BUTTON_B | BUTTON_LEFT | BUTTON_RIGHT)) {
+
+        // Direction amount and sign depending on angle
+        s16 dx=0, dy=0;
+
+        // Simple forward/backward movement
+        if (joyState & (u16)BUTTON_UP) {
+            dx = tab_dir_x_div24[*angle];
+            dy = tab_dir_y_div24[*angle];
+        }
+        else if (joyState & (u16)BUTTON_DOWN) {
+            dx = -tab_dir_x_div24[*angle];
+            dy = -tab_dir_y_div24[*angle];
+        }
+
+        // Strafe movement is perpendicular to facing direction
+        if (joyState & (u16)BUTTON_B) {
+            // Strafe left
+            if (joyState & (u16)BUTTON_LEFT) {
+                dx += tab_dir_y_div24[*angle];
+                dy -= tab_dir_x_div24[*angle];
+            }
+            // Strafe Right
+            else if (joyState & (u16)BUTTON_RIGHT) {
+                dx -= tab_dir_y_div24[*angle];
+                dy += tab_dir_x_div24[*angle];
+            }
+        }
+        // Rotation (only when not strafing)
+        else {
+            if (joyState & (u16)BUTTON_LEFT)
+                *angle = (*angle + (u16)(1024/AP)) & (u16)1023;
+            else if (joyState & (u16)BUTTON_RIGHT)
+                *angle = (*angle - (u16)(1024/AP)) & (u16)1023;
+        }
+
+        // Current location (normalized) before displacement
+        u16 x = *posX / (u16)FP; // x > 0 always because min pos x is bigger than FP
+        u16 y = *posY / (u16)FP; // y > 0 always because min pos y is bigger than FP
+
+        // Limit y axis location (normalized)
+        const u16 ytop = (*posY - (u16)(MAP_FRACTION-1)) / (u16)FP;
+        const u16 ybottom = (*posY + (u16)(MAP_FRACTION-1)) / (u16)FP;
+
+        // Apply displacement
+        *posX += dx;
+        *posY += dy;
+
+        // Check x axis collision
+        // Moving right as per map[][] layout
+        if (dx > 0) {
+            if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
+                *posX = min(*posX, (x+1)*(u16)FP - (u16)MAP_FRACTION);
+                x = *posX / FP;
+            }
+        }
+        // Moving left as per map[][] layout
+        else {
+            if (map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
+                *posX = max(*posX, x*(u16)FP + (u16)MAP_FRACTION);
+                x = *posX / FP;
+            }
+        }
+
+        // Limit x axis location (normalized)
+        const u16 xleft = (*posX - (u16)(MAP_FRACTION-1)) / (u16)FP;
+        const u16 xright = (*posX + (u16)(MAP_FRACTION-1)) / (u16)FP;
+
+        // Check y axis collision
+        // Moving down as per map[][] layout
+        if (dy > 0) {
+            if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
+                *posY = min(*posY, (y+1)*(u16)FP - (u16)MAP_FRACTION);
+        }
+        // Moving up as per map[][] layout
+        else {
+            if (map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
+                *posY = max(*posY, y*(u16)FP + (u16)MAP_FRACTION);
+        }
+
+        u16 a = *angle / (u16)(1024/AP); // a range is [0, 128)
+        *delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
+
+        #if RENDER_USE_MAP_HIT_COMPRESSED
+        map_hit_setRow(*posX, *posY, a);
+        #endif
+
+        weapon_updateSway(dx | dy);
+    }
+}
+
 void game_loop ()
 {
 	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
@@ -108,111 +216,7 @@ void game_loop ()
         // ceiling_dma_tileset(angle);
         // floor_dma_tileset(angle);
 
-        u16 joyState = joy_readJoypad_joy1();
-        // if (joyState & BUTTON_START)
-        //     break;
-
-        if (joyState & BUTTON_X) {
-            weapon_next(-1);
-        }
-        else if (joyState & BUTTON_Y) {
-            weapon_next(1);
-        }
-        else if (joyState & BUTTON_A) {
-            weapon_fire();
-        }
-
-        // movement and collisions
-        if (joyState & (BUTTON_UP | BUTTON_DOWN | BUTTON_B | BUTTON_LEFT | BUTTON_RIGHT)) {
-
-            // Direction amount and sign depending on angle
-            s16 dx=0, dy=0;
-
-            // Simple forward/backward movement
-            if (joyState & BUTTON_UP) {
-                dx = tab_dir_x_div24[angle];
-                dy = tab_dir_y_div24[angle];
-            }
-            else if (joyState & BUTTON_DOWN) {
-                dx = -tab_dir_x_div24[angle];
-                dy = -tab_dir_y_div24[angle];
-            }
-
-            // Strafe movement is perpendicular to facing direction
-            if (joyState & BUTTON_B) {
-                // Strafe left
-                if (joyState & BUTTON_LEFT) {
-                    dx += tab_dir_y_div24[angle];
-                    dy -= tab_dir_x_div24[angle];
-                }
-                // Strafe Right
-                else if (joyState & BUTTON_RIGHT) {
-                    dx -= tab_dir_y_div24[angle];
-                    dy += tab_dir_x_div24[angle];
-                }
-            }
-            // Rotation (only when not strafing)
-            else {
-                if (joyState & BUTTON_LEFT)
-                    angle = (angle + (1024/AP)) & 1023;
-                else if (joyState & BUTTON_RIGHT)
-                    angle = (angle - (1024/AP)) & 1023;
-            }
-
-            // Current location (normalized) before displacement
-            u16 x = posX / FP; // x > 0 always because min pos x is bigger than FP
-            u16 y = posY / FP; // y > 0 always because min pos y is bigger than FP
-
-            // Limit y axis location (normalized)
-            const u16 ytop = (posY - (MAP_FRACTION-1)) / FP;
-            const u16 ybottom = (posY + (MAP_FRACTION-1)) / FP;
-
-            // Apply displacement
-            posX += dx;
-            posY += dy;
-
-            // Check x axis collision
-            // Moving right as per map[][] layout
-            if (dx > 0) {
-                if (map[y][x+1] || map[ytop][x+1] || map[ybottom][x+1]) {
-                    posX = min(posX, (x+1)*FP - MAP_FRACTION);
-                    x = posX / FP;
-                }
-            }
-            // Moving left as per map[][] layout
-            else {
-                if (map[y][x-1] || map[ytop][x-1] || map[ybottom][x-1]) {
-                    posX = max(posX, x*FP + MAP_FRACTION);
-                    x = posX / FP;
-                }
-            }
-
-            // Limit x axis location (normalized)
-            const u16 xleft = (posX - (MAP_FRACTION-1)) / FP;
-            const u16 xright = (posX + (MAP_FRACTION-1)) / FP;
-
-            // Check y axis collision
-            // Moving down as per map[][] layout
-            if (dy > 0) {
-                if (map[y+1][x] || map[y+1][xleft] || map[y+1][xright])
-                    posY = min(posY, (y+1)*FP - MAP_FRACTION);
-            }
-            // Moving up as per map[][] layout
-            else {
-                if (map[y-1][x] || map[y-1][xleft] || map[y-1][xright])
-                    posY = max(posY, y*FP + MAP_FRACTION);
-            }
-
-            u16 a = angle / (1024/AP); // a range is [0, 128)
-            delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
-
-            #if RENDER_USE_MAP_HIT_COMPRESSED
-            map_hit_setRow(posX, posY, a);
-            #endif
-
-            weapon_updateSway(dx | dy);
-        }
-
+        handle_input(&posX, &posY, &angle, &delta_a_ptr);
         weapon_update();
         hud_update();
         spr_eng_update();
@@ -293,7 +297,7 @@ void game_loop_auto ()
                 weapon_update();
                 hud_update();
                 spr_eng_update();
-                
+
                 u16 a = angle / (1024/AP); // a range is [0, 128)
                 u16* delta_a_ptr = (u16*) (tab_deltas + a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT);
 
@@ -332,12 +336,12 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
     sideDistY_l1 = FP - sideDistY_l0; // (((posY/FP) + 1)*FP - posY);
     #endif
 
-    //u16 a = angle / (1024/AP); // a range is [0, 128)
+    //u16 a = angle / (u16)(1024/AP); // a range is [0, 128)
     //u16* delta_a_ptr = (u16*) (tab_deltas + (a * PIXEL_COLUMNS * DELTA_PTR_OFFSET_AMNT));
 
     // ALWAYS starts rendering process at column 0, given that column_ptr incremental amount is hardcoded and assumes first column is even.
     // If the target display dimensions are lower than full screen (except the hud) then just adjust PA_ADDR and PB_ADDR.
-    u8 column = 0;
+    u16 column = 0;
 
     #if RENDER_USE_MAP_HIT_COMPRESSED
     map_hit_setIndexForStartingColumn(column);
@@ -354,7 +358,8 @@ static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
     #endif
 
     // 256p or 320p width, but 4 "pixels" wide column => effectively 256/4=64 or 320/4=80 pixels width.
-    for (; column < PIXEL_COLUMNS; column += RENDER_COLUMNS_UNROLL) {
+    #pragma GCC unroll 0 // do not unroll
+    for (; column < (u16)PIXEL_COLUMNS; column += (u16)RENDER_COLUMNS_UNROLL) {
         #if RENDER_COLUMNS_UNROLL == 1
 
         process_column(delta_a_ptr, posX, posY, sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1);
@@ -529,11 +534,12 @@ static void do_stepping (u16 posX, u16 posY, u16 sideDistX, u16 sideDistY, s16 r
 static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16 sideDistX, u16 sideDistY, s16 stepX, s16 stepY, s16 stepYMS, s16 rayDirAngleX, s16 rayDirAngleY)
 {
     // Which box of the map we're in
-    u16 mapX = posX / FP;
-	u16 mapY = posY / FP;
+    u16 mapX = posX / (u16)FP;
+	u16 mapY = posY / (u16)FP;
 	u8* map_ptr = (u8*) &map[mapY][mapX];
 
     // Now the actual DDA starts. It's a loop that increments the ray in 1 square every time, until a wall is hit.
+    //#pragma GCC unroll 0 // do not unroll
 	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
 
         // Jump into next map square, either in X or Y direction
@@ -584,20 +590,20 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
 
     // C version
-    // u16 tileAttrib = tab_color_d8_1_X_pals_shft[2*sideDistX + (mapY&1)];
+    // u16 tileAttrib = tab_color_d8_1_X_pals_shft[2*sideDistX + (mapY&1)]; // *2 because each element has one value for (mapY&1)=0 and other for (mapY&1)=1
     // u16 h2 = tab_wall_div[sideDistX]; // height halved
 
     // ASM version
     u16 tileAttrib;
     u16 h2;
     __asm volatile (
-        "andi.w  #1, %[mapY]\n\t"                       // mapY &= 1
-        "add.w   %[sideDistX], %[sideDistX]\n\t"        // sideDistX *= 2 (word offset)
-        "move.w  (%[tab_wall_div],%[sideDistX].w), %[h2]\n\t" // h2 = tab_wall_div[sideDistX]
-        "add.w   %[mapY], %[sideDistX]\n\t"             // index = 2*sideDistX + (mapY & 1)
-        "add.w   %[sideDistX], %[sideDistX]\n\t"        // byte offset (multiply by 2 again)
-        "move.l  %[tab_color_mem],%[tab_wall_div]\n\t"  // this way we save one register
-        "move.w  (%[tab_wall_div],%[sideDistX].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
+        "andi.w  #1,%[mapY]\n\t"                        // mapY &= 1
+        "add.w   %[sideDistX],%[sideDistX]\n\t"         // sideDistX *= 2 (discern between element for (mapY&1)=0 and element for (mapY&1)=1)
+        "move.w  (%[tab_wall_div],%[sideDistX].w),%[h2]\n\t" // h2 = tab_wall_div[sideDistX]
+        "add.w   %[mapY],%[sideDistX]\n\t"              // index = 2*sideDistX + (mapY & 1)
+        "add.w   %[sideDistX],%[sideDistX]\n\t"         // byte offset (word stride)
+        "lea     %c[tab_color_mem],%[tab_wall_div]\n\t"  // this way we save one register
+        "move.w  (%[tab_wall_div],%[sideDistX].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
         : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistX] "+d" (sideDistX), [mapY] "+d" (mapY)
         : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_X_pals_shft)
         :
@@ -640,20 +646,20 @@ static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
 
     // C version
-    // u16 tileAttrib = tab_color_d8_1_Y_pals_shft[2*sideDistY + (mapX&1)];
+    // u16 tileAttrib = tab_color_d8_1_Y_pals_shft[2*sideDistY + (mapX&1)]; // *2 because each element has one value for (mapX&1)=0 and other for (mapX&1)=1
     // u16 h2 = tab_wall_div[sideDistY]; // height halved
 
     // ASM version
     u16 tileAttrib;
     u16 h2;
     __asm volatile (
-        "andi.w  #1, %[mapX]\n\t"                       // mapX &= 1
-        "add.w   %[sideDistY], %[sideDistY]\n\t"        // sideDistY *= 2 (word offset)
-        "move.w  (%[tab_wall_div],%[sideDistY].w), %[h2]\n\t" // h2 = tab_wall_div[sideDistY]
-        "add.w   %[mapX], %[sideDistY]\n\t"             // index = 2*sideDistY + (mapX & 1)
-        "add.w   %[sideDistY], %[sideDistY]\n\t"        // byte offset (multiply by 2 again)
-        "move.l  %[tab_color_mem],%[tab_wall_div]\n\t"  // this way we save one register
-        "move.w  (%[tab_wall_div],%[sideDistY].w), %[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
+        "andi.w  #1,%[mapX]\n\t"                        // mapX &= 1
+        "add.w   %[sideDistY],%[sideDistY]\n\t"         // sideDistY *= 2 (discern between element for (mapX&1)=0 and element for (mapX&1)=1)
+        "move.w  (%[tab_wall_div],%[sideDistY].w),%[h2]\n\t" // h2 = tab_wall_div[sideDistY]
+        "add.w   %[mapX],%[sideDistY]\n\t"              // index = 2*sideDistY + (mapX & 1)
+        "add.w   %[sideDistY],%[sideDistY]\n\t"         // index *= 2 (word stride)
+        "lea     %c[tab_color_mem],%[tab_wall_div]\n\t"  // this way we save one register
+        "move.w  (%[tab_wall_div],%[sideDistY].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
         : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistY] "+d" (sideDistY), [mapX] "+d" (mapX)
         : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_Y_pals_shft)
         :

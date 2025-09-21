@@ -252,10 +252,10 @@ void clear_buffer_halved_sp ()
 // Stores top tilemap entry value followed by h2 row value, for evey processed column.
 static u16 top_entries[2*PIXEL_COLUMNS];
 // Keep track of current column this way, otherwise the code breaks.
-static u8 top_entries_current_col;
+static u16 top_entries_current_col;
 #endif
 
-FORCE_INLINE void fb_set_top_entries_column (u8 pixel_column)
+FORCE_INLINE void fb_set_top_entries_column (u16 pixel_column)
 {
     #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
     top_entries_current_col = pixel_column;
@@ -324,7 +324,7 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
         "    .set offdown, offdown - (%c[_TILEMAP_COLUMNS] * 2)\n" // *2 for byte convertion
         ".endr\n"
         // restore h2
-        "    lsl.w   #1,%[h2]\n"
+        "    add.w   %[h2],%[h2]\n" // lsl.w   #1,%[h2]
 
         // Setup for top and bottom tilemap entries
         "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7); // h2 % 8
@@ -431,7 +431,7 @@ static FORCE_INLINE void copy_top_entries_in_RAM ()
     u16* frame_buffer = (u16*) RAM_FIXED_FRAME_BUFFER_ADDRESS;
     u16* entries_ptr = top_entries;
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
+    for (u16 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = *entries_ptr++;
         u16 h2 = *entries_ptr++;
         frame_buffer[i + h2] = val; // h2 comes in byte addressing
@@ -487,13 +487,13 @@ static FORCE_INLINE void clear_buffer_row (u32* ptr)
     // C version
     /*u32 zero = 0;
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i = 0; i < TILEMAP_COLUMNS/2; ++i) { // /2 because we are using a u32* pointer, so updating long words
+    for (u16 i = 0; i < TILEMAP_COLUMNS/2; ++i) { // /2 because we are using a u32* pointer, so updating long words
         *ptr++ = zero;
     }*/
 
     // ASM version
     u32 zero = 0;
-    u16 countDbra = (TILEMAP_COLUMNS/2)/2 - 1; // /2 because we are using a u32* pointer, so updating long words, and additional /2 for the 2 move.l
+    u16 countDbra = (u16)(TILEMAP_COLUMNS/2)/2 - 1; // /2 because we are using a u32* pointer, so updating long words, and additional /2 for the 2 move.l
     __asm volatile (
         "1:\n\t"
         "move.l  %2,(%0)+\n\t"
@@ -513,7 +513,7 @@ FORCE_INLINE void fb_mirror_planes_in_VRAM ()
     // C version
     /*VDP_setAutoInc(1);
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         DMA_doVRamCopy(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2, TILEMAP_COLUMNS*2, -1);
         clear_buffer_row(pA_bottom_half_start);
         pA_bottom_half_start += (PLANE_COLUMNS)/2; // jump into next row
@@ -533,7 +533,7 @@ FORCE_INLINE void fb_mirror_planes_in_VRAM ()
     u32* pA_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
@@ -545,7 +545,7 @@ FORCE_INLINE void fb_mirror_planes_in_VRAM ()
     u32* pB_bottom_half_start = (u32*)(RAM_FIXED_FRAME_BUFFER_ADDRESS + ((VERTICAL_ROWS*TILEMAP_COLUMNS) + (VERTICAL_ROWS*TILEMAP_COLUMNS)/2)*2);
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < VERTICAL_ROWS/2; ++i) {
+    for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane B row
         doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
@@ -567,7 +567,7 @@ FORCE_INLINE void fb_copy_top_entries_in_VRAM ()
     // C version: set tilemap top entries (already inverted)
     u16* entries_ptr = top_entries;
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-    for (u8 i=0; i < PIXEL_COLUMNS/2; ++i) {
+    for (u16 i=0; i < PIXEL_COLUMNS/2; ++i) {
         u16 val = (*entries_ptr++);
         u16 h2 = (*entries_ptr++);
         *vdpCtrl_ptr_l = VDP_WRITE_VRAM_ADDR(PA_ADDR + 2*i + h2); // h2 is already in byte addressing

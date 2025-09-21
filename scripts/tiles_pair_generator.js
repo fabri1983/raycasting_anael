@@ -5,7 +5,8 @@ const utils = require('./utils');
 // Check correct values of constants before script execution. See consts.h.
 const {
     FS, FP, AP, STEP_COUNT_LOOP, PIXEL_COLUMNS, TILEMAP_COLUMNS, VERTICAL_ROWS, MAP_SIZE, MAP_FRACTION, 
-    MIN_POS_XY, MAX_POS_XY, TILE_ATTR_PALETTE_SFT, PAL0, PAL1 } = require('./consts');
+    MIN_POS_XY, MAX_POS_XY, TILE_ATTR_PALETTE_SFT, PAL0, PAL1
+} = require('./consts');
 
 const tabDeltasFile = '../inc/tab_deltas.h';
 const mapMatrixFile = '../src/map_matrix.c';
@@ -18,12 +19,6 @@ const MAX_JOBS = 256;
 // Progress tracking
 const totalIterations = (MAX_POS_XY - MIN_POS_XY + 1) * (MAX_POS_XY - MIN_POS_XY + 1) * (1024/(1024/AP));
 let completedIterations = 0;
-
-function displayProgress () {
-    const progress = (completedIterations / totalIterations) * 100;
-    const progressBar = '='.repeat(Math.floor(progress / 2)) + '-'.repeat(50 - Math.floor(progress / 2));
-    process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
-}
 
 function createTrackingKey (i, j) {
     return i + "-" + j;
@@ -125,16 +120,16 @@ function processGameChunk (jobId, startPosX, endPosX, tab_deltas, tab_wall_div, 
 
                 let a = Math.floor(angle / (1024/AP));
 
-                //let columnPlaneA_tileAttrib, columnPlaneB_tileAttrib;
-
                 for (let column = 0; column < PIXEL_COLUMNS; ++column) {
 
                     // instead of: const u16 *delta_a_ptr = tab_deltas + (a * PIXEL_COLUMNS * 4);
                     // we use the offset directly when accessing tab_deltas
-                    const deltaDistX = tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 0];
-                    const deltaDistY = tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 1];
-                    const rayDirX = utils.toSignedFrom16b(tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 2]);
-                    const rayDirY = utils.toSignedFrom16b(tab_deltas[(a * PIXEL_COLUMNS * 4) + column*4 + 3]);
+                    const baseIndex = (a * PIXEL_COLUMNS * 4) + column*4;
+
+                    const deltaDistX = tab_deltas[baseIndex + 0];
+                    const deltaDistY = tab_deltas[baseIndex + 1];
+                    const rayDirX = utils.toSignedFrom16b(tab_deltas[baseIndex + 2]);
+                    const rayDirY = utils.toSignedFrom16b(tab_deltas[baseIndex + 3]);
 
                     let sideDistX, stepX;
 
@@ -258,6 +253,12 @@ function writeOutputToFile (finalMap, outputFile) {
     }
 
     fs.writeFileSync(outputFile, outputString, 'utf8');
+}
+
+function displayProgress () {
+    const progress = (completedIterations / totalIterations) * 100;
+    const progressBar = '='.repeat(Math.floor(progress / 2)) + '-'.repeat(50 - Math.floor(progress / 2));
+    process.stdout.write(`\r[${progressBar}] ${progress.toFixed(2)}%`);
 }
 
 // Function to run parallel workers (fired by Main Thread only)
@@ -410,7 +411,7 @@ if (isMainThread) {
         })
         .catch((error) => {
             process.stdout.write('\n'); // Move to the next line after progress bar
-            console.error('An error occurred:', error);
+            console.error('[ERROR] ', error);
 
             let endTimeStr = new Date().toLocaleString('en-US', { hour12: false });
             console.log(endTimeStr);

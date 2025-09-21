@@ -15,7 +15,7 @@
 #include "utils.h"
 #include "logos_res.h"
 
-#define STR_VERSION "v2.12 (Jul 2025)"
+#define STR_VERSION "v2.12 (Aug 2025)"
 #define STR_VERSION_LEN 17 // String version length including \0
 
 #define TEDDY_BEAR_LOGO_FADE_TO_BLACK_STEPS 7 // How many steps needs to be applied as much to reach black color. Max is 7.

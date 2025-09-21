@@ -2,7 +2,8 @@ const fs = require('fs');
 
 // Check correct values of constants before script execution. See consts.h.
 const { FP, AP, PIXEL_COLUMNS, TILEMAP_COLUMNS, VERTICAL_ROWS, 
-        MAP_SIZE, STEP_COUNT, MAX_U8, TILE_ATTR_VFLIP_MASK } = require('./consts');
+        MAP_SIZE, STEP_COUNT, MAX_U8, TILE_ATTR_VFLIP_MASK
+} = require('./consts');
 
 /**
  * Tile class. Represents the 32 bytes color data that defines a Tile.
@@ -134,8 +135,8 @@ const utils = {
      * @returns {vram, maxTileIndex} An object containing the array of Tile objects, and the max tile index calculated.
      */
     render_loadTiles () {
-        // Create an array to store the tiles (vram)
-        const vram = [];
+        // Create an array to store the tiles like it was vram, up to 2048 Tile elements
+        const vram = new Array(2048);
         // Keep track of max index used
         let maxTileIndex = 0;
 

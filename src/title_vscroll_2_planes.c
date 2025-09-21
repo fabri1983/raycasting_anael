@@ -286,7 +286,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
     */
 
     __asm volatile (
-        // prepare_regs
+        // Prepare regs
         "   move.l      %c[title256cPalsPtr],%%a0\n" // a0: title256cPalsPtr
         "   lea         0xC00004,%%a1\n"          // a1: VDP_CTRL_PORT 0xC00004
         "   lea         5(%%a1),%%a2\n"           // a2: HCounter address 0xC00009 (VDP_HVCOUNTER_PORT + 1)

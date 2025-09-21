@@ -18,10 +18,10 @@
 #include "hint_callback.h"
 #include "vint_callback.h"
 
-static u8 weaponInventoryBits;
-static u8 keyInventoryBits;
-static u8 faceExpressionTimer;
-static u8 faceExpressionCol;
+static u16 weaponInventoryBits;
+static u16 keyInventoryBits;
+static u16 faceExpressionTimer;
+static u16 faceExpressionCol;
 
 static Digits ammo_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
 static Digits health_digits = { .hundrs = 0, .tens = 0, .ones = 0 };
@@ -80,13 +80,15 @@ static void subHUDDigits (Digits* digits, u16 amnt)
 
 void hud_resetAmmo ()
 {
-    updateFlags |= 1 << UPDATE_FLAG_AMMO;
-    hud_setAmmo(0, 0, 0); // no ammo
+    updateFlags |= (u16)(1 << UPDATE_FLAG_AMMO);
+    ammo_digits.hundrs = 0;
+    ammo_digits.tens = 0;
+    ammo_digits.ones = 0;
 }
 
-void hud_setAmmo (u8 hundreds, u8 tens, u8 ones)
+void hud_setAmmo (u16 hundreds, u16 tens, u16 ones)
 {
-    updateFlags |= 1 << UPDATE_FLAG_AMMO;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_AMMO);
     ammo_digits.hundrs = hundreds;
     ammo_digits.tens = tens;
     ammo_digits.ones = ones;
@@ -94,25 +96,29 @@ void hud_setAmmo (u8 hundreds, u8 tens, u8 ones)
 
 void hud_addAmmoUnits (u16 amnt)
 {
-    updateFlags |= 1 << UPDATE_FLAG_AMMO;
-    addHUDDigits(&ammo_digits, amnt);
+    updateFlags |= (u16)(1 << UPDATE_FLAG_AMMO);
+    Digits* digits = &ammo_digits;
+    addHUDDigits(digits, amnt);
 }
 
 void hud_subAmmoUnits (u16 amnt)
 {
-    updateFlags |= 1 << UPDATE_FLAG_AMMO;
-    subHUDDigits(&ammo_digits, amnt);
+    updateFlags |= (u16)(1 << UPDATE_FLAG_AMMO);
+    Digits* digits = &ammo_digits;
+    subHUDDigits(digits, amnt);
 }
 
 void hud_resetHealth ()
 {
-    updateFlags |= 1 << UPDATE_FLAG_HEALTH;
-    hud_setHealth(0, 0, 0); // no health
+    updateFlags |= (u16)(1 << UPDATE_FLAG_HEALTH);
+    health_digits.hundrs = 0;
+    health_digits.tens = 0;
+    health_digits.ones = 0;
 }
 
-void hud_setHealth (u8 hundreds, u8 tens, u8 ones)
+void hud_setHealth (u16 hundreds, u16 tens, u16 ones)
 {
-    updateFlags |= 1 << UPDATE_FLAG_HEALTH;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_HEALTH);
     health_digits.hundrs = hundreds;
     health_digits.tens = tens;
     health_digits.ones = ones;
@@ -121,24 +127,28 @@ void hud_setHealth (u8 hundreds, u8 tens, u8 ones)
 void hud_addHealthUnits (u16 amnt)
 {
     updateFlags |= 1 << UPDATE_FLAG_HEALTH;
-    addHUDDigits(&health_digits, amnt);
+    Digits* digits = &health_digits;
+    addHUDDigits(digits, amnt);
 }
 
 void hud_subHealthUnits (u16 amnt)
 {
-    updateFlags |= 1 << UPDATE_FLAG_HEALTH;
-    subHUDDigits(&health_digits, amnt);
+    updateFlags |= (u16)(1 << UPDATE_FLAG_HEALTH);
+    Digits* digits = &health_digits;
+    subHUDDigits(digits, amnt);
 }
 
 void hud_resetArmor ()
 {
-    updateFlags |= 1 << UPDATE_FLAG_ARMOR;
-    hud_setArmor(0, 0, 0); // no armor
+    updateFlags |= (u16)(1 << UPDATE_FLAG_ARMOR);
+    armor_digits.hundrs = 0;
+    armor_digits.tens = 0;
+    armor_digits.ones = 0;
 }
 
-void hud_setArmor (u8 hundreds, u8 tens, u8 ones)
+void hud_setArmor (u16 hundreds, u16 tens, u16 ones)
 {
-    updateFlags |= 1 << UPDATE_FLAG_ARMOR;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_ARMOR);
     armor_digits.hundrs = hundreds;
     armor_digits.tens = tens;
     armor_digits.ones = ones;
@@ -146,37 +156,39 @@ void hud_setArmor (u8 hundreds, u8 tens, u8 ones)
 
 void hud_addArmorUnits (u16 amnt)
 {
-    updateFlags |= 1 << UPDATE_FLAG_ARMOR;
-    addHUDDigits(&armor_digits, amnt);
+    updateFlags |= (u16)(1 << UPDATE_FLAG_ARMOR);
+    Digits* digits = &armor_digits;
+    addHUDDigits(digits, amnt);
 }
 
 void hud_subArmorUnits (u16 amnt)
 {
-    updateFlags |= 1 << UPDATE_FLAG_ARMOR;
-    subHUDDigits(&armor_digits, amnt);
+    updateFlags |= (u16)(1 << UPDATE_FLAG_ARMOR);
+    Digits* digits = &armor_digits;
+    subHUDDigits(digits, amnt);
 }
 
 void hud_resetWeapons ()
 {
-    updateFlags |= 1 << UPDATE_FLAG_WEAPON;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_WEAPON);
     weaponInventoryBits = 0; // no weapons
 }
 
-void hud_addWeapon (u8 weapon)
+void hud_addWeapon (u16 weapon)
 {
-    updateFlags |= 1 << UPDATE_FLAG_WEAPON;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_WEAPON);
     weaponInventoryBits |= 1 << weapon;
 }
 
 void hud_resetKeys ()
 {
-    updateFlags |= 1 << UPDATE_FLAG_KEY;
-    keyInventoryBits = KEY_NONE; // no keys
+    updateFlags |= (u16)(1 << UPDATE_FLAG_KEY);
+    keyInventoryBits = (u16)KEY_NONE; // no keys
 }
 
-void hud_addKey (u8 key)
+void hud_addKey (u16 key)
 {
-    updateFlags |= 1 << UPDATE_FLAG_KEY;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_KEY);
     keyInventoryBits |= 1 << key;
 }
 
@@ -188,23 +200,23 @@ static void resetFaceExpressionTimer ()
 void hud_resetFaceExpression ()
 {
     resetFaceExpressionTimer();
-    updateFlags |= 1 << UPDATE_FLAG_FACE;
-    faceExpressionCol = FACE_EXPRESSION_CENTERED; // default
+    updateFlags |= (u16)(1 << UPDATE_FLAG_FACE);
+    faceExpressionCol = (u16)FACE_EXPRESSION_CENTERED; // default
 }
 
-void hud_setFaceExpression (u8 expr, u8 timer)
+void hud_setFaceExpression (u16 expr, u16 timer)
 {
-    updateFlags |= 1 << UPDATE_FLAG_FACE;
+    updateFlags |= (u16)(1 << UPDATE_FLAG_FACE);
     faceExpressionCol = expr;
     faceExpressionTimer = timer;
 }
 
-bool hud_hasWeaponInInventory (u8 weapon)
+bool hud_hasWeaponInInventory (u16 weapon)
 {
     return weaponInventoryBits & (1 << weapon);
 }
 
-bool hud_hasKeyInInventory (u8 key)
+bool hud_hasKeyInInventory (u16 key)
 {
     return keyInventoryBits & (1 << key);
 }
@@ -259,9 +271,9 @@ static void setHUDBg ()
 
 static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
 {
-    u8 hundrs = digits->hundrs;
-    u8 tens = digits->tens;
-    u8 ones = digits->ones;
+    u16 hundrs = digits->hundrs;
+    u16 tens = digits->tens;
+    u16 ones = digits->ones;
 
     // Now accomodate for the empty tile which is always at position 0 for the respective digit
     if (hundrs > 0) {
@@ -295,19 +307,22 @@ static void setHUDDigitsCommon (u16 target_XP, u16 target_YP, Digits* digits)
     COPY_TILEMAP_DATA(from, to, HUD_NUMS_W, HUD_NUMS_H);
 }
 
-static void setHUDAmmo ()
+static void prepareHUDAmmo ()
 {
-    setHUDDigitsCommon(HUD_AMMO_XP, HUD_AMMO_YP, &ammo_digits);
+    Digits* digits = &ammo_digits;
+    setHUDDigitsCommon((u16)HUD_AMMO_XP, (u16)HUD_AMMO_YP, digits);
 }
 
 static void setHUDHealth ()
 {
-    setHUDDigitsCommon(HUD_HEALTH_XP, HUD_HEALTH_YP, &health_digits);
+    Digits* digits = &health_digits;
+    setHUDDigitsCommon((u16)HUD_HEALTH_XP, (u16)HUD_HEALTH_YP, digits);
 }
 
 static void setHUDArmor ()
 {
-    setHUDDigitsCommon(HUD_ARMOR_XP, HUD_ARMOR_YP, &armor_digits);
+    Digits* digits = &armor_digits;
+    setHUDDigitsCommon((u16)HUD_ARMOR_XP, (u16)HUD_ARMOR_YP, digits);
 }
 
 static void setHUDWeapons ()
@@ -318,13 +333,13 @@ static void setHUDWeapons ()
     // UPPER WEAPONS
 
     // has shotgun?
-    if (weaponInventoryBits & (1 << WEAPON_SHOTGUN)) {
+    if (weaponInventoryBits & (u16)(1 << WEAPON_SHOTGUN)) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X);
         u16* to = hud_tilemap_dst + (HUD_WEAPON_HIGH_YP*TILEMAP_COLUMNS + HUD_WEAPON_HIGH_XP);
         COPY_TILEMAP_DATA(from, to, 1, 2); // dimensions for weapon 3: 1x2 tiles
     }
     // has machine gun?
-    if (weaponInventoryBits & (1 << WEAPON_MACHINE_GUN)) {
+    if (weaponInventoryBits & (u16)(1 << WEAPON_MACHINE_GUN)) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 1); // jump previous weapons
         u16* to = hud_tilemap_dst + (HUD_WEAPON_HIGH_YP*TILEMAP_COLUMNS + HUD_WEAPON_HIGH_XP + 1); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 4: 2x2 tiles
@@ -332,31 +347,31 @@ static void setHUDWeapons ()
 
     // LOWER WEAPONS
 
-    if (weaponInventoryBits & (1 << WEAPON_ROCKET)) {
+    if (weaponInventoryBits & (u16)(1 << WEAPON_ROCKET)) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 3); // jump previous weapons
         u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 5: 2x2 tiles
     }
     // has plasma but not shotgun?
-    if ((weaponInventoryBits & ((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) == ((1 << WEAPON_PLASMA) | (0 << WEAPON_SHOTGUN))) {
+    if ((weaponInventoryBits & (u16)((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) == (u16)((1 << WEAPON_PLASMA) | (0 << WEAPON_SHOTGUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 5); // jump previous weapons
         u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 2); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 1, 2); // dimensions for weapon 6: 1x2 tiles
     }
     // has plasma and shotgun?
-    else if ((weaponInventoryBits & ((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) == ((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) {
+    else if ((weaponInventoryBits & (u16)((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) == (u16)((1 << WEAPON_PLASMA) | (1 << WEAPON_SHOTGUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 6); // jump previous weapons
         u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 2); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 1, 2); // dimensions for weapon 6: 1x2 tiles
     }
     // has bfg but not machine gun?
-    if ((weaponInventoryBits & ((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) == ((1 << WEAPON_BFG) | (0 << WEAPON_MACHINE_GUN))) {
+    if ((weaponInventoryBits & (u16)((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) == (u16)((1 << WEAPON_BFG) | (0 << WEAPON_MACHINE_GUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 7); // jump previous weapons
         u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 3); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 7: 2x2 tiles
     }
     // has bfg and machine gun?
-    else if ((weaponInventoryBits & ((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) == ((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) {
+    else if ((weaponInventoryBits & (u16)((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) == (u16)((1 << WEAPON_BFG) | (1 << WEAPON_MACHINE_GUN))) {
         u16* from = hud_tilemap_src + (HUD_WEAPON_Y*HUD_SOURCE_IMAGE_W + HUD_WEAPON_X + 9); // jump previous weapons
         u16* to = hud_tilemap_dst + (HUD_WEAPON_LOW_YP*TILEMAP_COLUMNS + HUD_WEAPON_LOW_XP + 3); // jump previous weapons
         COPY_TILEMAP_DATA(from, to, 2, 2); // dimensions for weapon 7: 2x2 tiles
@@ -371,25 +386,25 @@ static void setHUDKeys ()
     // CARDS
 
     // has blue card?
-    if (keyInventoryBits & (1 << KEY_CARD_BLUE)) {
+    if (keyInventoryBits & (u16)(1 << KEY_CARD_BLUE)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X);
         u16* to = hud_tilemap_dst + (HUD_KEY_YP*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has blue card and yellow card?
-    if ((keyInventoryBits & ((1 << KEY_CARD_BLUE) | (1 << KEY_CARD_YELLOW))) == ((1 << KEY_CARD_BLUE) | (1 << KEY_CARD_YELLOW))) {
+    if ((keyInventoryBits & (u16)((1 << KEY_CARD_BLUE) | (1 << KEY_CARD_YELLOW))) == (u16)((1 << KEY_CARD_BLUE) | (1 << KEY_CARD_YELLOW))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 2);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has yellow card but not blue card?
-    else if ((keyInventoryBits & ((1 << KEY_CARD_YELLOW) | (1 << KEY_CARD_BLUE))) == ((1 << KEY_CARD_YELLOW) | (0 << KEY_CARD_BLUE))) {
+    else if ((keyInventoryBits & (u16)((1 << KEY_CARD_YELLOW) | (1 << KEY_CARD_BLUE))) == (u16)((1 << KEY_CARD_YELLOW) | (0 << KEY_CARD_BLUE))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 4);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has red card?
-    if (keyInventoryBits & (1 << KEY_CARD_RED)) {
+    if (keyInventoryBits & (u16)(1 << KEY_CARD_RED)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 6);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+3)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 1);
@@ -398,31 +413,31 @@ static void setHUDKeys ()
     // SKULLS
 
     // has blue skull?
-    if (keyInventoryBits & (1 << KEY_SKULL_BLUE)) {
+    if (keyInventoryBits & (u16)(1 << KEY_SKULL_BLUE)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 8);
         u16* to = hud_tilemap_dst + (HUD_KEY_YP*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has blue skull and yellow skull?
-    if ((keyInventoryBits & ((1 << KEY_SKULL_BLUE) | (1 << KEY_SKULL_YELLOW))) == ((1 << KEY_SKULL_BLUE) | (1 << KEY_SKULL_YELLOW))) {
+    if ((keyInventoryBits & (u16)((1 << KEY_SKULL_BLUE) | (1 << KEY_SKULL_YELLOW))) == (u16)((1 << KEY_SKULL_BLUE) | (1 << KEY_SKULL_YELLOW))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 10);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has yellow skull but not blue skull?
-    else if ((keyInventoryBits & ((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_BLUE))) == ((1 << KEY_SKULL_YELLOW) | (0 << KEY_SKULL_BLUE))) {
+    else if ((keyInventoryBits & (u16)((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_BLUE))) == (u16)((1 << KEY_SKULL_YELLOW) | (0 << KEY_SKULL_BLUE))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 12);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+1)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has red skull?
-    if (keyInventoryBits & (1 << KEY_SKULL_RED)) {
+    if (keyInventoryBits & (u16)(1 << KEY_SKULL_RED)) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 14);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+2)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 2);
     }
     // has yellow skull and red skull?
-    if ((keyInventoryBits & ((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_RED))) == ((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_RED))) {
+    if ((keyInventoryBits & (u16)((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_RED))) == (u16)((1 << KEY_SKULL_YELLOW) | (1 << KEY_SKULL_RED))) {
         u16* from = hud_tilemap_src + (HUD_KEY_Y*HUD_SOURCE_IMAGE_W + HUD_KEY_X + 16);
         u16* to = hud_tilemap_dst + ((HUD_KEY_YP+2)*TILEMAP_COLUMNS + HUD_KEY_XP);
         COPY_TILEMAP_DATA(from, to, 2, 1);
@@ -435,23 +450,23 @@ static void setHUDFace ()
     u16 face_X;
 
     if (hud_isDead()) {
-        face_Y = HUD_FACE_DEAD_Y;
-        face_X = HUD_FACE_DEAD_X;
+        face_Y = (u16)HUD_FACE_DEAD_Y;
+        face_X = (u16)HUD_FACE_DEAD_X;
     }
     else {
-        face_Y = HUD_FACE_Y;
+        face_Y = (u16)HUD_FACE_Y;
         if (health_digits.hundrs < 1) {
-            u8 tens = health_digits.tens;
+            u16 tens = health_digits.tens;
             if (tens >= 8)
-                face_Y = HUD_FACE_Y + 1*HUD_FACE_H;
+                face_Y = (u16)(HUD_FACE_Y + 1*HUD_FACE_H);
             else if (tens >= 5)
-                face_Y = HUD_FACE_Y + 2*HUD_FACE_H;
+                face_Y = (u16)(HUD_FACE_Y + 2*HUD_FACE_H);
             else if (tens >= 2)
-                face_Y = HUD_FACE_Y + 3*HUD_FACE_H;
+                face_Y = (u16)(HUD_FACE_Y + 3*HUD_FACE_H);
             else
-                face_Y = HUD_FACE_Y + 4*HUD_FACE_H;
+                face_Y = (u16)(HUD_FACE_Y + 4*HUD_FACE_H);
         }
-        face_X = HUD_FACE_X + faceExpressionCol*HUD_FACE_W;
+        face_X = (u16)HUD_FACE_X + faceExpressionCol*(u16)HUD_FACE_W;
     }
 
     u16* hud_tilemap_src = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
@@ -521,17 +536,17 @@ void hud_update ()
     updateFaceExpressionTimer();
 
     if (updateFlags) {
-        if (updateFlags & (1 << UPDATE_FLAG_AMMO))
-            setHUDAmmo();
-        if (updateFlags & (1 << UPDATE_FLAG_HEALTH))
+        if (updateFlags & (u16)(1 << UPDATE_FLAG_AMMO))
+            prepareHUDAmmo();
+        if (updateFlags & (u16)(1 << UPDATE_FLAG_HEALTH))
             setHUDHealth();
-        if (updateFlags & (1 << UPDATE_FLAG_WEAPON))
+        if (updateFlags & (u16)(1 << UPDATE_FLAG_WEAPON))
             setHUDWeapons();
-        if (updateFlags & (1 << UPDATE_FLAG_ARMOR))
+        if (updateFlags & (u16)(1 << UPDATE_FLAG_ARMOR))
             setHUDArmor();
-        if (updateFlags & (1 << UPDATE_FLAG_KEY))
+        if (updateFlags & (u16)(1 << UPDATE_FLAG_KEY))
             setHUDKeys();
-        if (updateFlags & (1 << UPDATE_FLAG_FACE))
+        if (updateFlags & (u16)(1 << UPDATE_FLAG_FACE))
             setHUDFace();
     
         updateFlags = 0;
@@ -542,7 +557,7 @@ void hud_update ()
         #elif DMA_HUD_TILEMAP_IMMEDIATELY
         vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-        for (u8 i=0; i < HUD_BG_H; ++i) {
+        for (u16 i=0; i < HUD_BG_H; ++i) {
             doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + i*TILEMAP_COLUMNS*2, 
                 VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }

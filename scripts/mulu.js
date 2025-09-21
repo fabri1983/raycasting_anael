@@ -35,8 +35,8 @@ let str =
 "=0		clr.\\0	\\dst					; clear (better use moveq)\n"+
 "=1								; no-op\n";
 
-// loop between 2 and FFFF
-for (let i = 2; i <= 0x100;i ++){
+// loop between 2 and 0xFFFF
+for (let i = 2; i <= 0xFFFF;i ++){
 	ln = "="+ i;
 
 	// check the number of bits that need to be shifting

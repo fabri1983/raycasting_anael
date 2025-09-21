@@ -10,17 +10,17 @@
 #include "hud.h"
 #include "spr_eng_override.h"
 
-static u8 resetToIdle_timer;
-static u8 fire_coolDown_timer;
-static u8 select_coolDown_timer;
-static u8 changeWeaponEffect_timer;
-static s8 changeWeaponEffect_direction;
+u16 resetToIdle_timer;
+u16 fire_coolDown_timer;
+u16 select_coolDown_timer;
+u16 changeWeaponEffect_timer;
+s16 changeWeaponEffect_direction;
 
-static Sprite* spr_currWeapon;
-static u8 currWeaponId;
-static u8 currWeaponAnimFireCooldownTimer;
-static u8 currWeaponAnimReadyToHitAgainFrame;
-static u16 ammoInventory[WEAPON_MAX_COUNT] = {0};
+Sprite* spr_currWeapon;
+u16 currWeaponId;
+u16 currWeaponAnimFireCooldownTimer;
+u16 currWeaponAnimReadyToHitAgainFrame;
+u16 ammoInventory[WEAPON_MAX_COUNT] = {0};
 
 u16 currWeaponSpriteX;
 u16 currWeaponSpriteY;
@@ -34,7 +34,7 @@ bool isMoving = FALSE;
 #define MAX_WEAPON_SWAY_X 8 // Maximum weapon sway in pixels
 #define MAX_WEAPON_SWAY_Y 6 // Maximum weapon sway in pixels. Must be >= MAX_WEAPON_SWAY_X
 
-u16 weapon_biggerAnimTileNum ()
+u16 weapon_biggestAnimTileNum ()
 {
     u16 maxTileNum = 0;
     maxTileNum = max(maxTileNum, sprDef_weapon_fist_anim.maxNumTile);
@@ -46,25 +46,25 @@ u16 weapon_biggerAnimTileNum ()
 u16 weapon_getVRAMLocation ()
 {
     // TILE_FONT_INDEX is the VRAM index location where the SGDK's Sprite Engine calculates the dedicated VRAM going backwards
-    return TILE_FONT_INDEX - weapon_biggerAnimTileNum();
+    return TILE_FONT_INDEX - weapon_biggestAnimTileNum();
 }
 
 void weapon_resetState ()
 {
     // Sprites use tile attributes, but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
     // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
-    u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
+    u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
     // Loads fist sprite so we can avoid the check for NULL in other methods
     spr_currWeapon = spr_eng_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, 
-        SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
+        (u16)(SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD));
     SPR_setVisibility(spr_currWeapon, HIDDEN);
     SPR_setAutoAnimation(spr_currWeapon, FALSE);
     // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
     memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal_weapon_fist_anim.data, (16*WEAPON_USED_PALS)*2); // *2 for byte addressing
     PAL_setColors(WEAPON_BASE_PAL*16 + 1, (u16*)(RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2), 16*WEAPON_USED_PALS - 1, DMA);
 
-    currWeaponId = 0; // Fist
+    currWeaponId = (u16)WEAPON_FIST;
     currWeaponAnimFireCooldownTimer = 0;
     currWeaponAnimReadyToHitAgainFrame = 0;
     resetToIdle_timer = 0;
@@ -86,56 +86,58 @@ static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
 
     // Sprites use tile attributes, but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
     // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
-    u16 baseTileAttribs = TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
+    u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
     spr_currWeapon = spr_eng_addSpriteEx(sprDef, x, y, baseTileAttribs, 
-        SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD);
+        (u16)(SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD));
     SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually
 
     // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
-    memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal, (16*WEAPON_USED_PALS)*2); // *2 for byte addressing
+    memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal, (u16)(16*WEAPON_USED_PALS)*2); // *2 for byte addressing
 }
 
-void weapon_select (u8 weaponId)
+void weapon_select (u16 weaponId)
 {
     currWeaponId = weaponId;
 
     // Start weapon change effect for the current weapon
     changeWeaponEffect_direction = -1;
-    changeWeaponEffect_timer = WEAPON_CHANGE_COOLDOWN_TIMER;
+    changeWeaponEffect_timer = (u16)WEAPON_CHANGE_COOLDOWN_TIMER;
+    // Set now the selection cooldown timer
+    select_coolDown_timer = (u16)WEAPON_CHANGE_COOLDOWN_TIMER * 2; // *2 due to scroll down and up effect
 
-    hud_setAmmo(0, 0, 0);
-    hud_addAmmoUnits(ammoInventory[currWeaponId]);
+    hud_resetAmmo(); //hud_setAmmo((u16)0, (u16)0, (u16)0);
+    u16 currAmmo = ammoInventory[currWeaponId];
+    hud_addAmmoUnits(currAmmo);
 
     switch (currWeaponId) {
         case WEAPON_FIST:
-            currWeaponAnimFireCooldownTimer = WEAPON_FIST_FIRE_COOLDOWN_TIMER;
-            currWeaponAnimReadyToHitAgainFrame = WEAPON_FIST_ANIM_READY_TO_HIT_AGAIN_FRAME;
-            currWeaponSpriteX = WEAPON_SPRITE_FIST_X;
-            currWeaponSpriteY = WEAPON_SPRITE_FIST_Y;
-            weapon_load(&sprDef_weapon_fist_anim, pal_weapon_fist_anim.data, WEAPON_SPRITE_FIST_X, WEAPON_SPRITE_FIST_Y);
+            currWeaponAnimFireCooldownTimer = (u16)WEAPON_FIST_FIRE_COOLDOWN_TIMER;
+            currWeaponAnimReadyToHitAgainFrame = (u16)WEAPON_FIST_ANIM_READY_TO_HIT_AGAIN_FRAME;
+            currWeaponSpriteX = (u16)WEAPON_SPRITE_FIST_X;
+            currWeaponSpriteY = (u16)WEAPON_SPRITE_FIST_Y;
+            weapon_load(&sprDef_weapon_fist_anim, pal_weapon_fist_anim.data, (s16)WEAPON_SPRITE_FIST_X, (s16)WEAPON_SPRITE_FIST_Y);
             break;
         case WEAPON_PISTOL:
-            currWeaponAnimFireCooldownTimer = WEAPON_PISTOL_FIRE_COOLDOWN_TIMER;
-            currWeaponAnimReadyToHitAgainFrame = WEAPON_PISTOL_ANIM_READY_TO_HIT_AGAIN_FRAME;
-            currWeaponSpriteX = WEAPON_SPRITE_PISTOL_X;
-            currWeaponSpriteY = WEAPON_SPRITE_PISTOL_Y;
-            weapon_load(&sprDef_weapon_pistol_anim, pal_weapon_pistol_anim.data, WEAPON_SPRITE_PISTOL_X, WEAPON_SPRITE_PISTOL_Y);
+            currWeaponAnimFireCooldownTimer = (u16)WEAPON_PISTOL_FIRE_COOLDOWN_TIMER;
+            currWeaponAnimReadyToHitAgainFrame = (u16)WEAPON_PISTOL_ANIM_READY_TO_HIT_AGAIN_FRAME;
+            currWeaponSpriteX = (u16)WEAPON_SPRITE_PISTOL_X;
+            currWeaponSpriteY = (u16)WEAPON_SPRITE_PISTOL_Y;
+            weapon_load(&sprDef_weapon_pistol_anim, pal_weapon_pistol_anim.data, (s16)WEAPON_SPRITE_PISTOL_X, (s16)WEAPON_SPRITE_PISTOL_Y);
             break;
         case WEAPON_SHOTGUN: 
-            currWeaponAnimFireCooldownTimer = WEAPON_SHOTGUN_FIRE_COOLDOWN_TIMER;
-            currWeaponAnimReadyToHitAgainFrame = WEAPON_SHOTGUN_ANIM_READY_TO_HIT_AGAIN_FRAME;
-            currWeaponSpriteX = WEAPON_SPRITE_SHOTGUN_X;
-            currWeaponSpriteY = WEAPON_SPRITE_SHOTGUN_Y;
-            weapon_load(&sprDef_weapon_shotgun_anim, pal_weapon_shotgun_anim.data, WEAPON_SPRITE_SHOTGUN_X, WEAPON_SPRITE_SHOTGUN_Y);
+            currWeaponAnimFireCooldownTimer = (u16)WEAPON_SHOTGUN_FIRE_COOLDOWN_TIMER;
+            currWeaponAnimReadyToHitAgainFrame = (u16)WEAPON_SHOTGUN_ANIM_READY_TO_HIT_AGAIN_FRAME;
+            currWeaponSpriteX = (u16)WEAPON_SPRITE_SHOTGUN_X;
+            currWeaponSpriteY = (u16)WEAPON_SPRITE_SHOTGUN_Y;
+            weapon_load(&sprDef_weapon_shotgun_anim, pal_weapon_shotgun_anim.data, (s16)WEAPON_SPRITE_SHOTGUN_X, (s16)WEAPON_SPRITE_SHOTGUN_Y);
             break;
         case WEAPON_MACHINE_GUN: break;
         case WEAPON_ROCKET: break;
         case WEAPON_PLASMA: break;
         case WEAPON_BFG: break;
+        default: __builtin_unreachable();
     }
-
-    select_coolDown_timer = WEAPON_CHANGE_COOLDOWN_TIMER * 2; // *2 due to scroll down and up effect
 }
 
 static void stopFireAnimation ()
@@ -145,7 +147,7 @@ static void stopFireAnimation ()
     SPR_setFrame(spr_currWeapon, currWeaponAnimReadyToHitAgainFrame);
 }
 
-void weapon_next (u8 sign)
+void weapon_next (s16 dir)
 {
     // allow select other weapon after a certain period of time
     if (select_coolDown_timer != 0)
@@ -155,112 +157,120 @@ void weapon_next (u8 sign)
         stopFireAnimation();
 
     // Iterate until next weapon in inventory is found
-    u8 nextWeaponId = currWeaponId;
-    for (u8 i=WEAPON_MAX_COUNT; --i;) {
-        nextWeaponId = modu((nextWeaponId + sign + WEAPON_MAX_COUNT), WEAPON_MAX_COUNT);
-        if (hud_hasWeaponInInventory(nextWeaponId)) {
+    u16 nextWeaponId = currWeaponId;
+    for (u16 i = (u16)WEAPON_MAX_COUNT; --i;) {
+        u16 newDir = nextWeaponId + dir + (u16)WEAPON_MAX_COUNT;
+        nextWeaponId = modu(newDir, (u16)WEAPON_MAX_COUNT);
+        bool hasWeapon = hud_hasWeaponInInventory(nextWeaponId);
+        if (hasWeapon) {
             weapon_select(nextWeaponId);
             return;
         }
     }
 }
 
-void weapon_addAmmo (u8 weaponId, u16 amnt)
+void weapon_addAmmo (u16 weaponId, u16 amnt)
 {
     u16 currAmmo = ammoInventory[weaponId];
+    u16 newAmnt_limit = currAmmo + amnt;
     switch (currWeaponId) {
         case WEAPON_FIST: return;
         case WEAPON_PISTOL:
-            if ((currAmmo + amnt) > WEAPON_PISTOL_MAX_AMMO)
-                amnt = WEAPON_PISTOL_MAX_AMMO - currAmmo;
+            if (newAmnt_limit > (u16)WEAPON_PISTOL_MAX_AMMO)
+                amnt = (u16)WEAPON_PISTOL_MAX_AMMO - currAmmo;
             break;
         case WEAPON_SHOTGUN:
-            if ((currAmmo + amnt) > WEAPON_SHOTGUN_MAX_AMMO)
-                amnt = WEAPON_SHOTGUN_MAX_AMMO - currAmmo;
+            if (newAmnt_limit > (u16)WEAPON_SHOTGUN_MAX_AMMO)
+                amnt = (u16)WEAPON_SHOTGUN_MAX_AMMO - currAmmo;
             break;
         case WEAPON_MACHINE_GUN:
-            if ((currAmmo + amnt) > WEAPON_MACHINE_GUN_MAX_AMMO)
-                amnt = WEAPON_MACHINE_GUN_MAX_AMMO - currAmmo;
+            if (newAmnt_limit > (u16)WEAPON_MACHINE_GUN_MAX_AMMO)
+                amnt = (u16)WEAPON_MACHINE_GUN_MAX_AMMO - currAmmo;
             break;
         case WEAPON_ROCKET:
-            if ((currAmmo + amnt) > WEAPON_ROCKET_MAX_AMMO)
-                amnt = WEAPON_ROCKET_MAX_AMMO - currAmmo;
+            if (newAmnt_limit > (u16)WEAPON_ROCKET_MAX_AMMO)
+                amnt = (u16)WEAPON_ROCKET_MAX_AMMO - currAmmo;
             break;
         case WEAPON_PLASMA:
-            if ((currAmmo + amnt) > WEAPON_PLASMA_MAX_AMMO)
-                amnt = WEAPON_PLASMA_MAX_AMMO - currAmmo;
+            if (newAmnt_limit > (u16)WEAPON_PLASMA_MAX_AMMO)
+                amnt = (u16)WEAPON_PLASMA_MAX_AMMO - currAmmo;
             break;
         case WEAPON_BFG:
-            if ((currAmmo + amnt) > WEAPON_BFG_MAX_AMMO)
-                amnt = WEAPON_BFG_MAX_AMMO - currAmmo;
+            if (newAmnt_limit > (u16)WEAPON_BFG_MAX_AMMO)
+                amnt = (u16)WEAPON_BFG_MAX_AMMO - currAmmo;
             break;
+        default: __builtin_unreachable();
     }
 
-    ammoInventory[weaponId] = currAmmo + amnt;
-    hud_setAmmo(0, 0, 0);
-    hud_addAmmoUnits(currAmmo + amnt);
+    u16 newAmnt = currAmmo + amnt;
+    ammoInventory[weaponId] = newAmnt;
+    hud_resetAmmo(); //hud_setAmmo((u16)0, (u16)0, (u16)0);
+    hud_addAmmoUnits(newAmnt);
 }
 
 static bool useAmmo ()
 {
+    if (currWeaponId == (u16)WEAPON_FIST)
+        return TRUE;
+
+    u16 currAmmo = ammoInventory[currWeaponId];
+    if (currAmmo == 0)
+        return FALSE;
+
     switch (currWeaponId) {
-        case WEAPON_FIST: return TRUE;
         case WEAPON_PISTOL:
-            if (ammoInventory[WEAPON_PISTOL] == 0) return FALSE;
-            --ammoInventory[WEAPON_PISTOL];
-            hud_subAmmoUnits(1);
-            return TRUE;
+            ammoInventory[currWeaponId] = currAmmo - (u16)1;
+            hud_subAmmoUnits((u16)1);
+            break;
         case WEAPON_SHOTGUN:
-            if (ammoInventory[WEAPON_SHOTGUN] == 0) return FALSE;
-            --ammoInventory[WEAPON_SHOTGUN];
-            hud_subAmmoUnits(1);
-            return TRUE;
+            ammoInventory[currWeaponId] = currAmmo - (u16)1;
+            hud_subAmmoUnits((u16)1);
+            break;
         case WEAPON_MACHINE_GUN:
-            if (ammoInventory[WEAPON_MACHINE_GUN] == 0) return FALSE;
-            if (ammoInventory[WEAPON_MACHINE_GUN] < 10)
-                ammoInventory[WEAPON_MACHINE_GUN] = 0;
+            if (currAmmo < 10)
+                ammoInventory[currWeaponId] = 0;
             else
-                ammoInventory[WEAPON_MACHINE_GUN] = ammoInventory[WEAPON_MACHINE_GUN] - 8;
-            hud_subAmmoUnits(8);
-            return TRUE;
+                ammoInventory[currWeaponId] = currAmmo - (u16)8;
+            hud_subAmmoUnits((u16)8);
+            break;
         case WEAPON_ROCKET:
-            if (ammoInventory[WEAPON_ROCKET] == 0) return FALSE;
-            --ammoInventory[WEAPON_ROCKET];
-            hud_subAmmoUnits(1);
-            return TRUE;
+            ammoInventory[currWeaponId] = currAmmo - (u16)1;
+            hud_subAmmoUnits((u16)1);
+            break;
         case WEAPON_PLASMA:
-            if (ammoInventory[WEAPON_PLASMA] == 0) return FALSE;
-            --ammoInventory[WEAPON_PLASMA];
-            hud_subAmmoUnits(1);
-            return TRUE;
+            ammoInventory[currWeaponId] = currAmmo - (u16)1;
+            hud_subAmmoUnits((u16)1);
+            break;
         case WEAPON_BFG:
-            if (ammoInventory[WEAPON_BFG] == 0) return FALSE;
-            if (ammoInventory[WEAPON_BFG] < 50)
-                ammoInventory[WEAPON_BFG] = 0;
+            if (currAmmo < (u16)50)
+                ammoInventory[currWeaponId] = 0;
             else
-                ammoInventory[WEAPON_BFG] -= 50;
-            hud_subAmmoUnits(50);
-            return TRUE;
-        default: return FALSE;
+                ammoInventory[currWeaponId] = currAmmo - (u16)50;
+            hud_subAmmoUnits((u16)50);
+            break;
+        default: break;
     }
+
+    return TRUE;
 }
 
 void weapon_fire ()
 {
     if ((fire_coolDown_timer | changeWeaponEffect_timer) != 0)
         return;
-
-    if (useAmmo() == FALSE)
+    
+    bool used = useAmmo();
+    if (!used)
         return;
 
     weaponSwayX = 0;
     weaponSwayY = 0;
 
     fire_coolDown_timer = currWeaponAnimFireCooldownTimer;
-    resetToIdle_timer = WEAPON_RESET_TO_IDLE_TIMER;
+    resetToIdle_timer = (u16)WEAPON_RESET_TO_IDLE_TIMER;
 
     // reset the animation to the frame that starts the hit animation (no idle frame)
-    SPR_setFrame(spr_currWeapon, WEAPON_START_HIT_FRAME);
+    SPR_setFrame(spr_currWeapon, (s16)WEAPON_START_HIT_FRAME);
     SPR_setAutoAnimation(spr_currWeapon, TRUE);
 }
 
@@ -274,15 +284,15 @@ void weapon_updateSway (bool _isMoving)
     }
 
     weaponSwayX += weaponSwayDirX;
-    if (weaponSwayX > MAX_WEAPON_SWAY_X) {
-        weaponSwayX = MAX_WEAPON_SWAY_X;
+    if (weaponSwayX > (s16)MAX_WEAPON_SWAY_X) {
+        weaponSwayX = (s16)MAX_WEAPON_SWAY_X;
         weaponSwayDirX = -1;
         // This only applies at the start of moving action
         if (weaponSwayDirY == 0)
             weaponSwayDirY = 1;
     }
-    else if (weaponSwayX < -MAX_WEAPON_SWAY_X) {
-        weaponSwayX = -MAX_WEAPON_SWAY_X;
+    else if (weaponSwayX < (s16)-MAX_WEAPON_SWAY_X) {
+        weaponSwayX = (s16)-MAX_WEAPON_SWAY_X;
         weaponSwayDirX = 1;
         // This only applies at the start of moving action
         if (weaponSwayDirY == 0)
@@ -294,8 +304,8 @@ void weapon_updateSway (bool _isMoving)
         weaponSwayDirY = -1;
 
     weaponSwayY += weaponSwayDirY;
-    if (weaponSwayY > MAX_WEAPON_SWAY_Y) {
-        weaponSwayY = MAX_WEAPON_SWAY_Y;
+    if (weaponSwayY > (s16)MAX_WEAPON_SWAY_Y) {
+        weaponSwayY = (s16)MAX_WEAPON_SWAY_Y;
     }
     else if (weaponSwayY < 0) {
         weaponSwayY = 0;
@@ -348,12 +358,12 @@ void weapon_update ()
     else if (changeWeaponEffect_direction == -1) {
         // once scroll down effect finishes continue with scroll up effect
         changeWeaponEffect_direction = 1;
-        changeWeaponEffect_timer = WEAPON_CHANGE_COOLDOWN_TIMER;
+        changeWeaponEffect_timer = (u16)WEAPON_CHANGE_COOLDOWN_TIMER;
     }
 
     if (resetToIdle_timer != 0) {
         --resetToIdle_timer;
         if (resetToIdle_timer == 0)
-            SPR_setFrame(spr_currWeapon, 0);
+            SPR_setFrame(spr_currWeapon, (s16)0);
     }
 }

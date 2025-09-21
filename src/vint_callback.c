@@ -19,16 +19,16 @@
 #include "hint_callback.h"
 
 #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-u8 hud_tilemap_set;
+bool hud_tilemap_set;
 #endif
 
-static u8 tiles_elems;
+static u16 tiles_elems;
 static void* tiles_from[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 
 #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
-static u8 tiles_buf_elems;
+static 16 tiles_buf_elems;
 static u16 tiles_buf_toIndex[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16 tiles_buf_lenInWord[DMA_MAX_QUEUE_CAPACITY] = {0};
 static u16* tiles_buf_dmaBufPtr;
@@ -41,7 +41,7 @@ static u16 vdpSpriteCache_lenInWord;
 void vint_reset ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-    hud_tilemap_set= 0;
+    hud_tilemap_set= FALSE;
     #endif
 
     memset(tiles_from, 0, DMA_MAX_QUEUE_CAPACITY);
@@ -64,24 +64,26 @@ void vint_reset ()
 FORCE_INLINE void vint_enqueueHudTilemap ()
 {
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
-    hud_tilemap_set = 1;
+    hud_tilemap_set = TRUE;
     #endif
 }
 
 FORCE_INLINE void vint_enqueueTiles (void* from, u16 toIndex, u16 lenInWord)
 {
-    tiles_from[tiles_elems] = from;
-    tiles_toIndex[tiles_elems] = toIndex;
-    tiles_lenInWord[tiles_elems] = lenInWord;
+    u16 prev = tiles_elems;
     ++tiles_elems;
+    tiles_toIndex[prev] = toIndex;
+    tiles_lenInWord[prev] = lenInWord;
+    tiles_from[prev] = from;
 }
 
 FORCE_INLINE void vint_enqueueTilesBuffered (u16 toIndex, u16 lenInWord)
 {
     #if DMA_ALLOW_COMPRESSED_SPRITE_TILES
-    tiles_buf_toIndex[tiles_buf_elems] = toIndex;
-    tiles_buf_lenInWord[tiles_buf_elems] = lenInWord;
+    u16 prev = tiles_buf_elems;
     ++tiles_buf_elems;
+    tiles_buf_toIndex[prev] = toIndex;
+    tiles_buf_lenInWord[prev] = lenInWord;
     tiles_buf_dmaBufPtr += lenInWord;
     #endif
 }
@@ -121,7 +123,7 @@ void vint_callback ()
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
     // Have any hud tilemaps to DMA?
     if (hud_tilemap_set) {
-        hud_tilemap_set = 0;
+        hud_tilemap_set = FALSE;
 
         // Setup DMA address ONLY ONCE
         u32 from = RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + 0*TILEMAP_COLUMNS*2;
@@ -137,7 +139,7 @@ void vint_callback ()
         // DMA length low has to be set every time before triggering the DMA command
 
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
-        for (u8 i=0; i < HUD_BG_H; ++i) {
+        for (u16 i=0; i < HUD_BG_H; ++i) {
             doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
@@ -148,14 +150,17 @@ void vint_callback ()
         --tiles_elems;
         u16 lenInWord = tiles_lenInWord[tiles_elems];
         // NOTE: this should be DMA_doDma() because tiles might be in in a bank > 4MB
-        DMA_doDmaFast(DMA_VRAM, tiles_from[tiles_elems], tiles_toIndex[tiles_elems], lenInWord, -1);
+        void* from = tiles_from[tiles_elems];
+        u16 to = tiles_toIndex[tiles_elems];
+        DMA_doDmaFast(DMA_VRAM, from, to, lenInWord, (s16)-1);
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
-        DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, vdpSpriteCache_lenInWord, -1);
+        u16 len = vdpSpriteCache_lenInWord;
         vdpSpriteCache_lenInWord = 0;
+        DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, len, (s16)-1);
     }
     #endif
 
@@ -166,7 +171,7 @@ void vint_callback ()
         u16 lenInWord = tiles_buf_lenInWord[tiles_buf_elems];
         tiles_buf_dmaBufPtr -= lenInWord;
         u16 toIndex = tiles_buf_toIndex[tiles_buf_elems];
-        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, -1);
+        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, (s16)-1);
         DMA_releaseTemp(lenInWord);
     }
     #endif

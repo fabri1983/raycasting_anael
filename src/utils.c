@@ -8,16 +8,16 @@
 
 FORCE_INLINE void turnOffVDP (u8 reg01)
 {
-    //reg01 &= ~0x40;
-    //*(vu16*) VDP_CTRL_PORT = 0x8100 | reg01;
-    *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 & ~0x40);
+    //reg01 &= (u16)~0x40;
+    //*(vu16*) VDP_CTRL_PORT = (u16)0x8100 | reg01;
+    *(vu16*) VDP_CTRL_PORT = (u16)0x8100 | (reg01 & (u16)~0x40);
 }
 
 FORCE_INLINE void turnOnVDP (u8 reg01)
 {
-    //reg01 |= 0x40;
-    //*(vu16*) VDP_CTRL_PORT = 0x8100 | reg01;
-    *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
+    //reg01 |= (u16)0x40;
+    //*(vu16*) VDP_CTRL_PORT = (u16)0x8100 | reg01;
+    *(vu16*) VDP_CTRL_PORT = (u16)0x8100 | (reg01 | (u16)0x40);
 }
 
 FORCE_INLINE void waitHCounter_opt1 (u8 n)
