@@ -127,16 +127,16 @@ void render_loadWallPalettes ()
 {
     // palette grey and palette red were already loaded by SGDK
 
-    // load colors used from green palette into PAL0
+    // load colors used from green palette into PAL0. From darkest to lightest.
     PAL_setColors(PAL0*16 + 8, palette_green + 1, 7, DMA);
-    // load colors used from blue palette into PAL1
+    // load colors used from blue palette into PAL1. From darkest to lightest.
     PAL_setColors(PAL1*16 + 8, palette_blue + 1, 7, DMA);
 }
 
 FORCE_INLINE void render_Z80_setBusProtection (bool value)
 {
     Z80_requestBus(FALSE);
-	u16 busProtectSignalAddress = (u16)(Z80_DRV_PARAMS + 0x0D) & 0xFFFF; // point to Z80 PROTECT parameter
+	u16 busProtectSignalAddress = (u16)(Z80_DRV_PARAMS + 0x0D); //& 0xFFFF; // point to Z80 PROTECT parameter
     vu8* pb = (u8*) (Z80_RAM + busProtectSignalAddress); // See Z80_useBusProtection() reference in z80_ctrl.c
     *pb = value?1:0;
 	Z80_releaseBus();

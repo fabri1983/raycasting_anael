@@ -133,7 +133,7 @@ FORCE_INLINE void hint_reset_change_bg_state ()
     );
 }
 
-FORCE_INLINE HINTERRUPT_CALLBACK hint_change_bg_callback ()
+HINTERRUPT_CALLBACK hint_change_bg_callback ()
 {
     /*
     // C version
