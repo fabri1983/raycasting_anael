@@ -467,6 +467,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 		stepX = -1;
         #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistX = perf_hash_mulu_shft_FS(sideDistX_l0, deltaDistX_perf_hash);
+        //perf_hash_mulu_shft_FS_macro(sideDistX_l0 + deltaDistX_perf_hash, sideDistX);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l0, deltaDistX); //(u16)(mulu(sideDistX_l0, deltaDistX) >> FS);
         #endif
@@ -475,6 +476,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 		stepX = 1;
         #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistX = perf_hash_mulu_shft_FS(sideDistX_l1, deltaDistX_perf_hash);
+        //perf_hash_mulu_shft_FS_macro(sideDistX_l1 + deltaDistX_perf_hash, sideDistX);
         #else
         sideDistX = mulu_shft_FS(sideDistX_l1, deltaDistX); //(u16)(mulu(sideDistX_l1, deltaDistX) >> FS);
         #endif
@@ -485,6 +487,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 		stepYMS = -MAP_SIZE;
 		#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistY = perf_hash_mulu_shft_FS(sideDistY_l0, deltaDistY_perf_hash);
+        //perf_hash_mulu_shft_FS_macro(sideDistY_l0 + deltaDistY_perf_hash, sideDistY);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l0, deltaDistY); //(u16)(mulu(sideDistY_l0, deltaDistY) >> FS);
         #endif
@@ -494,6 +497,7 @@ static FORCE_INLINE void process_column (u16* delta_a_ptr, u16 posX, u16 posY, u
 		stepYMS = MAP_SIZE;
 		#if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
         sideDistY = perf_hash_mulu_shft_FS(sideDistY_l1, deltaDistY_perf_hash);
+        //perf_hash_mulu_shft_FS_macro(sideDistY_l1 + deltaDistY_perf_hash, sideDistY);
         #else
         sideDistY = mulu_shft_FS(sideDistY_l1, deltaDistY); //(u16)(mulu(sideDistY_l1, deltaDistY) >> FS);
         #endif

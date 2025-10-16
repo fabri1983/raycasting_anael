@@ -409,10 +409,10 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
         "   move.l      %%d5,(%%a1)\n"          // *((vu32*) VDP_CTRL_PORT) = palCmdForDMA;
 		// turn on VDP
 		"   move.w      %%d4,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
-		: 
-		[title256cPalsPtr] "+m" (title256cPalsPtr),
-		[palIdx] "+m" (palIdx)
-		: 
+		:
+		:
+        [title256cPalsPtr] "m" (title256cPalsPtr),
+		[palIdx] "m" (palIdx),
 		[turnOff] "i" (0x8100 | (0x74 & ~0x40)), // 0x8134
 		[turnOn] "i" (0x8100 | (0x74 | 0x40)), // 0x8174
         [hcLimit] "i" (156),
@@ -426,7 +426,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
         [_TITLE_256C_STRIP_HEIGHT] "i" (TITLE_256C_STRIP_HEIGHT)
 		:
         // backup registers used in the asm implementation including the scratch pad since this code is used in an interrupt call.
-		"d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","a3","cc","memory"
+		"d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","a3","cc"
     );
 }
 
@@ -494,25 +494,28 @@ static void freeMeltingEffectArrays ()
     MEM_free(columnOffsetsB);
 }
 
-static void updateColumnOffsets (u16 offsetAmnt)
+static void updateColumnOffsets ()
 {
-    u32* colA_ptr_l = (u32*) columnOffsetsA;
-    u32* colB_ptr_l = (u32*) columnOffsetsB;
+    // C version
+    /*#pragma GCC unroll 0 // do not unroll
+    for (u16 i = 0; i < (320/16); i++) {
+        columnOffsetsA[i] -= MELTING_OFFSET_STEPPING_PIXELS; // Increase the offset in pixels
+        columnOffsetsB[i] -= MELTING_OFFSET_STEPPING_PIXELS; // Increase the offset in pixels
+    }*/
 
-    u32 offsetAmnt_l = offsetAmnt;
+    // ASM version
+    u16 i = (320/16)/2 - 1;
     __asm volatile (
-        "swap    %0\n\t"
-        "move.w  %1,%0"
-        : "+d" (offsetAmnt_l)
-        : "d" (offsetAmnt)
-        :
+        "\n"
+        "1:\n"
+        "    sub.l  %[offsetAmnt],(%[colA_ptr])+\n"
+        "    sub.l  %[offsetAmnt],(%[colB_ptr])+\n"
+        "    dbf    %[i],1b"
+        : [i] "+d" (i)
+        : [offsetAmnt] "id" ((MELTING_OFFSET_STEPPING_PIXELS << 16) | MELTING_OFFSET_STEPPING_PIXELS),
+          [colA_ptr] "a" (columnOffsetsA), [colB_ptr] "a" (columnOffsetsB)
+        : "cc"
     );
-
-    #pragma GCC unroll 0 // do not unroll
-    for (u16 i = 0; i < (320/16)/2; i++) {
-        colA_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
-        colB_ptr_l[i] -= offsetAmnt_l; // Increase the offset in pixels
-    }
 }
 
 static void drawBlackAboveScroll (u16 scanlineEffectPos)
@@ -570,7 +573,7 @@ void title_vscroll_2_planes_show ()
     // DMA immediately the Title's screen tileset only the region up to the start of the Logo's tileset
     dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset, TRUE, DMA);
 
-    // Let's wait to next VInt then wait until we reach the scanline after the Logo
+    // Let's wait to next VInt to consume what remains of current display loop
     VDP_waitVBlank(FALSE);
     // Wait until we reach the scanline of Logo's end (actually some scanlines earlier)
     waitVCounterReg(TITLE_LOGO_Y_POS_TILES*8 + TITLE_LOGO_HEIGHT_TILES*8 - 25); // -25 gives enough time to DMA what's next without visible glitches
@@ -625,14 +628,16 @@ void title_vscroll_2_planes_show ()
     allocateMeltingEffectArrays();
     initializeMeltingEffectArrays();
 
-    //VDP_waitVBlank(FALSE);
-    //waitVCounterReg(224-4);
+    // Let's wait to next VInt to consume what remains of current display loop
+    VDP_waitVBlank(FALSE);
 
     u16 scanlineEffectPos = 0;
 
     // Melting screen update loop
     for (;;)
     {
+        // NOTE: first loop still draws palettes from previous phase and no columns are shifted because they are DMA queued
+
         enqueueTwoFirstPalsTitle(); // Load 1st and 2nd strip's palette
 
         // Enqueue for DMA the current column offsets to the VSRAM, for next frame
@@ -649,7 +654,8 @@ void title_vscroll_2_planes_show ()
         scanlineEffectPos += MELTING_OFFSET_STEPPING_PIXELS;
 
         // Unpack palettes for next frame
-        unpackPalettesTitle(pal_title_bg_full_shifted_ptrs[scanlineEffectPos/MELTING_OFFSET_STEPPING_PIXELS]->data, COMPRESSION_LZ4W);
+        u16* nextPalData = pal_title_bg_full_shifted_ptrs[scanlineEffectPos/MELTING_OFFSET_STEPPING_PIXELS]->data;
+        unpackPalettesTitle(nextPalData, COMPRESSION_LZ4W);
 
         SYS_doVBlankProcess();
 

@@ -5,6 +5,8 @@
 
 #define MPH_VALUES_DELTADIST_NKEYS 915 // How many keys were hashed
 
+extern const u16 tab_mulu_256_shft_FS[(256+1) * MPH_VALUES_DELTADIST_NKEYS];
+
 /// @brief Using a perfect hash function over op2 to get an index between 0 and MPH_VALUES_DELTADIST_NKEYS-1 to get
 /// the result when multiplicate by op1, and the additional >> FS over the result.
 /// op1 value is in [0, 256].
@@ -14,5 +16,16 @@
 /// @param op2_index index of op2 in the row, already multiplied by 2 (for faster tab_mulu_dist_256_shft_FS[] access in ASM).
 /// @return Same than: (op1*op2) >> FS
 u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index);
+
+#define perf_hash_mulu_shft_FS_macro(index,result) \
+    u16* table_ptr; \
+    __asm volatile ( \
+        "lea     %c[_table_symbol],%[_table_ptr]\n\t" \
+        "add.l   %[_index],%[_table_ptr]\n\t" \
+        "move.w  (%[_table_ptr]),%[_result]" \
+        : [_result] "=d" (result), [_table_ptr] "=a" (table_ptr) \
+        : [_table_symbol] "s" (tab_mulu_256_shft_FS), [_index] "d" (index) \
+        : \
+    )
 
 #endif // _TAB_MULU_DIST_256_SHFT_FS_H_

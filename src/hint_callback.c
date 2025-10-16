@@ -155,7 +155,7 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
         :
         : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
           [_hint_callback] "s" (hint_load_hud_pals_callback), [_hintCaller] "m" (hintCaller)
-        :
+        : "cc"
     );
 }
 
@@ -175,7 +175,7 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
         "move.w  #0x222,-4(%0)"   // 4 cycles faster than move.w #0x222,(VDP_DATA_PORT)
         :
         : "a" (vdpCtrl_ptr_l)
-        :
+        : "cc"
     );
     #endif
 
@@ -305,7 +305,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_callback ()
         : [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [NEXT_ROW_OFFSET] "i" ((2 << 16) | 2),
           [_HINT_COUNTER] "i" (0x8A00 | (HINT_SCANLINE_MID_SCREEN - 2)),
           [_hint_callback] "s" (hint_mirror_planes_last_scanline_callback), [_hintCaller] "m" (hintCaller)
-        :
+        : "cc"
     );
 }
 
@@ -350,6 +350,6 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
           [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
           [_hint_callback] "s" (hint_load_hud_pals_callback), [_hintCaller] "m" (hintCaller)
-        :
+        : "cc"
     );
 }

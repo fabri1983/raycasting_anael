@@ -295,18 +295,4 @@ FORCE_INLINE u16 perf_hash_mulu_shft_FS (u32 op1_rowStride, u16 op2_index)
     // op1_rowStride is already multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2. op2_index is already multiplied by 2.
     // u16* ptr = (u16*) (conv.i + op1_rowStride + op2_index);
     // return *ptr;
-
-    // 48 cycles (vs 62 cycles in C version). But inline asm block can't point to values located in the stack due to gcc's re ordering.
-    /*u16* table_ptr;
-    u16 result;
-    __asm volatile (
-        "move.w  10(%%sp),%[result]\n\t"                // result = op2_index
-        "move.l  4(%%sp),%[table_ptr]\n\t"              // table_ptr = op1_rowStride
-        "lea     %c[table_symbol](%[table_ptr],%[result].w),%[table_ptr]\n\t"  // table_ptr += tab_mulu_256_shft_FS + result
-        "move.w  (%[table_ptr]),%[result]"              // result = table_ptr[result]
-        : [result] "=d" (result), [table_ptr] "=a" (table_ptr)
-        : [table_symbol] "s" (tab_mulu_256_shft_FS)
-        :
-    );
-    return result;*/
 }
