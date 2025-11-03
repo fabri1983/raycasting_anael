@@ -34,7 +34,7 @@
     "    .endif\n"
     // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
-void clear_buffer_halved_no_usp ()
+NO_INLINE void clear_buffer_halved_no_usp ()
 {
     // We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
     // Only half Plane A and half Plane B.
@@ -112,7 +112,7 @@ void clear_buffer_halved_no_usp ()
     "    .endif\n"
     // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
-void clear_buffer_halved ()
+NO_INLINE void clear_buffer_halved ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
     // Only half Plane A and half Plane B.
@@ -195,7 +195,7 @@ void clear_buffer_halved ()
     "    .endif\n"
     // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
-void clear_buffer_halved_sp ()
+NO_INLINE void clear_buffer_halved_sp ()
 {
     // We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
     // Only half Plane A and half Plane B.

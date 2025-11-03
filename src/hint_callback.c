@@ -142,18 +142,18 @@ HINTERRUPT_CALLBACK hint_change_bg_callback ()
     // Set BG to the floor color
     waitHCounter_opt1(156); // NOTE: using waitHCounter_opt1() or _opt2() avoids a flickering
     *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-    *(vu16*)VDP_DATA_PORT = 0x0444; // palette_grey[2]=0x0444 floor color
+    *(vu16*)VDP_DATA_PORT = 0x0666; // palette_grey[3]=0x0666 floor color
     */
 
     // ASM version (register free so no push/pop from stack)
     __asm volatile (
         // Set BG to the floor color
         "move.l  %[_CRAM_CMD],(0xC00004)\n\t"      // *(vu32*)VDP_CTRL_PORT = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)\n\t"    // *(vu16*)VDP_DATA_PORT = 0x0444; //palette_grey[2]=0x0444 floor color
+        "move.w  %[floor_color],(0xC00000)\n\t"    // *(vu16*)VDP_DATA_PORT = 0x0666; //palette_grey[3]=0x0666 floor color
         // Change the hint callback to the normal one. This takes effect immediatelly.
         "move.w  %[_hint_callback],%[_hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
-        : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
+        : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0666),
           [_hint_callback] "s" (hint_load_hud_pals_callback), [_hintCaller] "m" (hintCaller)
         : "cc"
     );
@@ -170,9 +170,9 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
 	//waitHCounter_opt3(vdpCtrl_ptr_l, 156); // We can avoid the waiting here since this happens in the HUD region so any CRAM dot is barely noticeable
     *vdpCtrl_ptr_l = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0;
-    //*(vu16*)VDP_DATA_PORT = 0x222; // palette_grey[1]=0x222 roof color
+    //*(vu16*)VDP_DATA_PORT = 0x0444; // palette_grey[2]=0x0444 roof color
     __asm volatile (
-        "move.w  #0x222,-4(%0)"   // 4 cycles faster than move.w #0x222,(VDP_DATA_PORT)
+        "move.w  #0x0444,-4(%0)"   // 4 cycles faster than move.w #0x0444,(VDP_DATA_PORT)
         :
         : "a" (vdpCtrl_ptr_l)
         : "cc"
@@ -329,7 +329,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
     #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT & RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
     waitHCounter_opt1(156);
     *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-    *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
+    *(vu16*)data_l = 0x0666; // palette_grey[3]=0x0666 floor color
     #endif
     */
 
@@ -338,7 +338,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         // If case applies, change BG color to floor color
         #if RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT & RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT
         "move.l  %[_CRAM_CMD],(0xC00004)\n\t" // *ctrl_l = VDP_WRITE_CRAM_ADDR(0 * 2); // CRAM index 0
-        "move.w  %[floor_color],(0xC00000)\n\t"   // *(vu16*)data_l = 0x0444; // palette_grey[2]=0x0444 floor color
+        "move.w  %[floor_color],(0xC00000)\n\t"   // *(vu16*)data_l = 0x0666; // palette_grey[3]=0x0666 floor color
         #endif
         // Restore VSCROLL to 0 on both planes (writing in one go on both planes)
         "move.l  %[_VSRAM_CMD],(0xC00004)\n\t" // VDP_CTRL_PORT: 0: Plane A, 2: Plane B
@@ -347,7 +347,7 @@ HINTERRUPT_CALLBACK hint_mirror_planes_last_scanline_callback ()
         "move.w  %[_HINT_COUNTER],(0xC00004)\n\t" // VDP_setHIntCounter(255);
         "move.w  %[_hint_callback],%[_hintCaller]+4" // SYS_setHIntCallback(hint_load_hud_pals_callback);
         :
-        : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0444),
+        : [_CRAM_CMD] "i" (VDP_WRITE_CRAM_ADDR(0 * 2)), [floor_color] "i" (0x0666),
           [_VSRAM_CMD] "i" (VDP_WRITE_VSRAM_ADDR(0)), [_HINT_COUNTER] "i" (0x8A00 | 255),
           [_hint_callback] "s" (hint_load_hud_pals_callback), [_hintCaller] "m" (hintCaller)
         : "cc"

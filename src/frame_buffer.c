@@ -18,7 +18,7 @@ void fb_free_frame_buffer ()
     memsetU32((u32*)RAM_FIXED_FRAME_BUFFER_ADDRESS, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
 }
 
-void clear_buffer_no_usp ()
+NO_INLINE void clear_buffer_no_usp ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	__asm volatile (
@@ -83,7 +83,7 @@ void clear_buffer_no_usp ()
 	);
 }
 
-void clear_buffer ()
+NO_INLINE void clear_buffer ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	// 9842 cycles according Blastem cycle counter.
@@ -154,7 +154,7 @@ void clear_buffer ()
 	);
 }
 
-void clear_buffer_sp ()
+NO_INLINE void clear_buffer_sp ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	// Here we load the framebuffer address into the SP, previously backed up, to gain 1 more register.

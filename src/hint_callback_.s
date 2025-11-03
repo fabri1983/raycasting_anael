@@ -37,7 +37,7 @@ hint_mirror_planes_callback_asm_LABEL_\n:
 #elif RENDER_SET_FLOOR_AND_ROOF_COLORS_ON_HINT
     .if \n == 90
     move.l  #_CRAM_CMD,(0xC00004)
-    move.w  #0x0444,(0xC00000) ;// floor color
+    move.w  #0x0666,(0xC00000) ;// floor color
     .endif
 #endif
     ;// Apply VSCROLL on both planes (writing in one go on both planes)

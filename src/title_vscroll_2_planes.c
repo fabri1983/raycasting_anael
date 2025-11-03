@@ -415,7 +415,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
 		[palIdx] "m" (palIdx),
 		[turnOff] "i" (0x8100 | (0x74 & ~0x40)), // 0x8134
 		[turnOn] "i" (0x8100 | (0x74 | 0x40)), // 0x8174
-        [hcLimit] "i" (156),
+        [hcLimit] "i" (158),
         [_DMA_9300_LEN_DIV_3] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3) & 0xff)),
         [_DMA_9400_LEN_DIV_3] "i" (0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3) >> 8) & 0xff)),
         [_DMA_9300_LEN_DIV_3_REM] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) & 0xff)),
