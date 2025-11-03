@@ -2,7 +2,7 @@
 
 Raycasting original demo by **Anael Seghezzi**: [SGDK_raycasting](https://github.com/Stephane-D/SGDK)
 
-This version implements the same ray casting but with a screen size of **320x192** pixels at 60Hz.
+This version implements the same ray casting but with a screen size of **320x192** pixels at 60Hz, and a ton of optimizations.
 
 ![Demo GIF](media/raycasting_v0.1.gif)
 
