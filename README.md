@@ -7,7 +7,7 @@ This version implements the same ray casting but with a screen size of **320x192
 <video autoplay loop muted playsinline>
   <source src="media/raycasting_v0.1.webm" type="video/webm">
 </video>
-
+[![Demo Video](media/raycasting_v0.1.webm)](media/raycasting_v0.1.webm)
 
 ### fabri1983's notes (since Aug/18/2024)
 -------------------------------------
