@@ -259,11 +259,13 @@ static void enqueueTwoFirstPalsTitle ()
 
 static u16* title256cPalsPtr; // 1st and 2nd strip's palette are loaded at the beginning of the display loop, so it points to 3rd strip
 static u8 palIdx; // which pallete the title256cPalsPtr uses
+static u16 vcounterManual = TITLE_256C_STRIP_HEIGHT - 1;
 
 static void resetVIntOnTitle256c ()
 {
     palIdx = 0; // We know we always start with palettes [PAL0,PAL1]
     title256cPalsPtr = palettesData + (2 * TITLE_256C_COLORS_PER_STRIP); // 2 first palettes where enqueue in display loop
+    vcounterManual = TITLE_256C_STRIP_HEIGHT - 1; // Resets due to modification made by HInt
 }
 
 static void vintOnTitle256cCallback ()
@@ -286,15 +288,22 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
     */
 
     __asm volatile (
+        "   move.w      %[vcounterManual],%%d0\n"  // d0: vcounterManual
+        "   addq.w      %[_TITLE_256C_STRIP_HEIGHT],%%d0\n"  // d0: vcounterManual += TITLE_256C_STRIP_HEIGHT;
+        "   move.w      %%d0,%[vcounterManual]\n"  // store current value of vcounterManual
+        "   cmpi.w      %[LIMIT_END],%%d0\n"       // if (vcounterManual >= ((TITLE_256C_STRIPS_COUNT - 1) * TITLE_256C_STRIP_HEIGHT))
+        "   bhs         .quit_hint_%=\n"           // exit
+
         // Prepare regs
         "   move.l      %c[title256cPalsPtr],%%a0\n" // a0: title256cPalsPtr
         "   lea         0xC00004,%%a1\n"          // a1: VDP_CTRL_PORT 0xC00004
-        "   lea         5(%%a1),%%a2\n"           // a2: HCounter address 0xC00009 (VDP_HVCOUNTER_PORT + 1)
+        "   lea         5(%%a1),%%a2\n"           // a2: HCounter address 0xC00009 (VDP_HVCOUNTER_PORT + 1) 
         "   move.w      %[turnOff],%%d3\n"        // d3: VDP's register with display OFF value
         "   move.w      %[turnOn],%%d4\n"         // d4: VDP's register with display ON value
         "   move.b      %[hcLimit],%%d6\n"        // d6: HCounter limit
-        "   move.l      #0x140000,%%a3\n"         // a3: 0x140000 is the command offset for 10 colors (TITLE_256C_COLORS_PER_STRIP/3) sent to the VDP, used as: cmdAddress += 0x140000
         "   move.w      %[_TITLE_256C_COLORS_PER_STRIP_DIV_3]*2,%%d7\n"
+        // Next line commented so we have less reg pressure when entering and exiting the hint routine.
+        //"   move.l      %[cmdOffset],%%a3\n"      // a3: cmdOffset, used as: cmdAddress += cmdOffset
 
         // DMA batch 1
         "   move.l      %%a0,%%d2\n"            // d2: title256cPalsPtr
@@ -340,7 +349,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
         "   move.l      %%a0,%%d2\n"            // d2: title256cPalsPtr
         "   adda.w      %%d7,%%a0\n"            // title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3;
         // palCmdForDMA = palIdx == 0 ? 0xC0140080 : 0xC0540080;
-		"   add.l       %%a3,%%d5\n"            // d5: palCmdForDMA += 0x140000 // previous batch advanced 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
+		"   addi.l      %[cmdOffset],%%d5\n"    // d5: palCmdForDMA += cmdOffset // previous batch advanced 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
         // Setup DMA command
         "   lsr.w       #1,%%d2\n"              // d2: fromAddrForDMA = (u32) title256cPalsPtr >> 1;
             // NOTE: previous lsr.l can be replaced by lsr.w in case we don't need to use d2: fromAddrForDMA >> 16
@@ -376,7 +385,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
         "   addq.w      %[_TITLE_256C_COLORS_PER_STRIP_DIV_3_REM_ONLY]*2,%%d7\n"  // TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER
         "   adda.w      %%d7,%%a0\n"            // title256cPalsPtr += TITLE_256C_COLORS_PER_STRIP/3 + REMAINDER;
         // palCmdForDMA = palIdx == 0 ? 0xC0280080 : 0xC0680080;
-		"   add.l       %%a3,%%d5\n"            // d5: palCmdForDMA += 0x140000 // previous batch advanced 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
+		"   addi.l      %[cmdOffset],%%d5\n"    // d5: palCmdForDMA += cmdOffset // previous batch advanced 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
         // Setup DMA command
         "   lsr.w       #1,%%d2\n"              // d2: fromAddrForDMA = (u32) title256cPalsPtr >> 1;
             // NOTE: previous lsr.l can be replaced by lsr.w in case we don't need to use d2: fromAddrForDMA >> 16
@@ -409,13 +418,18 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
         "   move.l      %%d5,(%%a1)\n"          // *((vu32*) VDP_CTRL_PORT) = palCmdForDMA;
 		// turn on VDP
 		"   move.w      %%d4,(%%a1)\n"          // *(vu16*) VDP_CTRL_PORT = 0x8100 | (reg01 | 0x40);
+
+        // Label to exit the hint from the vcounterManual conditions at the beginning of the routine
+        ".quit_hint_%=:"
 		:
+        [title256cPalsPtr] "+m" (title256cPalsPtr),
+		[palIdx] "+m" (palIdx),
+        [vcounterManual] "+m" (vcounterManual)
 		:
-        [title256cPalsPtr] "m" (title256cPalsPtr),
-		[palIdx] "m" (palIdx),
 		[turnOff] "i" (0x8100 | (0x74 & ~0x40)), // 0x8134
 		[turnOn] "i" (0x8100 | (0x74 | 0x40)), // 0x8174
         [hcLimit] "i" (158),
+        [cmdOffset] "i" (0x140000), // 0x140000 is the command offset for 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
         [_DMA_9300_LEN_DIV_3] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3) & 0xff)),
         [_DMA_9400_LEN_DIV_3] "i" (0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3) >> 8) & 0xff)),
         [_DMA_9300_LEN_DIV_3_REM] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) & 0xff)),
@@ -423,10 +437,11 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
 		[_TITLE_256C_COLORS_PER_STRIP] "i" (TITLE_256C_COLORS_PER_STRIP),
         [_TITLE_256C_COLORS_PER_STRIP_DIV_3] "i" (TITLE_256C_COLORS_PER_STRIP/3),
         [_TITLE_256C_COLORS_PER_STRIP_DIV_3_REM_ONLY] "i" (TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)),
-        [_TITLE_256C_STRIP_HEIGHT] "i" (TITLE_256C_STRIP_HEIGHT)
+        [_TITLE_256C_STRIP_HEIGHT] "i" (TITLE_256C_STRIP_HEIGHT),
+        [LIMIT_END] "i" ((TITLE_256C_STRIPS_COUNT - 1) * TITLE_256C_STRIP_HEIGHT)
 		:
         // backup registers used in the asm implementation including the scratch pad since this code is used in an interrupt call.
-		"d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","a3","cc"
+		"d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","cc","memory"
     );
 }
 

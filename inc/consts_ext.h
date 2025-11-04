@@ -57,7 +57,7 @@
 #elif DISPLAY_LOGOS_AT_START == F && DISPLAY_TITLE_SCREEN == T
 #define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF02B2
 #else
-#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF0278
+#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF027C
 #endif
 
 // This is the fixed RAM address for the hud_tilemap_src array.
