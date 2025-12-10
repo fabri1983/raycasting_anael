@@ -430,6 +430,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
 		[turnOn] "i" (0x8100 | (0x74 | 0x40)), // 0x8174
         [hcLimit] "i" (158),
         [cmdOffset] "i" (0x140000), // 0x140000 is the command offset for 10 colors (TITLE_256C_COLORS_PER_STRIP/3)
+        [LIMIT_END] "i" ((TITLE_256C_STRIPS_COUNT - 1) * TITLE_256C_STRIP_HEIGHT),
         [_DMA_9300_LEN_DIV_3] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3) & 0xff)),
         [_DMA_9400_LEN_DIV_3] "i" (0x9400 | (((TITLE_256C_COLORS_PER_STRIP/3) >> 8) & 0xff)),
         [_DMA_9300_LEN_DIV_3_REM] "i" (0x9300 | ((TITLE_256C_COLORS_PER_STRIP/3 + TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)) & 0xff)),
@@ -437,8 +438,7 @@ static HINTERRUPT_CALLBACK hintOnTitle256cCallback_DMA_asm ()
 		[_TITLE_256C_COLORS_PER_STRIP] "i" (TITLE_256C_COLORS_PER_STRIP),
         [_TITLE_256C_COLORS_PER_STRIP_DIV_3] "i" (TITLE_256C_COLORS_PER_STRIP/3),
         [_TITLE_256C_COLORS_PER_STRIP_DIV_3_REM_ONLY] "i" (TITLE_256C_COLORS_PER_STRIP_REMAINDER(3)),
-        [_TITLE_256C_STRIP_HEIGHT] "i" (TITLE_256C_STRIP_HEIGHT),
-        [LIMIT_END] "i" ((TITLE_256C_STRIPS_COUNT - 1) * TITLE_256C_STRIP_HEIGHT)
+        [_TITLE_256C_STRIP_HEIGHT] "i" (TITLE_256C_STRIP_HEIGHT)
 		:
         // backup registers used in the asm implementation including the scratch pad since this code is used in an interrupt call.
 		"d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","cc","memory"

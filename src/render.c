@@ -198,12 +198,12 @@ FORCE_INLINE void render_DMA_flushQueue ()
 
 static FORCE_INLINE void render_waitVInt_vtimer ()
 {
-    // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is the first byte of vtimer
-    const u8* vtimerPtr = (u8*)&vtimer + 3;
+    // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is where the first byte of vtimer is located
+    u8* vtimerPtr = (u8*)&vtimer + 3;
     // Loops while vtimer keeps unchanged. Exits loop when it changes, meaning we are in VBlank.
     u8 currVal;
 	__asm volatile (
-        "move.b  (%1), %0\n\t"
+        "move.b  (%1), %0\n\t" // load current vtimer's lower byte value
         "1:\n\t"
         "cmp.b   (%1), %0\n\t" // cmp: %0 - (%1) => dN - (aN)
         "beq.s   1b"           // loop back if equal

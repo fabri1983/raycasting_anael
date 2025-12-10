@@ -114,33 +114,6 @@ FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
     );
 }
 
-FORCE_INLINE void setupDMAForPals_len_fixed (u32 len, u32 fromAddr)
-{
-    vu32* dmaCtrl_ptr = (vu32*) VDP_CTRL_PORT;
-    len = ((0x9300 | (u8)len) << 16) | (0x9400 | ((u8)len >> 8));
-    __asm volatile (
-        // Setup DMA length (in long word here)
-        "move.l   %[dn],(%[dmaCtrl_ptr])\n\t" // *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | ((u8)len >> 8));
-        // Setup DMA address low and mid
-        "move.w   %[fromAddr],-(%%sp)\n\t"    // save fromAddr into SP for later retrievement as (u8)fromAddr >> 8
-        "move.w   #0x9500,%[dn]\n\t"          // dn: 0x9500
-        "or.b     %[fromAddr],%[dn]\n\t"      // dn: 0x9500 | (u8)fromAddr
-        "swap     %[dn]\n\t"                  // dn: (0x9500 | (u8)fromAddr) << 16
-        "move.w   #0x9600,%[dn]\n\t"          // dn: 0x9600
-        "or.b     (%%sp)+,%[dn]\n\t"          // dn: 0x9600 | (u8)(fromAddr >> 8)
-        "move.l   %[dn],(%[dmaCtrl_ptr])\n\t" // *((vu16*) VDP_CTRL_PORT) = ((0x9500 | (u8)fromAddr) << 16) | (0x9600 | ((u8)fromAddr >> 8)); // low and mid
-        // Setup DMA address high
-        "move.l   %[fromAddr],%[dn]\n\t"      // dn: fromAddr
-        "swap     %[dn]\n\t"                  // dn: fromAddr >> 16
-        "andi.w   #0x007f,%[dn]\n\t"          // dn: (fromAddr >> 16) & 0x7f
-        "ori.w    #0x9700,%[dn]\n\t"          // dn: 0x9700 | ((fromAddr >> 16) & 0x7f)
-        "move.w   %[dn],(%[dmaCtrl_ptr])"     // *((vu16*) VDP_CTRL_PORT) = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
-        : [dn] "+d" (len), [fromAddr] "+d" (fromAddr)
-        : [dmaCtrl_ptr] "a" (dmaCtrl_ptr)
-        :
-    );
-}
-
 FORCE_INLINE u16 mulu_shft_FS (u16 op1, u16 op2)
 {
     __asm volatile (

@@ -6,6 +6,9 @@ This version implements the same ray casting but with a screen size of **320x192
 
 ![Demo GIF](media/raycasting_v0.1.gif)
 
+You can find me in the SGDK Discord server: https://discord.gg/xmnBWQS
+
+
 ### fabri1983's notes (since Aug/18/2024)
 -------------------------------------
 - Ray Casting: https://lodev.org/cgtutor/raycasting.html

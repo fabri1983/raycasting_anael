@@ -55,7 +55,9 @@
     "libres.h": "c",
     "snd_pcm4.h": "c",
     "snd_dpcm2.h": "c",
-    "weapon_consts.h": "c"
+    "weapon_consts.h": "c",
+    "z80_ctrl.h": "c",
+    "ym2612.h": "c"
 },
 "C_Cpp.errorSquiggles": "enabled",
 "[m68k]": {
