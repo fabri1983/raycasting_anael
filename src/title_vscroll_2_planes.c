@@ -452,8 +452,9 @@ static s16* columnOffsetsB;
 
 static void allocateMeltingEffectArrays ()
 {
-    columnOffsetsA = MEM_alloc((320/16) * 2); // columns span 2 tiles each, hence 16px
-    columnOffsetsB = MEM_alloc((320/16) * 2); // columns span 2 tiles each, hence 16px
+    // columns span 2 tiles each, hence 16px
+    columnOffsetsA = MEM_alloc((320/16) * 2);
+    columnOffsetsB = MEM_alloc((320/16) * 2);
 }
 
 static void initializeMeltingEffectArrays ()
@@ -519,7 +520,8 @@ static void updateColumnOffsets ()
     }*/
 
     // ASM version
-    u16 i = (320/16)/2 - 1;
+    u16 i = (320/16)/2 - 1; // -1 so it's correctly set for dbra/dbf
+    u32 offsetAmnt = (MELTING_OFFSET_STEPPING_PIXELS << 16) | MELTING_OFFSET_STEPPING_PIXELS;
     __asm volatile (
         "\n"
         "1:\n"
@@ -527,19 +529,18 @@ static void updateColumnOffsets ()
         "    sub.l  %[offsetAmnt],(%[colB_ptr])+\n"
         "    dbf    %[i],1b"
         : [i] "+d" (i)
-        : [offsetAmnt] "id" ((MELTING_OFFSET_STEPPING_PIXELS << 16) | MELTING_OFFSET_STEPPING_PIXELS),
-          [colA_ptr] "a" (columnOffsetsA), [colB_ptr] "a" (columnOffsetsB)
-        : "cc"
+        : [offsetAmnt] "d" (offsetAmnt), [colA_ptr] "a" (columnOffsetsA), [colB_ptr] "a" (columnOffsetsB)
+        :
     );
 }
 
 static void drawBlackAboveScroll (u16 scanlineEffectPos)
 {
     // Draw a row of black tiles above the applied scroll. 
-    // This is applied at the end of screen since the VSCroll direction is downwards and we need to compensate the vertical offset.
+    // Since the VSCroll direction is downwards, we need to mask the vertical offset that wraps up from the bottom to the top
     u16 black_tile_idx = 0;
-    VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, black_tile_idx), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
-    VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, black_tile_idx), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
+    VDP_fillTileMapRect(BG_A, TILE_ATTR_FULL(PAL0, 1, FALSE, FALSE, black_tile_idx), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
+    VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 1, FALSE, FALSE, black_tile_idx), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
 }
 
 void title_vscroll_2_planes_show ()
@@ -646,6 +647,7 @@ void title_vscroll_2_planes_show ()
     // Let's wait to next VInt to consume what remains of current display loop
     VDP_waitVBlank(FALSE);
 
+    // Top of display is scanline 0
     u16 scanlineEffectPos = 0;
 
     // Melting screen update loop
@@ -660,7 +662,7 @@ void title_vscroll_2_planes_show ()
         VDP_setVerticalScrollTile(BG_B, 0, columnOffsetsB, 320/16, DMA_QUEUE);
 
         // update column offsets for next frame
-        updateColumnOffsets(MELTING_OFFSET_STEPPING_PIXELS);
+        updateColumnOffsets();
 
         // Draw Black tiles above every column to cover the rolled back tiles of Title Screen due to VScroll effect
         drawBlackAboveScroll(scanlineEffectPos);

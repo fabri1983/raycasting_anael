@@ -3,6 +3,7 @@
 // Full screen in mode 256x224 with 4 pixels wide column (effective resolution 64x224),
 // It's possible to use 60+1 colors, but only 32+1 are used here.
 // Reference for ray marching: https://lodev.org/cgtutor/raycasting.html
+// Modified by fabri1983.
 
 #include <types.h>
 #include <dma.h>
@@ -30,6 +31,7 @@
 #endif
 
 // The code is optimised further using GCC's automatic unrolling, but might not be the case if too much inlining is used (or whatever other reason).
+// That's why I use unroll-loops per loop declaration instead of the overall switch.
 #pragma GCC push_options
 //#pragma GCC optimize ("unroll-loops")
 #pragma GCC optimize ("no-unroll-loops")
@@ -49,7 +51,7 @@ int main (bool hardReset)
         KLog_U2("RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS mismatch: ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, " ", (u32)vdpSpriteCache);
         return 0;
     }
-    //acá: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
+    // TODO: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
 
     #if DISPLAY_LOGOS_AT_START
     displayTeddyBearLogo();
@@ -78,7 +80,7 @@ int main (bool hardReset)
     hud_addWeapon(WEAPON_FIST);
     hud_addWeapon(WEAPON_PISTOL);
     hud_addWeapon(WEAPON_SHOTGUN);
-    hud_addHealthUnits(100); // NOTE: needs to be replaced by health_add(100), from which it will call hud_addHealthUnits(100)
+    hud_addHealthUnits(100); // NOTE: replace by health_add(100), which calls hud_addHealthUnits(100)
     weapon_select(WEAPON_PISTOL);
     weapon_addAmmo(WEAPON_PISTOL, 50);
     weapon_addAmmo(WEAPON_SHOTGUN, 50);
