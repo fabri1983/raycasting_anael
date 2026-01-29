@@ -172,10 +172,10 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     *vdpCtrl_ptr_l = VDP_WRITE_CRAM_ADDR(0 * 2); // color index 0;
     //*(vu16*)VDP_DATA_PORT = 0x0444; // palette_grey[2]=0x0444 roof color
     __asm volatile (
-        "move.w  #0x0444,-4(%0)"   // 4 cycles faster than move.w #0x0444,(VDP_DATA_PORT)
+        "move.w  #0x0444,-4(%0)"   // 4 cycles faster than move.w #0x0444,(VDP_DATA_PORT), since VDP_CTRL_PORT - 4 = VDP_DATA_PORT
         :
         : "a" (vdpCtrl_ptr_l)
-        : "cc"
+        :
     );
     #endif
 
@@ -184,18 +184,19 @@ HINTERRUPT_CALLBACK hint_load_hud_pals_callback ()
     if (hud_tilemap_set) {
         hud_tilemap_set = FALSE;
 
+        // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+        *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+        // NOTE: DMA length low has to be set every time before triggering the DMA command
+
         // Setup DMA address ONLY ONCE
         u32 from = RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + 0*TILEMAP_COLUMNS*2;
         from >>= 1;
-        *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+        *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+        // *vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
         from >>= 8;
-        *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+        *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
         from >>= 8;
-        *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
-
-        // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
-        *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
-        // DMA length low has to be set every time before triggering the DMA command
+        *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
 
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u16 i=0; i < HUD_BG_H; ++i) {

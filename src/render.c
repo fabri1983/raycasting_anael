@@ -24,8 +24,8 @@ extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
 u16 render_loadTiles ()
 {
     // ORDERING: Tiles are created in groups of 8 tiles except first one which is the empty tile.
-    // Tiles inside each group go from Highest to Smallest (in pixel height). Groups go from Darkest to Brightest.
-    // 4 most right columns of pixels for each tile is left empty because this way the Plane B can be displaced 4 bits to the right.
+    // Tiles inside each group go from Highest to Smallest in pixel height. Groups go from Darkest to Brightest.
+    // 4 most right columns of pixels for each tile is left empty so the Plane B can be displaced 4 bits to the right.
 
 	// Create a buffer of the size of a tile
 	u8* tile = MEM_alloc(32); // 32 bytes per tile, layout: tile[4*8]
@@ -48,7 +48,7 @@ u16 render_loadTiles ()
             memset(tile, 0, 32); // clear the tile with color index 0
             // 8 colors: they match with those from SGDK's ramp palettes (palette_grey, red, green, blue) first 8 colors going from darker to lighter
             for (u16 c = 0; c < 8; c++) {
-                // Visit the height of each tile in current set. Height here is 0 based.
+                // Visit the height of each tile in current set. Height here is 0 based because is used as a stride into tile buffer.
                 for (u16 h = t-1; h < 8; h++) {
                     // Visit the columns of current row. 1 byte holds 2 colors as per Tile definition (4 bits per color),
                     // so lower byte is color c and higher byte is color c+1, letting the RCA video signal do the blending.
@@ -68,8 +68,8 @@ u16 render_loadTiles ()
                         // combine lower and higher bits (low and high colors)
                         u8 color = colorLow | (colorHigh << 4);
 
-                        // This sets 2 pixels (remember color holds 2 color pixels) at left columns [4*h] and [4*h + 1],
-                        // leaving right columns at [4*h + 2] and [4*h + 2] as it is (currently 0)
+                        // This sets 2 pixels (remember a color holds 2 color pixels) at left columns [4*h] and [4*h + 1],
+                        // leaving pixels in right columns at [4*h + 2] and [4*h + 2] as it is (currently 0).
                         tile[4*h + b] = color;
                         // Duplicate color in right colums too
                         //tile[4*h + 2 + b] = color;
@@ -278,18 +278,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
 
     // Plane A rows
 
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // NOTE: DMA length low has to be set every time before triggering the DMA command
+
     // Setup DMA address ONLY ONCE
     u32 from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
     from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
-
-    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
-    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
-    // DMA length low has to be set every time before triggering the DMA command
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
@@ -299,18 +300,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
 
     // Plane B rows
 
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // NOTE: DMA length low has to be set every time before triggering the DMA command
+
     // Setup DMA address ONLY ONCE
     from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
     from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
-
-    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
-    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
-    // DMA length low has to be set every time before triggering the DMA command
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
@@ -322,18 +324,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
 
     // Plane A rows
 
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // NOTE: DMA length low has to be set every time before triggering the DMA command
+
     // Setup DMA address ONLY ONCE
     u32 from = RAM_FIXED_FRAME_BUFFER_ADDRESS + 0*TILEMAP_COLUMNS*2;
     from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
-
-    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
-    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
-    // DMA length low has to be set every time before triggering the DMA command
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS; ++i) {
@@ -343,18 +346,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
 
     // Plane B rows
 
+    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+    // NOTE: DMA length low has to be set every time before triggering the DMA command
+
     // Setup DMA address ONLY ONCE
     from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + 0*TILEMAP_COLUMNS)*2;
     from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
     from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
-
-    // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
-    *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
-    // DMA length low has to be set every time before triggering the DMA command
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS; ++i) {

@@ -3,7 +3,7 @@
 // Full screen in mode 256x224 with 4 pixels wide column (effective resolution 64x224),
 // It's possible to use 60+1 colors, but only 32+1 are used here.
 // Reference for ray marching: https://lodev.org/cgtutor/raycasting.html
-// Modified by fabri1983.
+// Modified and optimized by fabri1983 to render at 320x224.
 
 #include <types.h>
 #include <dma.h>
@@ -13,6 +13,7 @@
 #include <vdp_bg.h>
 #include <pal.h>
 #include <sprite_eng.h>
+#include <tools.h>
 #include "utils.h"
 #include "consts.h"
 #include "consts_ext.h"
@@ -36,8 +37,6 @@
 //#pragma GCC optimize ("unroll-loops")
 #pragma GCC optimize ("no-unroll-loops")
 
-#include <tools.h>
-
 int main (bool hardReset)
 {
 	// On soft reset we do a hard reset
@@ -48,7 +47,7 @@ int main (bool hardReset)
 
     // Ensure our constants has correct values
     if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS) {
-        KLog_U2("RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS mismatch: ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, " ", (u32)vdpSpriteCache);
+        KLog_U2("RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS mismatch. Current: ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, ". Expected: ", (u32)vdpSpriteCache);
         return 0;
     }
     // TODO: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR

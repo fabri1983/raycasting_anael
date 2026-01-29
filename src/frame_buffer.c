@@ -233,7 +233,7 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 	// Draw a solid vertical line from TOP to BOTTOM
 	if (h2 == 0) {
 		// C version
-		/*for (u16 y = 0; y < VERTICAL_ROWS*TILEMAP_COLUMNS; y+=TILEMAP_COLUMNS) {
+		/*for (u16 y = 0; y < VERTICAL_ROWS*TILEMAP_COLUMNS; y += TILEMAP_COLUMNS) {
 			column_ptr[y] = tileAttrib;
 		}*/
 

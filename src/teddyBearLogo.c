@@ -4,18 +4,18 @@
 */
 
 #include <types.h>
+#include <sys.h>
 #include <vdp.h>
 #include <vdp_bg.h>
 #include <vdp_tile.h>
 #include <memory.h>
 #include <joy.h>
-#include <sys.h>
 #include <sprite_eng.h>
 #include "teddyBearLogo.h"
 #include "utils.h"
 #include "logos_res.h"
 
-#define STR_VERSION "v2.12 (Nov 2025)"
+#define STR_VERSION "v2.12 (Jan 2026)"
 #define STR_VERSION_LEN 17 // String version length including \0
 
 #define TEDDY_BEAR_LOGO_FADE_TO_BLACK_STEPS 7 // How many steps needs to be applied as much to reach black color. Max is 7.

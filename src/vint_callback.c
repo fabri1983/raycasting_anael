@@ -102,12 +102,13 @@ void vint_callback ()
     #endif
 
     vu32* vdpCtrl_ptr_l = (vu32*) VDP_CTRL_PORT;
+    // VDP Off
 	turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
 
     render_Z80_setBusProtection(TRUE);
     // delay enabled ? --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
-    if (Z80_getForceDelayDMA())
-	    waitSubTick_(10);
+    //if (Z80_getForceDelayDMA())
+	//    waitSubTick_(10);
 
     render_DMA_flushQueue();
 
@@ -125,18 +126,19 @@ void vint_callback ()
     if (hud_tilemap_set) {
         hud_tilemap_set = FALSE;
 
+        // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
+        *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
+        // NOTE: DMA length low has to be set every time before triggering the DMA command
+
         // Setup DMA address ONLY ONCE
         u32 from = RAM_FIXED_HUD_TILEMAP_DST_ADDRESS + 0*TILEMAP_COLUMNS*2;
         from >>= 1;
-        *(vu16*)vdpCtrl_ptr_l = 0x9500 + (from & 0xff); // low
+        *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+        //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
         from >>= 8;
-        *(vu16*)vdpCtrl_ptr_l = 0x9600 + (from & 0xff); // mid
+        *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
         from >>= 8;
-        *(vu16*)vdpCtrl_ptr_l = 0x9700 + (from & 0x7f); // high
-
-        // Setup DMA length high ONLY ONCE. Length in words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op
-        *(vu16*)vdpCtrl_ptr_l = 0x9400 | ((TILEMAP_COLUMNS >> 8) & 0xff); // DMA length high
-        // DMA length low has to be set every time before triggering the DMA command
+        *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
 
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u16 i=0; i < HUD_BG_H; ++i) {
@@ -180,6 +182,7 @@ void vint_callback ()
     render_mirror_planes_in_VRAM();
     #endif
 
+    // VDP On
     turnOnVDP_m(vdpCtrl_ptr_l, 0x74);
 
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
