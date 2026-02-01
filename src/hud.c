@@ -1,4 +1,5 @@
 #include <types.h>
+#include <sys.h>
 #include <vdp.h>
 #include <vdp_bg.h>
 #include <vdp_tile.h>

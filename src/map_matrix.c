@@ -1,5 +1,7 @@
+#include <types.h>
 #include "map_matrix.h"
 
+// IMPORTANT: if you modify the map you'll need to run all the scripts that generates static pre calculed tables.
 const u8 map[MAP_SIZE][MAP_SIZE] = {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	{1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},

@@ -1,4 +1,5 @@
 #include <types.h>
+#include <sys.h>
 #include <vdp_tile.h>
 #include <sprite_eng.h>
 #include <maths.h>

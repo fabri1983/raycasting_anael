@@ -1,9 +1,11 @@
+#include <types.h>
+#include <sys.h>
+#include <vdp_tile.h>
+#include <memory.h>
 #include "frame_buffer.h"
 #include "consts.h"
 #include "consts_ext.h"
 #include "utils.h"
-#include <vdp_tile.h>
-#include <memory.h>
 
 u16* column_ptr;
 

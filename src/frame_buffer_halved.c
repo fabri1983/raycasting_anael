@@ -1,8 +1,10 @@
+#include <types.h>
+#include <sys.h>
+#include <vdp_tile.h>
 #include "frame_buffer.h"
 #include "consts.h"
 #include "consts_ext.h"
 #include "utils.h"
-#include <vdp_tile.h>
 
 #define MOVEM_OR_MOVES_HALVED_NO_USP \
     "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n" \

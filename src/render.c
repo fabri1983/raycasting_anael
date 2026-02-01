@@ -1,10 +1,11 @@
-#include "render.h"
+#include <types.h>
+#include <sys.h>
 #include <vdp.h>
 #include <z80_ctrl.h>
 #include <timer.h>
 #include <dma.h>
-#include <sys.h>
 #include <memory.h>
+#include "render.h"
 #include "consts.h"
 #include "consts_ext.h"
 //#include <joy.h>

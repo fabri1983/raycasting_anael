@@ -1,4 +1,5 @@
 #include <types.h>
+#include <sys.h>
 #include "perf_hash_mulu_256_shft_FS.h"
 #include "consts.h"
 #include "utils.h"

@@ -1,3 +1,5 @@
+#include <types.h>
+#include <sys.h>
 #include "vint_callback.h"
 #include <vdp.h>
 #include <vdp_bg.h>

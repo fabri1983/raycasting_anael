@@ -1,10 +1,11 @@
+#include <types.h>
+#include <sys.h>
 #include "hint_callback.h"
 #include <vdp_bg.h>
 #include <vdp.h>
 #include <vdp_spr.h>
 #include <pal.h>
 #include <memory.h>
-#include <sys.h>
 #include "consts.h"
 #include "consts_ext.h"
 #include "weapon_consts.h"

@@ -1,5 +1,6 @@
-#include <dma.h>
+#include <types.h>
 #include <sys.h>
+#include <dma.h>
 #include <maths.h>
 #include <joy.h>
 #include "joy_6btn.h"

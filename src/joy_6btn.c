@@ -1,8 +1,10 @@
-#include "joy_6btn.h"
+#include <types.h>
+#include <sys.h>
 #include <joy.h>
 #include <z80_ctrl.h>
 #include <tools.h>
 #include <timer.h>
+#include "joy_6btn.h"
 
 #define JOY_TYPE_SHIFT          12
 

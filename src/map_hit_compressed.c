@@ -1,4 +1,5 @@
 #include <types.h>
+#include <sys.h>
 #include <maths.h>
 #include "map_hit_compressed.h"
 #include "utils.h"
