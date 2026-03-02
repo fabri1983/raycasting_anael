@@ -197,23 +197,6 @@ FORCE_INLINE void render_DMA_flushQueue ()
     // VDP_setAutoInc(autoInc); // restore autoInc
 }
 
-static FORCE_INLINE void render_waitVInt_vtimer ()
-{
-    // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is where the first byte of vtimer is located
-    u8* vtimerPtr = (u8*)&vtimer + 3;
-    // Loops while vtimer keeps unchanged. Exits loop when it changes, meaning we are in VBlank.
-    u8 currVal;
-	__asm volatile (
-        "move.b  (%1), %0\n\t" // load current vtimer's lower byte value
-        "1:\n\t"
-        "cmp.b   (%1), %0\n\t" // cmp: %0 - (%1) => dN - (aN)
-        "beq.s   1b"           // loop back if equal
-        : "=d" (currVal)
-        : "a" (vtimerPtr)
-        :
-    );
-}
-
 #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
 static u32 vtimerStart;
 static u16 vcnt;
@@ -246,8 +229,8 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ()
     //JOY_update();
     joy_update_6btn();
 
-    // Wait until vint is triggered and returned from vint_callback()
-    render_waitVInt_vtimer();
+    // Waits until SGDK's vint is triggered and returned from the user vintCB().
+    waitVInt_vtimer();
 
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     render_calculateFrameLoad();

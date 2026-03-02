@@ -4,6 +4,8 @@
 #include <types.h>
 #include <vdp.h>
 
+#define STRINGIFY(x) #x
+
 #define MEMORY_BARRIER() __asm volatile ("" : : : "memory")
 
 #define CLAMP(x, minimum, maximum) ( min(max((x),(minimum)),(maximum)) )
@@ -74,12 +76,12 @@ void turnOnVDP (u8 reg01);
 
 /**
  * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
-*/
+ */
 void waitHCounter_opt1 (u8 n);
 
 /**
  * Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
-*/
+ */
 void waitHCounter_opt2 (u8 n);
 
 /// @brief Wait until HCounter 0xC00009 reaches nth position (actually the (n*2)th pixel since the VDP counts by 2).
@@ -97,10 +99,15 @@ void waitHCounter_opt2 (u8 n);
     )
 
 /**
- * Wait until VCounter 0xC00008 reaches nth scanline position. Parameter n is loaded into a register.
+ * Waits until VCounter 0xC00008 reaches nth scanline position. Parameter n is loaded into a register.
  * The docs straight up say to not trust the value of the V counter during vblank, in that case use VDP_getAdjustedVCounter().
-*/
+ */
 void waitVCounterReg (u16 n);
+
+/**
+ * Waits until SGDK's vint is triggered and returned from the user vintCB().
+ */
+void waitVInt_vtimer ();
 
 /// @brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address) and writes the command too.
 /// Assumes the 4 arguments are known values at compile time, and the VDP auto inc stepping was already set accordingly.
@@ -115,12 +122,12 @@ void waitVCounterReg (u16 n);
         /* Setup DMA address low and mid */ \
         "move.l  %[_addr_low_mid],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
         /* Setup DMA address high */ \
-        "move.w  %[_addr_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
+        "move.w  %[_addr_high],(%[_ctrl_port])\n\t" /* *((vu16*) VDP_CTRL_PORT) = (0x9700 | ((fromAddr >> 17) & 0x7f)); */ \
         /* Trigger DMA */ \
         /* Force storing and issuing DMA command into and from memory (avoid possible failure on some MD) */ \
-        /*"move.l  %[_cmdAddr],-4(%%sp)\n\t"*/ \
-        /*"move.w  -4(%%sp),(%[_ctrl_port])\n\t"*/ \
-        /*"move.w  -2(%%sp),(%[_ctrl_port])"*/ \
+        /*"move.l  %[_cmdAddr],-(%%sp)\n\t"*/ \
+        /*"move.w  (%%sp)+,(%[_ctrl_port])\n\t"*/ \
+        /*"move.w  (%%sp)+,(%[_ctrl_port])"*/ \
         /* Faster but may fail in some MD */ \
         "move.l  %[_cmdAddr],(%[_ctrl_port])" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : \
@@ -137,7 +144,7 @@ void waitVCounterReg (u16 n);
 /// Assumes DMA address was already setup before entering the loop where this macro is located.
 /// Assumes the 3 arguments are known values at compile time, and the VDP auto inc stepping was already set accordingly.
 /// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
-/// @param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
+/// @param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR(), VDP_DMA_CRAM_ADDR(), VDP_DMA_VSRAM_ADDR().
 /// @param len words to move (is words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op).
 #define doDMAfast_fixed_args_loop_ready(ctrl_port,cmdAddr,len) \
     __asm volatile ( \
@@ -145,9 +152,9 @@ void waitVCounterReg (u16 n);
         "move.w  %[_len_low],(%[_ctrl_port])\n\t" /* *((vu16*) VDP_CTRL_PORT) = 0x9300 | (u8)len; */ \
         /* Trigger DMA */ \
         /* Force storing and issuing DMA command into and from memory (avoid possible failure on some MD) */ \
-        /*"move.l  %[_cmdAddr],-4(%%sp)\n\t"*/ \
-        /*"move.w  -4(%%sp),(%[_ctrl_port])\n\t"*/ \
-        /*"move.w  -2(%%sp),(%[_ctrl_port])"*/ \
+        /*"move.l  %[_cmdAddr],-(%%sp)\n\t"*/ \
+        /*"move.w  (%%sp)+,(%[_ctrl_port])\n\t"*/ \
+        /*"move.w  (%%sp)+,(%[_ctrl_port])"*/ \
         /* Faster but may fail in some MD */ \
         "move.l  %[_cmdAddr],(%[_ctrl_port])" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : \
@@ -170,7 +177,7 @@ void waitVCounterReg (u16 n);
         /* Setup DMA address low and mid */ \
         "move.l  %[_addr_low_mid],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9500 | ((fromAddr >> 1) & 0xff)) << 16) | (0x9600 | ((fromAddr >> 9) & 0xff)); */ \
         /* Setup VRAM COPY operation */ \
-        "move.w  %[_vramcopy],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
+        "move.w  %[_vramcopy],(%[_ctrl_port])\n\t" /* *((vu16*) VDP_CTRL_PORT) = 0x97C0; // VRAM COPY operation */ \
         /* Trigger DMA */ \
         "move.l  %[_cmdAddr],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = cmdAddr; */ \
         : \
@@ -184,11 +191,13 @@ void waitVCounterReg (u16 n);
     )
 
 /**
- * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address). 
+ * \brief Writes into VDP_CTRL_PORT (0xC00004) the setup for DMA (length and source address), and then trigger the command.
+ * Assumes the VDP auto inc stepping was already set accordingly.
  * \param len How many colors to move.
- * \param fromAddr Must come >> 1 (shifted to right) already.
-*/
-void setupDMAForPals (u16 len, u32 fromAddr);
+ * \param fromAddr Source address.
+ * \param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR(), VDP_DMA_CRAM_ADDR(), VDP_DMA_VSRAM_ADDR().
+ */
+void setupDMAandTrigger (u16 len, u32 fromAddr, u32 cmdAddr);
 
 /// @brief Multiply and shift by FS using asm to directly return u16 data type.
 /// @param op1 

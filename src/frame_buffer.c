@@ -88,7 +88,6 @@ NO_INLINE void clear_buffer_no_usp ()
 NO_INLINE void clear_buffer ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
-	// 9842 cycles according Blastem cycle counter.
 	__asm volatile (
 		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
@@ -160,7 +159,6 @@ NO_INLINE void clear_buffer_sp ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	// Here we load the framebuffer address into the SP, previously backed up, to gain 1 more register.
-	// 9693 cycles according Blastem cycle counter.
 	__asm volatile (
         // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
 		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"

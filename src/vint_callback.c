@@ -156,15 +156,17 @@ void vint_callback ()
         // NOTE: this should be DMA_doDma() because tiles might be in in a bank > 4MB
         void* from = tiles_from[tiles_elems];
         u16 to = tiles_toIndex[tiles_elems];
-        DMA_doDmaFast(DMA_VRAM, from, to, lenInWord, (s16)-1);
+        //DMA_doDmaFast(DMA_VRAM, from, to, lenInWord, (s16)-1);
+        setupDMAandTrigger(lenInWord, (u32)from, VDP_DMA_VRAM_ADDR(to));
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
     // Have any update for vdp sprite cache?
     if (vdpSpriteCache_lenInWord) {
-        u16 len = vdpSpriteCache_lenInWord;
+        u16 lenInWord = vdpSpriteCache_lenInWord;
         vdpSpriteCache_lenInWord = 0;
-        DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, len, (s16)-1);
+        //DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, lenInWord, (s16)-1);
+        setupDMAandTrigger(lenInWord, RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_DMA_VRAM_ADDR(VDP_SPRITE_LIST_ADDR));
     }
     #endif
 
@@ -175,7 +177,8 @@ void vint_callback ()
         u16 lenInWord = tiles_buf_lenInWord[tiles_buf_elems];
         tiles_buf_dmaBufPtr -= lenInWord;
         u16 toIndex = tiles_buf_toIndex[tiles_buf_elems];
-        DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, (s16)-1);
+        //DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, (s16)-1);
+        setupDMAandTrigger(lenInWord, (u32)tiles_buf_dmaBufPtr, VDP_DMA_VRAM_ADDR(toIndex));
         DMA_releaseTemp(lenInWord);
     }
     #endif

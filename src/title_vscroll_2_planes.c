@@ -9,11 +9,13 @@
 #include <tools.h>
 #include <mapper.h>
 #include <joy.h>
+#include <z80_ctrl.h>
 #include "title.h"
 #include "title_res.h"
 #include "utils.h"
+#include "vgm_res.h"
 
-const Palette32AllStrips* pal_title_bg_full_shifted_ptrs[224/MELTING_OFFSET_STEPPING_PIXELS + 1] = {
+static const Palette32AllStrips* pal_title_bg_full_shifted_ptrs[224/MELTING_OFFSET_STEPPING_PIXELS + 1] = {
     &pal_title_bg_full_shifted_0,
     &pal_title_bg_full_shifted_1,
     &pal_title_bg_full_shifted_2,
@@ -98,7 +100,7 @@ static TileSet* unpackTitle256cTileset ()
         return tileset;
 }
 
-static void dmaTitle256cTileset (u16 currTileIndex, u16 logoTileIndex, TileSet* tileset, bool isFirstChunk, TransferMethod tm)
+static void dmaTitle256cTileset (u16 currTileIndex, u16 logoTileIndex, TileSet* tileset, bool isFirstChunk)
 {
     u16 lenImmediate = logoTileIndex - currTileIndex;
     u32* data = tileset->tiles;
@@ -107,12 +109,12 @@ static void dmaTitle256cTileset (u16 currTileIndex, u16 logoTileIndex, TileSet* 
         data = FAR_SAFE(tileset->tiles, tileset->numTile * 32);
 
     if (isFirstChunk) {
-        VDP_loadTileData(data, currTileIndex, lenImmediate, tm);
+        VDP_loadTileData(data, currTileIndex, lenImmediate, DMA);
     }
     else {
         if (tileset->numTile > lenImmediate) {
             u16 len = tileset->numTile - lenImmediate;
-            VDP_loadTileData(data + (lenImmediate * 8), currTileIndex + lenImmediate, len, tm);
+            VDP_loadTileData(data + (lenImmediate * 8), currTileIndex + lenImmediate, len, DMA);
         }
     }
 }
@@ -529,6 +531,17 @@ static void drawBlackAboveScroll (u16 scanlineEffectPos)
     VDP_fillTileMapRect(BG_B, TILE_ATTR_FULL(PAL0, 1, FALSE, FALSE, black_tile_idx), 0, 224/8 - scanlineEffectPos/8, 320/8, 1);
 }
 
+static void doVBlankProcess ()
+{
+    // Waits until SGDK's vint is triggered and returned from the user vintCB()
+    waitVInt_vtimer();
+
+    DMA_flushQueue();
+
+    // joy state refresh
+    JOY_update();
+}
+
 void title_vscroll_2_planes_show ()
 {
     // Setup VDP
@@ -554,6 +567,9 @@ void title_vscroll_2_planes_show ()
     // Draw the DOOM logo
     VDP_drawImageEx(BG_B, (const Image*) &img_title_logo, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, logoTileIndex), 
         TITLE_LOGO_X_POS_TILES, TITLE_LOGO_Y_POS_TILES, FALSE, TRUE);
+
+    XGM2_play(vmg_13_the_end_of_doom);
+
     // Fade in the DOOM logo
     PAL_fadeInAll(img_title_logo.palette->data, 30, FALSE);
 
@@ -573,7 +589,7 @@ void title_vscroll_2_planes_show ()
     MEM_free(tilemap);
 
     // DMA immediately the Title's screen tileset only the region up to the start of the Logo's tileset
-    dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset, TRUE, DMA);
+    dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset, TRUE);
 
     // Let's wait to next VInt to consume what remains of current display loop
     VDP_waitVBlank(FALSE);
@@ -587,13 +603,13 @@ void title_vscroll_2_planes_show ()
     // DMA what remains of halved tilemaps
     dmaRowByRowTitle256cHalvedTilemaps();
     // DMA the remaining tiles of Title's screen tileset. This done here because otherwise may ovewrite part of the DOOM logo
-    dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset, FALSE, DMA);
+    dmaTitle256cTileset(currTileIndex, logoTileIndex, tileset, FALSE);
     currTileIndex += img_title_bg_full.tileset->numTile; // update just in case we need to load more tiles
     
     VDP_setEnable(TRUE);
 
     SYS_disableInts();
-        SYS_setVBlankCallback(vintOnTitle256cCallback);
+        SYS_setVIntCallback(vintOnTitle256cCallback);
         VDP_setHIntCounter(TITLE_256C_STRIP_HEIGHT - 1);
         SYS_setHIntCallback(hintOnTitle256cCallback_DMA_3_cmds_ASM);
         VDP_setHInterrupt(TRUE);
@@ -603,7 +619,7 @@ void title_vscroll_2_planes_show ()
 
     // Force to empty DMA queue.
     // NOTE: DMA will leak into next frame's active display, but resources are correctly sorted to dma in such an order that no visible glitch is noticeable.
-    SYS_doVBlankProcess();
+    doVBlankProcess();
 
     // Now that tileset is in VRAM we can free their RAM
     if (tileset->compression != COMPRESSION_NONE)
@@ -614,7 +630,7 @@ void title_vscroll_2_planes_show ()
     {
         enqueueTwoFirstPalsTitle(); // Load 1st and 2nd strip's palette
 
-        SYS_doVBlankProcess();
+        doVBlankProcess();
 
         const u16 joyState = JOY_readJoypad(JOY_1);
         if (joyState & BUTTON_START) {
@@ -629,6 +645,8 @@ void title_vscroll_2_planes_show ()
     // Prepare VSCROLL array
     allocateMeltingEffectArrays();
     initializeMeltingEffectArrays();
+
+    XGM2_play(vgm_12_title_screen);
 
     // Let's wait to next VInt to consume what remains of current display loop
     VDP_waitVBlank(FALSE);
@@ -660,18 +678,16 @@ void title_vscroll_2_planes_show ()
         u16* nextPalData = pal_title_bg_full_shifted_ptrs[scanlineEffectPos/MELTING_OFFSET_STEPPING_PIXELS]->data;
         unpackPalettesTitle(nextPalData, COMPRESSION_LZ4W);
 
-        SYS_doVBlankProcess();
+        doVBlankProcess();
 
         if (scanlineEffectPos >= 224)
             break;
     }
 
     SYS_disableInts();
-
-        SYS_setVBlankCallback(NULL);
+        SYS_setVIntCallback(NULL);
         VDP_setHInterrupt(FALSE);
         SYS_setHIntCallback(NULL);
-
     SYS_enableInts();
 
     freeMeltingEffectArrays();
@@ -681,4 +697,6 @@ void title_vscroll_2_planes_show ()
     memsetU32((u32*)TITLE_HALVED_TILEMAP_A_ADDRESS, 0, ((TITLE_256C_HEIGHT/8)*((TITLE_256C_WIDTH/8)/2)*2) / 4);
 
     VDP_resetScreen();
+
+    XGM2_stop();
 }

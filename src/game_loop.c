@@ -10,7 +10,7 @@
 #include "map_matrix.h"
 #include "frame_buffer.h"
 #include "render.h"
-
+#include "vgm_res.h"
 #include "hud.h"
 #include "weapon.h"
 //#include <sprite_eng.h>
@@ -192,7 +192,9 @@ static void handle_input(u16* posX, u16* posY, u16* angle, u16** delta_a_ptr)
 
 void game_loop ()
 {
-	// It seems positions in the map are multiple of FP +/- fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
+    XGM2_play(vmg_01_at_dooms_gate);
+
+	// It seems that positions in the map are multiple of FP +/- a fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
 	// Smaller positions locate at top-left corner of the map[][] layout (as seen in the .h), bigger positions locate at bottom-right.
 	// But dx and dy, applied to posX and posY respectively, goes from 0 to (+/-)FP/ANGLE_DIR_NORMALIZATION (used in tab_dir_xy.h).
 	u16 posX = 2*FP - 3*MAP_FRACTION, posY = 2*FP;
@@ -207,7 +209,7 @@ void game_loop ()
     map_hit_setRow(posX, posY, angle / (1024/AP));
     #endif
 
-	for (;;)
+	usergameloop:
 	{
 		// clear the frame buffer
         clearBuffer();
@@ -225,6 +227,8 @@ void game_loop ()
 		dda(posX, posY, delta_a_ptr);
 
         render_SYS_doVBlankProcessEx_ON_VBLANK();
+
+        goto usergameloop;
 	}
 }
 

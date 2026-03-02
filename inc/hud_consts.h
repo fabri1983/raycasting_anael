@@ -5,8 +5,8 @@
 
 #define HUD_HEIGHT 4 // In tiles unit
 
-#define HINT_SCANLINE_START_PAL_SWAP (224 - (HUD_HEIGHT*8)) // This formula is not 0-based.
-#define HINT_SCANLINE_MID_SCREEN (HINT_SCANLINE_START_PAL_SWAP/2) // Eg: ((224-32)-2)/2 = 96. This formula is not 0-based.
+#define HINT_SCANLINE_START_PALETTE_SWAP (224 - (HUD_HEIGHT*8)) // This formula is not 0-based.
+#define HINT_SCANLINE_MID_SCREEN (HINT_SCANLINE_START_PALETTE_SWAP/2) // Eg: ((224-32)-2)/2 = 96. This formula is not 0-based.
 
 #define HUD_RELOAD_WEAPON_PALS_AT_HINT F
 #define HUD_RELOAD_WEAPON_PALS_AT_VINT T

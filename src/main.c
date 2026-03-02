@@ -14,6 +14,7 @@
 #include <pal.h>
 #include <sprite_eng.h>
 #include <tools.h>
+#include <string.h>
 #include "utils.h"
 #include "consts.h"
 #include "consts_ext.h"
@@ -47,7 +48,17 @@ int main (bool hardReset)
 
     // Ensure our constants has correct values
     if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS) {
-        KLog_U2("RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS mismatch. Current: ", RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, ". Expected: ", (u32)vdpSpriteCache);
+        char str[64];
+        char tmp[16];
+        strcpy(str, "Used: 0x");
+        uintToStr(RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, tmp, 1);
+        strcat(str, tmp);
+        strcat(str, ". New: 0x");
+        uintToStr((u32)vdpSpriteCache, tmp, 1);
+        strcat(str, tmp);
+        VDP_drawText(STRINGIFY(RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS), 1, 1);
+        VDP_drawText("In consts_ext.h mismatch", 1, 2);
+        VDP_drawText(str, 1, 3);
         return 0;
     }
     // TODO: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
@@ -122,7 +133,7 @@ int main (bool hardReset)
     VDP_setHIntCounter(HINT_SCANLINE_MID_SCREEN - 1); // -1 because scanline counter is 0-based
     SYS_setHIntCallback(hint_change_bg_callback);
     #else
-    VDP_setHIntCounter(HINT_SCANLINE_START_PAL_SWAP - 1); // -1 because scanline counter is 0-based
+    VDP_setHIntCounter(HINT_SCANLINE_START_PALETTE_SWAP - 1); // -1 because scanline counter is 0-based
     SYS_setHIntCallback(hint_load_hud_pals_callback);
     #endif
     VDP_setHInterrupt(TRUE);

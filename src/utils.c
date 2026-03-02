@@ -1,9 +1,10 @@
-#include "utils.h"
+#include <types.h>
 #include <vdp.h>
 #include <vdp_bg.h>
 #include <sys.h>
 #include <tools.h>
 #include <timer.h>
+#include "utils.h"
 #include "consts.h"
 
 FORCE_INLINE void turnOffVDP (u8 reg01)
@@ -70,46 +71,108 @@ FORCE_INLINE void waitVCounterReg (u16 n)
     );
 }
 
-FORCE_INLINE void setupDMAForPals (u16 len, u32 fromAddr)
+FORCE_INLINE void waitVInt_vtimer ()
 {
-/*
-    vu16* pw = (vu16*) VDP_CTRL_PORT;
+    // Casting to u8* allows to use cmp.b instead of cmp.l, by using vtimerPtr+3 which is where the first byte of vtimer is located
+    u8* vtimerPtr = (u8*)&vtimer + 3;
+    // Loops while vtimer keeps unchanged. Exits loop when it changes, meaning we are in VBlank.
+    u8 currVal;
+	__asm volatile (
+        "move.b  (%1), %0\n\t" // load current vtimer's lower byte value
+        "1:\n\t"
+        "cmp.b   (%1), %0\n\t" // cmp: %0 - (%1) => dN - (aN)
+        "beq.s   1b"           // loop back if equal
+        : "=d" (currVal)
+        : "a" (vtimerPtr)
+        :
+    );
+}
+
+// Declare this outside the function. Use static so it goes into RAM.
+// Pre allocated op codes for dma high and low source length.
+static u16 dma_len_cmds[2] = {0x9300, 0x9400};
+// Pre allocated op codes for dma mid and low source address.
+static u16 dma_addr_cmds[2] = {0x9600, 0x9500};
+
+void setupDMAandTrigger (u16 len, u32 fromAddr, u32 cmdAddr)
+{
+    /*vu16* pw = (vu16*) VDP_CTRL_PORT;
+
     // Setup DMA length (in word here)
-    *pw = 0x9300 + (len & 0xff); // low
-    *pw = 0x9400 + ((len >> 8) & 0xff); // high
+    *pw = 0x9300 | (u8)len; // low
+    *pw = 0x9400 | (u8)(len >> 8); // high
     // Setup DMA address
-    // fromAddr already comes >> 1
-    *pw = 0x9500 + (fromAddr & 0xff); // low
-    fromAddr >>= 8;
-    *pw = 0x9600 + (fromAddr & 0xff); // mid
-    fromAddr >>= 8;
-    *pw = 0x9700 + (fromAddr & 0x7f); // high
-*/
-    vu32* dmaCtrl_ptr = (vu32*) VDP_CTRL_PORT;
+    fromAddr >>= 1;
+    *pw = 0x9500 | (u8)fromAddr; // low
+    *pw = 0x9600 | (u8)(fromAddr >> 8); // mid
+    *pw = 0x9700 | (u8)((fromAddr >> 16) & 0x7f); // high
+
+    // Trigger DMA command strategy A: we just fire the command
+    *(vu32*)pw = cmdAddr;
+    // Or:
+    // Trigger DMA command strategy B: send the command from memory to avoid possible failure on some MD
+    // vu32 cmdbuf[1] = {cmdAddr}; // Force storing DMA command into memory
+    // u16* cmdbufp = (u16*)cmdbuf; // Then force issuing DMA from memory word operand
+    // *pw = *cmdbufp++; // First command word
+    // *pw = *cmdbufp; // Second command word
+    */
+
+    vu32* ctrl_port = (vu32*) VDP_CTRL_PORT;
+    u16* dma_cmds;
     __asm volatile (
+        // This DMA length setup is the normal one without movep
         // Setup DMA length (in long word here)
-        "move.w	  %[dn],-(%%sp)\n\t"          // save len into SP for later retrievement as len >> 8
+        "move.w   %[dn],-(%%sp)\n\t"          // save len into SP for later retrievement as len >> 8
+        "andi.w   #0x00ff,%[dn]\n\t"
         "ori.w    #0x9300,%[dn]\n\t"          // dn: 0x9300 | len
         "swap     %[dn]\n\t"                  // dn: (0x9300 | len) << 16
         "move.w   #0x9400,%[dn]\n\t"          // dn: 0x9400
-        "move.b	  (%%sp)+,%[dn]\n\t"          // dn: 0x9400 | ((u8)len >> 8)
-        "move.l   %[dn],(%[dmaCtrl_ptr])\n\t" // *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | ((u8)len >> 8));
+        "move.b   (%%sp)+,%[dn]\n\t"          // dn: 0x9400 | ((u8)len >> 8)
+        "move.l   %[dn],(%[ctrl_port])\n\t"   // *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8));
+
+        // This DMA length setup uses movep
+        // Setup DMA length (in long word here)
+        // "lea      %[dma_len_cmds],%[dma_cmds]\n\t"   // dma_cmds = {0x94, 0x00, 0x93, 0x00}
+        // "movep.w  %[dn],(1,%[dma_cmds])\n\t"         // dma_cmds[1] = (u8)(len >> 8); dma_cmds[3] = (u8)(len)
+        // "move.l   (%[dma_cmds]),(%[ctrl_port])\n\t"  // *((vu32*) VDP_CTRL_PORT) = ((0x9400 | (u8)(len >> 8)) << 16) | (0x9300 | (u8)len);
+
+        // This DMA is the normal one without movep optimization
         // Setup DMA address low and mid
+        "lsr.l    #1,%[fromAddr]\n\t"         // fromAddr >> 1
         "move.w   %[fromAddr],-(%%sp)\n\t"    // save fromAddr into SP for later retrievement as (u8)fromAddr >> 8
         "move.w   #0x9500,%[dn]\n\t"          // dn: 0x9500
         "or.b     %[fromAddr],%[dn]\n\t"      // dn: 0x9500 | (u8)fromAddr
         "swap     %[dn]\n\t"                  // dn: (0x9500 | (u8)fromAddr) << 16
         "move.w   #0x9600,%[dn]\n\t"          // dn: 0x9600
         "or.b     (%%sp)+,%[dn]\n\t"          // dn: 0x9600 | (u8)(fromAddr >> 8)
-        "move.l   %[dn],(%[dmaCtrl_ptr])\n\t" // *((vu16*) VDP_CTRL_PORT) = ((0x9500 | (u8)fromAddr) << 16) | (0x9600 | ((u8)fromAddr >> 8)); // low and mid
+        "move.l   %[dn],(%[ctrl_port])\n\t"   // *((vu32*) VDP_CTRL_PORT) = ((0x9500 | (u8)fromAddr) << 16) | (0x9600 | ((u8)fromAddr >> 8)); // low and mid
         // Setup DMA address high
-        "move.l   %[fromAddr],%[dn]\n\t"      // dn: fromAddr
-        "swap     %[dn]\n\t"                  // dn: fromAddr >> 16
-        "andi.w   #0x007f,%[dn]\n\t"          // dn: (fromAddr >> 16) & 0x7f
-        "ori.w    #0x9700,%[dn]\n\t"          // dn: 0x9700 | ((fromAddr >> 16) & 0x7f)
-        "move.w   %[dn],(%[dmaCtrl_ptr])"     // *((vu16*) VDP_CTRL_PORT) = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
-        : [dn] "+d" (len), [fromAddr] "+d" (fromAddr)
-        : [dmaCtrl_ptr] "a" (dmaCtrl_ptr)
+        "swap     %[fromAddr]\n\t"               // fromAddr >> 16
+        "andi.w   #0x007f,%[fromAddr]\n\t"       // (fromAddr >> 16) & 0x7f
+        "ori.w    #0x9700,%[fromAddr]\n\t"       // 0x9700 | ((fromAddr >> 16) & 0x7f)
+        "move.w   %[fromAddr],(%[ctrl_port])\n"  // *((vu16*) VDP_CTRL_PORT) = 0x9700 | ((fromAddr >> 16) & 0x7f); // high
+
+        // This DMA is using movep
+        // Setup DMA address
+        // "lea       %[dma_addr_cmds],%[dma_cmds]\n\t"  // dma_cmds = {0x96, 0x00, 0x95, 0x00}
+        // "lsr.l     #1,%[fromAddr]\n\t"         // fromAddr >> 1
+        // "movep.w   %[fromAddr],(1,%[dma_cmds])\n\t"   // dma_cmds[1] = (u8)(fromAddr >> 8); dma_cmds[3] = (u8)(fromAddr)
+        // "move.l    (%[dma_cmds]),(%[ctrl_port])\n\t"  // *((vu32*) VDP_CTRL_PORT) = dma_cmds;
+        // "swap      %[fromAddr]\n\t"            // move high address at lower word: fromAddr >> 16
+        // "move.w    #0x977f,%[dn]\n\t"          // load high address op code and mask lowest 7 bits
+        // "and.b     %[fromAddr],%[dn]\n\t"      // mask high address lowest 7 bits and clear bits 8th to 16th
+        // "move.w    %[dn],(%[ctrl_port])\n\t"   // *((vu16*) VDP_CTRL_PORT) = 0x9700 | (u8)((fromAddr >> 16) & 0x7f);
+
+        // Trigger DMA
+        // Force storing and issuing DMA command into and from memory (avoid possible failure on some MD)
+        // "move.l  %[cmdAddr],-(%%sp)\n\t"
+        // "move.w  (%%sp)+,(%[ctrl_port])\n\t"
+        // "move.w  (%%sp)+,(%[ctrl_port])"
+        // Faster but may fail in some MD
+        "move.l  %[cmdAddr],(%[ctrl_port])"    // *((vu32*) VDP_CTRL_PORT) = cmdAddr;
+
+        : [dn] "+d" (len), [fromAddr] "+d" (fromAddr), [dma_cmds] "=a" (dma_cmds)
+        : [ctrl_port] "a" (ctrl_port), [cmdAddr] "r" (cmdAddr), [dma_len_cmds] "m" (dma_len_cmds), [dma_addr_cmds] "m" (dma_addr_cmds)
         :
     );
 }
