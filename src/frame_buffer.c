@@ -314,8 +314,8 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
     // This block of code sets top and bottom tilemap entries.
     u16 h2_aux2 = h2;
     __asm volatile (
-        // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits so 
-        // we can use it as a multiple of the block size (8 bytes) we'll jump into
+        // Offset h2 comes already multiplied by 8, great, but we need to clear the first 3 bits, 
+        // so we can use it as a multiple of the block size (8 bytes) we'll jump into.
         "    andi.w  %[CLEAR_BITS_OFFSET],%[h2]\n" // (h2 & ~(8-1))
         // Jump into table using h2
         "    jmp     .wvl_table_%=(%%pc,%[h2].w)\n"
@@ -337,7 +337,7 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
         ".endr\n"
 
         // Setup for top and bottom tilemap entries
-        "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7)
+        "    andi.w  #7,%[h2_aux]\n" // h2_aux = (h2 & 7) <-- this is to offset the tile idx
         "    add.w   %[h2_aux],%[tileAttrib]\n" // tileAttrib += (h2 & 7);
 
         // Top tilemap entry
@@ -356,9 +356,14 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 
         // Bottom tilemap entry
         "    or.w    %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
-        "    neg.w   %[h2]\n"
-        "    addi.w  %[H2_BOTTOM],%[h2]\n" // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
-        "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)"
+        // This takes 26 cycles
+        // "    neg.w   %[h2]\n"
+        // "    addi.w  %[H2_BOTTOM],%[h2]\n" // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
+        // "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)"
+        // This takes 24 cycles
+        "    suba.w  %[h2],%[tilemap]\n"
+        "    lea     %c[H2_BOTTOM](%[tilemap]),%[tilemap]\n"
+        "    move.w  %[tileAttrib],(%[tilemap])"
 
         : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 

@@ -33,8 +33,17 @@
     "    .endif\n" \
     "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n" \
     "       movem.l %%d0-%%d7,-(%%a0)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 9\n" \
+    "       movem.l %%d0-%%d7/%%a1,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 10\n" \
+    "       movem.l %%d0-%%d7/%%a1-%%a2,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 11\n" \
+    "       movem.l %%d0-%%d7/%%a1-%%a3,-(%%sp)\n" \
     "    .endif\n"
-    // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
+        // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
 NO_INLINE void clear_buffer_halved ()
 {
@@ -111,8 +120,17 @@ NO_INLINE void clear_buffer_halved ()
     "    .endif\n" \
     "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n" \
     "       movem.l %%d0-%%d7,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 9\n" \
+    "       movem.l %%d0-%%d7/%%a0,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 10\n" \
+    "       movem.l %%d0-%%d7/%%a0-%%a1,-(%%sp)\n" \
+    "    .endif\n" \
+    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 11\n" \
+    "       movem.l %%d0-%%d7/%%a0-%%a2,-(%%sp)\n" \
     "    .endif\n"
-    // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
+        // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
 NO_INLINE void clear_buffer_halved_sp ()
 {
