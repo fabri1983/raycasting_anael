@@ -20,7 +20,7 @@ void fb_free_frame_buffer ()
     memsetU32((u32*)RAM_FIXED_FRAME_BUFFER_ADDRESS, 0, (VERTICAL_ROWS*TILEMAP_COLUMNS*2)/2);
 }
 
-NO_INLINE void clear_buffer_no_usp ()
+NO_INLINE void clear_buffer ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	__asm volatile (
@@ -74,78 +74,17 @@ NO_INLINE void clear_buffer_no_usp ()
         "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n"
         "       movem.l %%d0-%%d7,-(%%a0)\n"
         "    .endif\n"
-        // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
+        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 9\n"
+        "       movem.l %%d0-%%d7/%%a1,-(%%sp)\n"
+        "    .endif\n"
+        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 10\n"
+        "       movem.l %%d0-%%d7/%%a1-%%a2,-(%%sp)\n"
+        "    .endif\n"
+        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 11\n"
+        "       movem.l %%d0-%%d7/%%a1-%%a3,-(%%sp)\n"
+        "    .endif\n"
+            // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 		".endr\n"
-		// Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		:
-		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
-		: "memory"
-	);
-}
-
-NO_INLINE void clear_buffer ()
-{
-	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
-	__asm volatile (
-		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
-		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-        // Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
-		"    move.l  %%sp,%%usp\n"
-		// Makes a0 points to the memory location at the framebuffer's end 
-        "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
-		// Clear registers
-		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
-		"    move.l  %%d0,%%d1\n"
-		"    move.l  %%d0,%%d2\n"
-		"    move.l  %%d0,%%d3\n"
-		"    move.l  %%d0,%%d4\n"
-		"    move.l  %%d0,%%d5\n"
-		"    move.l  %%d0,%%d6\n"
-		"    move.l  %%d0,%%d7\n"
-		"    move.l  %%d0,%%a1\n"
-		"    move.l  %%d0,%%a2\n"
-		"    move.l  %%d0,%%a3\n"
-		"    move.l  %%d0,%%a4\n"
-		"    move.l  %%d0,%%a5\n"
-		"    move.l  %%d0,%%a6\n"
-        "    move.l  %%d0,%%a7\n"
-        // Iterate over all rows
-        ".set regs, 15\n"
-		".rept %c[_VERTICAL_ROWS]*2\n"
-		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
-        "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n"
-        "    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n"
-        "    .endr\n"
-        // NOTE: if reminder from the division isn't 0 you need to add the missing operations.
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) > 0 && ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) < 3\n"
-        "       .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n"
-        "       move.l  %%d0,-(%%a0)\n"
-        "       .endr\n"
-        "    .endif\n"
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 3\n"
-        "       movem.l %%d0-%%d2,-(%%a0)\n"
-        "    .endif\n"
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 4\n"
-        "       movem.l %%d0-%%d3,-(%%a0)\n"
-        "    .endif\n"
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 5\n"
-        "       movem.l %%d0-%%d4,-(%%a0)\n"
-        "    .endif\n"
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 6\n"
-        "       movem.l %%d0-%%d5,-(%%a0)\n"
-        "    .endif\n"
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 7\n"
-        "       movem.l %%d0-%%d6,-(%%a0)\n"
-        "    .endif\n"
-        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n"
-        "       movem.l %%d0-%%d7,-(%%a0)\n"
-        "    .endif\n"
-        // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
-		".endr\n"
-        // Restore SP
-		"    move.l  %%usp,%%sp\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
@@ -213,7 +152,16 @@ NO_INLINE void clear_buffer_sp ()
         "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n"
         "       movem.l %%d0-%%d7,-(%%sp)\n"
         "    .endif\n"
-        // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
+        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 9\n"
+        "       movem.l %%d0-%%d7/%%a0,-(%%sp)\n"
+        "    .endif\n"
+        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 10\n"
+        "       movem.l %%d0-%%d7/%%a0-%%a1,-(%%sp)\n"
+        "    .endif\n"
+        "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 11\n"
+        "       movem.l %%d0-%%d7/%%a0-%%a2,-(%%sp)\n"
+        "    .endif\n"
+            // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 		".endr\n"
 		// Restore SP
 		"    move.l  %%usp,%%sp\n"

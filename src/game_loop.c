@@ -60,13 +60,7 @@ static void clearBuffer ()
     #if RENDER_MIRROR_PLANES_USING_VDP_VRAM
         // ramebuffer is cleared while VRAM to VRAM copy async ops are running. See fb_mirror_planes_in_VRAM().
     #else
-        #if RENDER_CLEAR_FRAMEBUFFER_NO_USP
-            #if RENDER_HALVED_PLANES
-            clear_buffer_halved_no_usp();
-            #else
-            clear_buffer_no_usp();
-            #endif
-        #elif RENDER_CLEAR_FRAMEBUFFER
+        #if RENDER_CLEAR_FRAMEBUFFER
             #if RENDER_HALVED_PLANES
             clear_buffer_halved();
             #else

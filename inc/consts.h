@@ -32,9 +32,7 @@
 // Render only half bottom region of both planes to later mirror them using one of the many available strategies.
 #define RENDER_HALVED_PLANES RENDER_MIRROR_PLANES_USING_CPU_RAM | RENDER_MIRROR_PLANES_USING_VDP_VRAM | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT | RENDER_MIRROR_PLANES_USING_VSCROLL_IN_HINT_MULTI_CALLBACKS
 
-// Doesn't save registers in the stack so call it at the begin of game loop. It doesn't use the USP.
-#define RENDER_CLEAR_FRAMEBUFFER_NO_USP F
-// Doesn't save registers in the stack so call it at the begin of game loop. Overwrites USP so be sure is not used by any interruption callback.
+// Doesn't save registers in the stack so call it at the begin of game loop.
 #define RENDER_CLEAR_FRAMEBUFFER F
 // Slightly faster with the use of SP as pointer. Doesn't save registers in the stack so call it at the begin of game loop. Overwrites USP so be sure is not used by any interruption callback.
 #define RENDER_CLEAR_FRAMEBUFFER_WITH_SP T

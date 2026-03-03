@@ -6,7 +6,7 @@
 #include "consts_ext.h"
 #include "utils.h"
 
-#define MOVEM_OR_MOVES_HALVED_NO_USP \
+#define MOVEM_OR_MOVES_HALVED \
     "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n" \
     "    movem.l %%d0-%%d7/%%a1-%%a6,-(%%a0)\n" \
     "    .endr\n" \
@@ -36,7 +36,7 @@
     "    .endif\n"
     // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 
-NO_INLINE void clear_buffer_halved_no_usp ()
+NO_INLINE void clear_buffer_halved ()
 {
     // We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
     // Only half Plane A and half Plane B.
@@ -65,7 +65,7 @@ NO_INLINE void clear_buffer_halved_no_usp ()
         ".set regs, 14\n"
 		".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
-            MOVEM_OR_MOVES_HALVED_NO_USP
+            MOVEM_OR_MOVES_HALVED
 		".endr\n"
         // Accomodate to locate at the end of frame_buffer's Plane A region
         "    lea     -%c[TILEMAP_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
@@ -73,95 +73,12 @@ NO_INLINE void clear_buffer_halved_no_usp ()
         // Iterate over bottom half rows
         ".rept %c[_VERTICAL_ROWS]/2\n"
 		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
-            MOVEM_OR_MOVES_HALVED_NO_USP
+            MOVEM_OR_MOVES_HALVED
 		".endr\n"
 		// Restore all saved registers
 		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
 		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
-		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
-		: "memory"
-	);
-}
-
-#define MOVEM_OR_MOVES_HALVED \
-    "    .rept (%c[TILEMAP_COLUMNS_BYTES] / (regs*4))\n" \
-    "    movem.l %%d0-%%d7/%%a1-%%a7,-(%%a0)\n" \
-    "    .endr\n" \
-    /* NOTE: if reminder from the division isn't 0 you need to add the missing operations. */ \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) > 0 && ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) < 3\n" \
-    "       .rept ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4)\n" \
-    "       move.l  %%d0,-(%%a0)\n" \
-    "       .endr\n" \
-    "    .endif\n" \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 3\n" \
-    "       movem.l %%d0-%%d2,-(%%a0)\n" \
-    "    .endif\n" \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 4\n" \
-    "       movem.l %%d0-%%d3,-(%%a0)\n" \
-    "    .endif\n" \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 5\n" \
-    "       movem.l %%d0-%%d4,-(%%a0)\n" \
-    "    .endif\n" \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 6\n" \
-    "       movem.l %%d0-%%d5,-(%%a0)\n" \
-    "    .endif\n" \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 7\n" \
-    "       movem.l %%d0-%%d6,-(%%a0)\n" \
-    "    .endif\n" \
-    "    .if ((%c[TILEMAP_COLUMNS_BYTES] %% (regs*4)) / 4) == 8\n" \
-    "       movem.l %%d0-%%d7,-(%%a0)\n" \
-    "    .endif\n"
-    // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
-
-NO_INLINE void clear_buffer_halved ()
-{
-	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
-    // Only half Plane A and half Plane B.
-	__asm volatile (
-		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
-		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
-        // Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
-		"    move.l  %%sp,%%usp\n"
-		// Makes a0 points to the memory location at the framebuffer's end 
-        "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
-		// Clear registers
-		"    moveq   #0,%%d0\n" // tile index 0 with all attributes in 0
-		"    move.l  %%d0,%%d1\n"
-		"    move.l  %%d0,%%d2\n"
-		"    move.l  %%d0,%%d3\n"
-		"    move.l  %%d0,%%d4\n"
-		"    move.l  %%d0,%%d5\n"
-		"    move.l  %%d0,%%d6\n"
-		"    move.l  %%d0,%%d7\n"
-		"    move.l  %%d0,%%a1\n"
-		"    move.l  %%d0,%%a2\n"
-		"    move.l  %%d0,%%a3\n"
-		"    move.l  %%d0,%%a4\n"
-		"    move.l  %%d0,%%a5\n"
-		"    move.l  %%d0,%%a6\n"
-        "    move.l  %%d0,%%a7\n"
-        // frame_buffer's Plane B region (actually at the end)
-        // Iterate over bottom half rows
-        ".set regs, 15\n"
-		".rept %c[_VERTICAL_ROWS]/2\n"
-		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
-            MOVEM_OR_MOVES_HALVED
-		".endr\n"
-        // Accomodate to locate at the end of frame_buffer's Plane A region
-        "    lea     -%c[TILEMAP_COLUMNS_BYTES]*%c[_VERTICAL_ROWS]/2(%%a0),%%a0\n"
-        // frame_buffer's Plane A region (actually at the end)
-        // Iterate over bottom half rows
-        ".rept %c[_VERTICAL_ROWS]/2\n"
-		    // Clear all the bytes of current row by using regs registers with long word (4 bytes) access.
-            MOVEM_OR_MOVES_HALVED
-		".endr\n"
-        // Restore SP
-		"    move.l  %%usp,%%sp\n"
-		// Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
-		:
-		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
 		: "memory"
 	);

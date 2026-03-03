@@ -71,7 +71,7 @@ int main (bool hardReset)
     title_vscroll_2_planes_show();
     #endif
 
-    // Restart DMA with this settings
+    // Restart DMA with these settings
     DMA_initEx(DMA_QUEUE_SIZE_MIN, 0, 0);
 
     // ----------------------

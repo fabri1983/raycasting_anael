@@ -35,10 +35,23 @@ public class Tiles_Pair_Generator {
         return sb.append(i).append('-').append(j).toString();
     }
 
+    /**
+     * 
+     * @param framebufferPlaneA tilemap data for Plane A
+     * @param framebufferPlaneB tilemap data for Plane B (which will be offseted by 4 pixels on SGDK side)
+     * @param tilePairMap map
+     */
     private static void trackTilePairsBetweenPlanes(int[] framebufferPlaneA, int[] framebufferPlaneB, Map<String, Integer> tilePairMap) {
         for (int i = 0; i < Consts.VERTICAL_ROWS * Consts.TILEMAP_COLUMNS; i++) {
-            // Construct the key using the bitmask TILE_INDEX_MASK which only keeps the tile index data
-            String key = createTrackingKey(framebufferPlaneA[i] & TILE_INDEX_MASK, framebufferPlaneB[i] & TILE_INDEX_MASK);
+
+            int tile_idx_A = framebufferPlaneA[i] & TILE_INDEX_MASK;
+            int tile_idx_B = framebufferPlaneB[i] & TILE_INDEX_MASK;
+
+            // We will detect mirrored combination of 2 tiles. Eg: 1-89 is same than 89-1.
+            // Just create the key with the first smaller tile index followed by the bigger tile idx
+            String key = createTrackingKey(Math.min(tile_idx_A, tile_idx_B), Math.max(tile_idx_A, tile_idx_B));
+
+            // mark the key as existent
             tilePairMap.put(key, 1);
         }
     }

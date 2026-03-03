@@ -12,11 +12,9 @@
 void fb_allocate_frame_buffer ();
 void fb_free_frame_buffer ();
 
-void clear_buffer_no_usp ();
 void clear_buffer ();
 void clear_buffer_sp ();
 
-void clear_buffer_halved_no_usp ();
 void clear_buffer_halved ();
 void clear_buffer_halved_sp ();
 
