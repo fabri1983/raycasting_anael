@@ -277,7 +277,7 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
         #elif H2_FOR_TOP_ENTRY == 8
         "    lsl.w   #3,%[h2]\n"
         #else
-        "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
+        "    mulu.w  %[_H2_FOR_TOP_ENTRY],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
         #endif
         #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
         //"    move.w  %[tileAttrib],(%[tilemap],%[h2])\n" // WE DON'T NEED THIS ANYMORE NOW THAT WE STORE IT IN top_entries[]
@@ -287,9 +287,10 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
 
         // Bottom tilemap entry
         "    ori.w   %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
-        "    neg.w   %[h2]\n"
-        "    addi.w  %[H2_BOTTOM],%[h2]\n" // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
-        "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)"
+        // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
+        "    suba.w  %[h2],%[tilemap]\n"
+        "    lea     %c[H2_BOTTOM](%[tilemap]),%[tilemap]\n"
+        "    move.w  %[tileAttrib],(%[tilemap])"
 
         : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux)
           #if RENDER_MIRROR_PLANES_USING_CPU_RAM || RENDER_MIRROR_PLANES_USING_VDP_VRAM
@@ -297,7 +298,7 @@ FORCE_INLINE void write_vline_halved (u16 h2, u16 tileAttrib)
           #endif
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
-          [H2_TOP] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" (H2_FOR_BOTTOM_ENTRY),
+          [_H2_FOR_TOP_ENTRY] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" (H2_FOR_BOTTOM_ENTRY),
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
         :
     );
@@ -472,7 +473,7 @@ FORCE_INLINE void fb_mirror_planes_in_VRAM ()
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
-        doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
+        doDma_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pA_bottom_half_start);
         pA_bottom_half_start += (TILEMAP_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer
@@ -484,7 +485,7 @@ FORCE_INLINE void fb_mirror_planes_in_VRAM ()
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane B row
-        doDMA_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
+        doDma_VRAM_COPY_fixed_args(vdpCtrl_ptr_l, PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2, 
             VDP_DMA_VRAMCOPY_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES - i*PLANE_COLUMNS*2), TILEMAP_COLUMNS*2);
         clear_buffer_row(pB_bottom_half_start);
         pB_bottom_half_start += (TILEMAP_COLUMNS)/2; // jump into next row. Is /2 because we are manipulating a u32* pointer

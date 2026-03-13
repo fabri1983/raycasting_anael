@@ -38,18 +38,12 @@
 //#pragma GCC optimize ("unroll-loops")
 #pragma GCC optimize ("no-unroll-loops")
 
-int main (bool hardReset)
+static bool checkConstantsCorrectValues ()
 {
-	// On soft reset we do a hard reset
-	if (!hardReset) {
-		VDP_waitDMACompletion(); // avoids some glitches as per Genesis Manual's Addendum section
-		SYS_hardReset();
-	}
+    char str[64];
+    char tmp[16];
 
-    // Ensure our constants has correct values
     if (((u32)vdpSpriteCache) != RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS) {
-        char str[64];
-        char tmp[16];
         strcpy(str, "Used: 0x");
         uintToStr(RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, tmp, 1);
         strcat(str, tmp);
@@ -59,9 +53,25 @@ int main (bool hardReset)
         VDP_drawText(STRINGIFY(RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS), 1, 1);
         VDP_drawText("In consts_ext.h mismatch", 1, 2);
         VDP_drawText(str, 1, 3);
-        return 0;
+        return FALSE;
     }
+
     // TODO: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
+
+    return TRUE;
+}
+
+int main (bool hardReset)
+{
+	// On soft reset we do a hard reset
+	if (!hardReset) {
+		VDP_waitDMACompletion(); // avoids some glitches as per Genesis Manual's Addendum section
+		SYS_hardReset();
+	}
+
+    // Ensure our constants has correct values
+    if (!checkConstantsCorrectValues())
+        return 0;
 
     #if DISPLAY_LOGOS_AT_START
     displayTeddyBearLogo();

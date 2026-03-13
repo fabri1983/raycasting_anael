@@ -267,19 +267,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // NOTE: DMA length low has to be set every time before triggering the DMA command
 
     // Setup DMA address ONLY ONCE
-    u32 from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
-    from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
+    u32 from_A = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
+    from_A >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from_A & 0xff); // low address
     //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
+    from_A >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from_A & 0xff); // mid address
+    from_A >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from_A & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane A row
-        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDmaFast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
 
     // Plane B rows
@@ -289,19 +289,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // NOTE: DMA length low has to be set every time before triggering the DMA command
 
     // Setup DMA address ONLY ONCE
-    from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
-    from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
-    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
+    u32 from_B = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + VERTICAL_ROWS*TILEMAP_COLUMNS/2 + 0*TILEMAP_COLUMNS)*2;
+    from_B >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from_B & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from_B & 0xff); // VDP inc step 2 and low address
+    from_B >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from_B & 0xff); // mid address
+    from_B >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from_B & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS/2; ++i) {
         // Plane B row
-        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDmaFast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + HALF_PLANE_ADDR_OFFSET_BYTES + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
 
     #else
@@ -313,19 +313,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // NOTE: DMA length low has to be set every time before triggering the DMA command
 
     // Setup DMA address ONLY ONCE
-    u32 from = RAM_FIXED_FRAME_BUFFER_ADDRESS + 0*TILEMAP_COLUMNS*2;
-    from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
-    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
+    u32 from_A = RAM_FIXED_FRAME_BUFFER_ADDRESS + 0*TILEMAP_COLUMNS*2;
+    from_A >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from_A & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from_A & 0xff); // VDP inc step 2 and low address
+    from_A >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from_A & 0xff); // mid address
+    from_A >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from_A & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane A row
-        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDmaFast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PA_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
 
     // Plane B rows
@@ -335,19 +335,19 @@ FORCE_INLINE void render_DMA_row_by_row_framebuffer ()
     // NOTE: DMA length low has to be set every time before triggering the DMA command
 
     // Setup DMA address ONLY ONCE
-    from = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + 0*TILEMAP_COLUMNS)*2;
-    from >>= 1;
-    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from & 0xff); // low address
-    //*vdpCtrl_ptr_l = 0x8F029500 | (from & 0xff); // VDP inc step 2 and low address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from & 0xff); // mid address
-    from >>= 8;
-    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from & 0x7f); // high address
+    u32 from_B = RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS + 0*TILEMAP_COLUMNS)*2;
+    from_B >>= 1;
+    *(vu16*)vdpCtrl_ptr_l = 0x9500 | (from_B & 0xff); // low address
+    //*vdpCtrl_ptr_l = 0x8F029500 | (from_B & 0xff); // VDP inc step 2 and low address
+    from_B >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9600 | (from_B & 0xff); // mid address
+    from_B >>= 8;
+    *(vu16*)vdpCtrl_ptr_l = 0x9700 | (from_B & 0x7f); // high address
 
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < VERTICAL_ROWS; ++i) {
         // Plane B row
-        doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+        doDmaFast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PB_ADDR + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
     }
 
     #endif

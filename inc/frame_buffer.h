@@ -4,9 +4,9 @@
 #include <types.h>
 #include "consts.h"
 
-// Offset to access top entry. *2 for byte convertion.
+// Offset to access top entry. /8 because h2 comes as multiple of 8. *2 for byte convertion.
 #define H2_FOR_TOP_ENTRY (TILEMAP_COLUMNS/8)*2
-// Offset to access bottom entry. *2 for byte convertion.
+// Offset to access bottom entry. No need for /8 becuase h2 is already normalized at this point. *2 for byte convertion.
 #define H2_FOR_BOTTOM_ENTRY ((VERTICAL_ROWS-1)*TILEMAP_COLUMNS)*2
 
 void fb_allocate_frame_buffer ();

@@ -195,12 +195,12 @@ static void dmaRowByRowTitle256cHalvedTilemaps ()
     #pragma GCC unroll 256 // Always set a big number since it does not accept defines
     for (u16 i=0; i < TITLE_256C_HEIGHT/8; ++i) {
         // Plane A row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, 
+        doDmaFast_fixed_args(vdpCtrl_ptr_l, 
             TITLE_HALVED_TILEMAP_A_ADDRESS + i*((TITLE_256C_WIDTH/8)/2)*2, 
             VDP_DMA_VRAM_ADDR(PLANE_A_ADDR + i*64*2), 
             ((TITLE_256C_WIDTH/8)/2));
         // Plane B row
-        doDMAfast_fixed_args(vdpCtrl_ptr_l, 
+        doDmaFast_fixed_args(vdpCtrl_ptr_l, 
             TITLE_HALVED_TILEMAP_B_ADDRESS + i*((TITLE_256C_WIDTH/8)/2)*2, 
             VDP_DMA_VRAM_ADDR(PLANE_B_ADDR + 2 + i*64*2), 
             ((TITLE_256C_WIDTH/8)/2));

@@ -92,7 +92,7 @@ FORCE_INLINE void waitVInt_vtimer ()
 // Pre allocated space for op codes for DMA mid and low source address, and re use the same space for DMA high and low source length.
 static u8 dma_cmds[4] = {0};
 
-FORCE_INLINE void setupDMAandTrigger (u16 len, u32 fromAddr, u32 cmdAddr)
+FORCE_INLINE void doDmaFast (u16 len, u32 fromAddr, u32 cmdAddr)
 {
     /*vu16* pw = (vu16*) VDP_CTRL_PORT;
 

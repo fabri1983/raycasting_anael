@@ -32,7 +32,7 @@ You can find me in the SGDK Discord server: https://discord.gg/xmnBWQS
   `write_vline()` => `~1% saved in cpu usage` depending on the inline ASM constraints.
 - Replaced `dirX` and `dirY` calculation in relation to the angle by two tables defined in `tab_dir_xy.h` => `some cycles saved`.
 - Replaced `DMA_doDmaFast()` by `DMA_queueDmaFast()` for tilemaps => `1% saved in cpu usage` but consumes all VBlank period and runs into next display period.
-- Replaced `DMA_doDmaFast()` by custom `setupDMAandTrigger()` for tilesets => faster DMA setup makes XGM2 music not to slow down.
+- Replaced `DMA_doDmaFast()` by custom `doDmaFast()` for tilesets => faster DMA setup makes XGM2 music not to slow down.
 - Changes in `tab_wall_div.h` so the start of the vertical line to be written is calculated ahead of time => `1% saved in cpu usage`.
 - Replaced variable `d` used for color calculation by two tables defined in `tab_color_d8_1.h` => `2% saved in cpu usage`.
   There is also a replacement for `tab_color_d8_1[]` by using tables in `tab_color_d8_pals_shft.h` in asm which is slightly faster.

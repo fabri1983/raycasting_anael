@@ -543,7 +543,8 @@ static void do_stepping (u16 posX, u16 posY, u16 deltaDistX, u16 deltaDistY, u16
 
     // Now the actual DDA starts. It's a loop that increments the ray in 1 square every time, until a wall is hit.
     //#pragma GCC unroll 0 // do not unroll
-	for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
+	//for (u16 n = STEP_COUNT_LOOP-1; n != 0xFFFF; n--) {
+    for (u16 n = 0; n < STEP_COUNT_LOOP; ++n) {
 
         // Jump into next map square, either in X or Y direction
 
@@ -593,22 +594,25 @@ static void hitOnSideX (u16 sideDistX, u16 mapY, u16 posY, s16 rayDirAngleY)
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
 
     // C version
-    // u16 tileAttrib = tab_color_d8_1_X_pals_shft[2*sideDistX + (mapY&1)]; // *2 because each element has one value for (mapY&1)=0 and other for (mapY&1)=1
     // u16 h2 = tab_wall_div[sideDistX]; // height halved
+    // u16 tileAttrib = tab_color_d8_1_X_pals_shft[sideDistX*2 + (mapY&1)]; // *2 because each element has one value for (mapY&1)=0 and other for (mapY&1)=1
 
     // ASM version
+    u16* a_reg = (u16*)tab_wall_div;
     u16 tileAttrib;
     u16 h2;
     __asm volatile (
-        "andi.w  #1,%[mapY]\n\t"                        // mapY &= 1
-        "add.w   %[sideDistX],%[sideDistX]\n\t"         // sideDistX *= 2 (discern between element for (mapY&1)=0 and element for (mapY&1)=1)
-        "move.w  (%[tab_wall_div],%[sideDistX].w),%[h2]\n\t" // h2 = tab_wall_div[sideDistX]
-        "add.w   %[mapY],%[sideDistX]\n\t"              // index = 2*sideDistX + (mapY & 1)
-        "add.w   %[sideDistX],%[sideDistX]\n\t"         // byte offset (word stride)
-        "lea     %c[tab_color_mem],%[tab_wall_div]\n\t" // this way we save one register
-        "move.w  (%[tab_wall_div],%[sideDistX].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
-        : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistX] "+d" (sideDistX), [mapY] "+d" (mapY)
-        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_X_pals_shft)
+        "\n#NO_APP\n\t" // Let's the optimization script see this block
+        "andi.w  #1,%[mapY]\n\t"                       // mapY &= 1
+        "add.w   %[sideDistX],%[sideDistX]\n\t"        // sideDistX *= 2 (discern between element for (mapY&1)=0 and element for (mapY&1)=1)
+        "move.w  (%[a_reg],%[sideDistX].w),%[h2]\n\t"  // h2 = tab_wall_div[sideDistX]
+        "lea     %c[tab_color_mem],%[a_reg]\n\t"       // this way we save one register
+        "add.w   %[mapY],%[sideDistX]\n\t"             // index = 2*sideDistX + (mapY & 1)
+        "add.w   %[sideDistX],%[sideDistX]\n\t"        // byte offset (word stride)
+        "move.w  (%[a_reg],%[sideDistX].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_X_pals_shft[index]
+        "\n#APP"
+        : [a_reg] "+a" (a_reg), [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistX] "+d" (sideDistX), [mapY] "+d" (mapY)
+        : [tab_color_mem] "s" (tab_color_d8_1_X_pals_shft)
         :
     );
 
@@ -649,22 +653,25 @@ static void hitOnSideY (u16 sideDistY, u16 mapX, u16 posX, s16 rayDirAngleX)
     #elif RENDER_USE_TAB_COLOR_D8_1_PALS_SHIFTED && !RENDER_SHOW_TEXCOORD
 
     // C version
-    // u16 tileAttrib = tab_color_d8_1_Y_pals_shft[2*sideDistY + (mapX&1)]; // *2 because each element has one value for (mapX&1)=0 and other for (mapX&1)=1
     // u16 h2 = tab_wall_div[sideDistY]; // height halved
+    // u16 tileAttrib = tab_color_d8_1_Y_pals_shft[sideDistY*2 + (mapX&1)]; // *2 because each element has one value for (mapX&1)=0 and other for (mapX&1)=1
 
     // ASM version
+    u16* a_reg = (u16*)tab_wall_div;
     u16 tileAttrib;
     u16 h2;
     __asm volatile (
-        "andi.w  #1,%[mapX]\n\t"                        // mapX &= 1
-        "add.w   %[sideDistY],%[sideDistY]\n\t"         // sideDistY *= 2 (discern between element for (mapX&1)=0 and element for (mapX&1)=1)
-        "move.w  (%[tab_wall_div],%[sideDistY].w),%[h2]\n\t" // h2 = tab_wall_div[sideDistY]
-        "add.w   %[mapX],%[sideDistY]\n\t"              // index = 2*sideDistY + (mapX & 1)
-        "add.w   %[sideDistY],%[sideDistY]\n\t"         // index *= 2 (word stride)
-        "lea     %c[tab_color_mem],%[tab_wall_div]\n\t" // this way we save one register
-        "move.w  (%[tab_wall_div],%[sideDistY].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
-        : [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistY] "+d" (sideDistY), [mapX] "+d" (mapX)
-        : [tab_wall_div] "a" (tab_wall_div), [tab_color_mem] "s" (tab_color_d8_1_Y_pals_shft)
+        "\n#NO_APP\n\t" // Let's the optimization script see this block
+        "andi.w  #1,%[mapX]\n\t"                       // mapX &= 1
+        "add.w   %[sideDistY],%[sideDistY]\n\t"        // sideDistY *= 2 (discern between element for (mapX&1)=0 and element for (mapX&1)=1)
+        "move.w  (%[a_reg],%[sideDistY].w),%[h2]\n\t"  // h2 = tab_wall_div[sideDistY]
+        "lea     %c[tab_color_mem],%[a_reg]\n\t"       // this way we save one register
+        "add.w   %[mapX],%[sideDistY]\n\t"             // index = 2*sideDistY + (mapX & 1)
+        "add.w   %[sideDistY],%[sideDistY]\n\t"        // index *= 2 (word stride)
+        "move.w  (%[a_reg],%[sideDistY].w),%[tileAttrib]" // tileAttrib = tab_color_d8_1_Y_pals_shft[index]
+        "\n#APP"
+        : [a_reg] "+a" (a_reg), [h2] "=d" (h2), [tileAttrib] "=d" (tileAttrib), [sideDistY] "+d" (sideDistY), [mapX] "+d" (mapX)
+        : [tab_color_mem] "s" (tab_color_d8_1_Y_pals_shft)
         :
     );
 

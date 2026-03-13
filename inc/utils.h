@@ -115,7 +115,7 @@ void waitVInt_vtimer ();
 /// @param fromAddr source RAM address in u32 format.
 /// @param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR, VDP_DMA_CRAM_ADDR, VDP_DMA_VSRAM_ADDR.
 /// @param len words to move (is words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op).
-#define doDMAfast_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
+#define doDmaFast_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
         "move.l  %[_len_low_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
@@ -146,7 +146,7 @@ void waitVInt_vtimer ();
 /// @param ctrl_port a variable defined as (vu32*)VDP_CTRL_PORT.
 /// @param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR(), VDP_DMA_CRAM_ADDR(), VDP_DMA_VSRAM_ADDR().
 /// @param len words to move (is words because DMA RAM/ROM to VRAM moves 2 bytes per VDP cycle op).
-#define doDMAfast_fixed_args_loop_ready(ctrl_port,cmdAddr,len) \
+#define doDmaFast_fixed_args_loop_ready(ctrl_port,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
         "move.w  %[_len_low],(%[_ctrl_port])\n\t" /* *((vu16*) VDP_CTRL_PORT) = 0x9300 | (u8)len; */ \
@@ -170,7 +170,7 @@ void waitVInt_vtimer ();
 /// @param fromAddr source RAM address in u32 format.
 /// @param cmdAddr destination address as a command. Set with VDP_DMA_VRAMCOPY_ADDR macro.
 /// @param len bytes to move (is byte because DMA VRAM to VRAM copy moves 1 byte per VDP cycle op).
-#define doDMA_VRAM_COPY_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
+#define doDma_VRAM_COPY_fixed_args(ctrl_port,fromAddr,cmdAddr,len) \
     __asm volatile ( \
         /* Setup DMA length (in long word here) */ \
         "move.l  %[_len_low_high],(%[_ctrl_port])\n\t" /* *((vu32*) VDP_CTRL_PORT) = ((0x9300 | (u8)len) << 16) | (0x9400 | (u8)(len >> 8)); */ \
@@ -197,7 +197,7 @@ void waitVInt_vtimer ();
  * \param fromAddr Source address.
  * \param cmdAddr destination address as a command. One of: VDP_DMA_VRAM_ADDR(), VDP_DMA_CRAM_ADDR(), VDP_DMA_VSRAM_ADDR().
  */
-void setupDMAandTrigger (u16 len, u32 fromAddr, u32 cmdAddr);
+void doDmaFast (u16 len, u32 fromAddr, u32 cmdAddr);
 
 /// @brief Multiply and shift by FS using asm to directly return u16 data type.
 /// @param op1 

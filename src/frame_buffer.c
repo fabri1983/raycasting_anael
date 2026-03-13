@@ -164,9 +164,9 @@ NO_INLINE void clear_buffer_sp ()
             // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 		".endr\n"
 		// Restore SP
-		"    move.l  %%usp,%%sp\n"
+		"    move.l  %%usp,%%sp"
 		// Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
+		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6"
 		:
 		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
@@ -342,25 +342,21 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
 
         // Top tilemap entry
         #if H2_FOR_TOP_ENTRY == 10
-        "    move.w	%[h2],%[h2_aux]\n"
-        "    add.w	%[h2],%[h2]\n"
-        "    add.w	%[h2],%[h2]\n"
-        "    add.w	%[h2_aux],%[h2]\n"
-        "    add.w	%[h2],%[h2]\n"
+        "    move.w  %[h2],%[h2_aux]\n"
+        "    add.w   %[h2],%[h2]\n"
+        "    add.w   %[h2],%[h2]\n"
+        "    add.w   %[h2_aux],%[h2]\n"
+        "    add.w   %[h2],%[h2]\n"
         #elif H2_FOR_TOP_ENTRY == 8
         "    lsl.w   #3,%[h2]\n"
         #else
-        "    mulu.w  %[H2_TOP],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
+        "    mulu.w  %[_H2_FOR_TOP_ENTRY],%[h2]\n" // h2 = ((h2 & ~(8-1)) * (TILEMAP_COLUMNS/8))
         #endif
         "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)\n"
 
         // Bottom tilemap entry
-        "    or.w    %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
-        // This takes 26 cycles
-        // "    neg.w   %[h2]\n"
-        // "    addi.w  %[H2_BOTTOM],%[h2]\n" // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
-        // "    move.w  %[tileAttrib],(%[tilemap],%[h2].w)"
-        // This takes 24 cycles
+        "    ori.w   %[_TILE_ATTR_VFLIP_MASK],%[tileAttrib]\n" // tileAttrib = (tileAttrib + (h2 & 7)) | TILE_ATTR_VFLIP_MASK;
+        // h2 = (VERTICAL_ROWS-1)*TILEMAP_COLUMNS - ((h2 & ~(8-1))*(TILEMAP_COLUMNS/8))
         "    suba.w  %[h2],%[tilemap]\n"
         "    lea     %c[H2_BOTTOM](%[tilemap]),%[tilemap]\n"
         "    move.w  %[tileAttrib],(%[tilemap])"
@@ -368,7 +364,7 @@ FORCE_INLINE void write_vline (u16 h2, u16 tileAttrib)
         : [h2] "+d" (h2), [tileAttrib] "+d" (tileAttrib), [h2_aux] "+d" (h2_aux2)
         : [tilemap] "a" (column_ptr), [CLEAR_BITS_OFFSET] "i" (~(8-1)), 
           [_VERTICAL_ROWS] "i" (VERTICAL_ROWS), [_TILEMAP_COLUMNS] "i" (TILEMAP_COLUMNS), 
-          [H2_TOP] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" (H2_FOR_BOTTOM_ENTRY),
+          [_H2_FOR_TOP_ENTRY] "i" (H2_FOR_TOP_ENTRY), [H2_BOTTOM] "i" (H2_FOR_BOTTOM_ENTRY),
           [_TILE_ATTR_VFLIP_MASK] "i" (TILE_ATTR_VFLIP_MASK)
         :
     );

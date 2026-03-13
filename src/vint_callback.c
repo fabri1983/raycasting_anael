@@ -108,6 +108,7 @@ void vint_callback ()
 	turnOffVDP_m(vdpCtrl_ptr_l, 0x74);
 
     render_Z80_setBusProtection(TRUE);
+
     // delay enabled ? --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
     //if (Z80_getForceDelayDMA())
 	//    waitSubTick_(10);
@@ -120,7 +121,7 @@ void vint_callback ()
 
     #if HUD_RELOAD_WEAPON_PALS_AT_VINT
 	// DMA the weapon pals that were overriden gy the HUD pals
-    doDMAfast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2, VDP_DMA_CRAM_ADDR((WEAPON_BASE_PAL*16 + 1) * 2), 16*WEAPON_USED_PALS - 1);
+    doDmaFast_fixed_args(vdpCtrl_ptr_l, RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2, VDP_DMA_CRAM_ADDR((WEAPON_BASE_PAL*16 + 1) * 2), 16*WEAPON_USED_PALS - 1);
     #endif
 
     #if DMA_ENQUEUE_HUD_TILEMAP_TO_FLUSH_AT_VINT
@@ -144,7 +145,7 @@ void vint_callback ()
 
         #pragma GCC unroll 256 // Always set a big number since it does not accept defines
         for (u16 i=0; i < HUD_BG_H; ++i) {
-            doDMAfast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
+            doDmaFast_fixed_args_loop_ready(vdpCtrl_ptr_l, VDP_DMA_VRAM_ADDR(PW_ADDR_AT_HUD + i*PLANE_COLUMNS*2), TILEMAP_COLUMNS);
         }
     }
     #endif
@@ -157,7 +158,7 @@ void vint_callback ()
         void* from = tiles_from[tiles_elems];
         u16 to = tiles_toIndex[tiles_elems];
         //DMA_doDmaFast(DMA_VRAM, from, to, lenInWord, (s16)-1);
-        setupDMAandTrigger(lenInWord, (u32)from, VDP_DMA_VRAM_ADDR(to));
+        doDmaFast(lenInWord, (u32)from, VDP_DMA_VRAM_ADDR(to));
     }
 
     #if DMA_ENQUEUE_VDP_SPRITE_CACHE_TO_FLUSH_AT_VINT
@@ -166,7 +167,7 @@ void vint_callback ()
         u16 lenInWord = vdpSpriteCache_lenInWord;
         vdpSpriteCache_lenInWord = 0;
         //DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, lenInWord, (s16)-1);
-        setupDMAandTrigger(lenInWord, RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_DMA_VRAM_ADDR(VDP_SPRITE_LIST_ADDR));
+        doDmaFast(lenInWord, RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_DMA_VRAM_ADDR(VDP_SPRITE_LIST_ADDR));
     }
     #endif
 
@@ -178,7 +179,7 @@ void vint_callback ()
         tiles_buf_dmaBufPtr -= lenInWord;
         u16 toIndex = tiles_buf_toIndex[tiles_buf_elems];
         //DMA_doDmaFast(DMA_VRAM, tiles_buf_dmaBufPtr, toIndex, lenInWord, (s16)-1);
-        setupDMAandTrigger(lenInWord, (u32)tiles_buf_dmaBufPtr, VDP_DMA_VRAM_ADDR(toIndex));
+        doDmaFast(lenInWord, (u32)tiles_buf_dmaBufPtr, VDP_DMA_VRAM_ADDR(toIndex));
         DMA_releaseTemp(lenInWord);
     }
     #endif
