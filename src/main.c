@@ -51,12 +51,12 @@ static bool checkConstantsCorrectValues ()
         uintToStr((u32)vdpSpriteCache, tmp, 1);
         strcat(str, tmp);
         VDP_drawText(STRINGIFY(RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS), 1, 1);
-        VDP_drawText("In consts_ext.h mismatch", 1, 2);
+        VDP_drawText("In consts_ext.h", 1, 2);
         VDP_drawText(str, 1, 3);
         return FALSE;
     }
 
-    // TODO: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR, VDP_SPRITE_LIST_ADDR
+    // TODO: check correct values for PB_ADDR, PW_ADDR_AT_HUD, PA_ADDR
 
     return TRUE;
 }
@@ -85,17 +85,22 @@ int main (bool hardReset)
     DMA_initEx(DMA_QUEUE_SIZE_MIN, 0, 0);
 
     // ----------------------
-	// Basic game setup
+	// Game Engine Setup
     // ----------------------
 
     fb_allocate_frame_buffer();
     render_loadWallPalettes();
     vint_reset();
     hint_reset();
-	u16 currentTileIndex = render_loadTiles();
-	currentTileIndex = hud_loadInitialState(currentTileIndex);
+	render_loadTiles();
+    render_loadFontCPULoad();
+	hud_loadInitialState();
     SPR_initEx(weapon_biggestAnimTileNum()); // NOTE: + others xxx_biggerAnimTileNum()
     weapon_resetState();
+
+    // ----------------------
+	// Basic Game Setup
+    // ----------------------
 
     hud_addWeapon(WEAPON_FIST);
     hud_addWeapon(WEAPON_PISTOL);
@@ -157,7 +162,7 @@ int main (bool hardReset)
 	game_loop();
 
     // ----------------------
-    // Clear used VRAM
+    // Clear used RAM
     // ----------------------
 
     fb_free_frame_buffer();

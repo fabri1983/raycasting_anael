@@ -11,7 +11,7 @@ typedef struct {
     u16 ones;
 } Digits;
 
-u16 hud_loadInitialState (u16 currentTileIndex);
+void hud_loadInitialState ();
 void hud_free_src_buffer ();
 void hud_free_dst_buffer ();
 void hud_free_pals_buffer ();

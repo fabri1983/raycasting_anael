@@ -87,7 +87,7 @@ static TileSet* unpackTileset_custom (const TileSet* src)
     TileSet* result = allocateTilesetInternal(MEM_alloc(src->numTile * 32 + sizeof(TileSet)));
     result->numTile = src->numTile;
     result->compression = src->compression;
-    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tiles, src->numTile * 32), (u8*) result->tiles);
+    util_unpackSelector(src->compression, (u8*) FAR_SAFE(src->tiles, src->numTile * 32), (u8*) result->tiles);
     return result;
 }
 
@@ -132,7 +132,7 @@ static TileMap* unpackTilemap_custom(TileMap *src)
     result->w = src->w;
     result->h = src->h;
     result->compression = src->compression;
-    unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, (src->w * src->h) * 2), (u8*) result->tilemap);
+    util_unpackSelector(src->compression, (u8*) FAR_SAFE(src->tilemap, (src->w * src->h) * 2), (u8*) result->tilemap);
     return result;
 }
 
@@ -220,7 +220,7 @@ static void allocatePalettesTitle ()
 static void unpackPalettesTitle (u16 *data, u8 compression)
 {
     // No FAR_SAFE() macro needed here. Palette data is always stored at near region.
-    unpackSelector(compression, (u8*) data, (u8*) palettesData);
+    util_unpackSelector(compression, (u8*) data, (u8*) palettesData);
 }
 
 static void freePalettesTitle ()

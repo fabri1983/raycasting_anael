@@ -6,14 +6,15 @@
 /// @brief Loads render tiles in VRAM. 
 /// 8 set of 8 tiles each plus 1 empty tile => 73 tiles in total.
 /// Additionally, we add another set of 8 tiles using colors in palette from 8 to 14. This way walls are painted using 2 palettes.
-/// Starts locating tiles at index 0. 
-/// Returns next available tile index in VRAM which must be VRAM_INDEX_AFTER_TILES.
+/// Starts locating tiles at index 0.
 /// IMPORTANT: if amount of generated tiles is changed then update resource file and the constants involved too.
-u16 render_loadTiles ();
+void render_loadTiles ();
 
 /// @brief Loads the palettes as we expected them to work for the walls.
-/// It assumes palettes grey and red are already loaded, then it loads the chunks for green and blue palettes.
 void render_loadWallPalettes ();
+
+/// @brief loads the font characters needed to show CPU load calculation.
+void render_loadFontCPULoad();
 
 /// @brief See original Z80_setBusProtection() method.
 /// NOTE: This implementation doesn't disable interrupts because at the moment it's called no interrupt is expected to occur.

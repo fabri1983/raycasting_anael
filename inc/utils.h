@@ -208,22 +208,17 @@ u16 mulu_shft_FS (u16 op1, u16 op2);
 /// @brief Same than VDP_showCPULoad() but optimized. Show values up to 255%. Otherwise it crashes or gives innacurate data.
 /// @param xPos screen X position in tiles
 /// @param yPos screen Y position in tiles
-void showCPULoad (u16 xPos, u16 yPos);
-
-/// @brief Same than VDP_showFPS(FALSE) but optimized. Show values up to 255. Otherwise it crashes or gives innacurate data.
-/// @param xPos screen X position in tiles
-/// @param yPos screen Y position in tiles
-void showFPS (u16 xPos, u16 yPos);
+void util_showCPULoad (u16 xPos, u16 yPos);
 
 /// @brief Waits for a certain amount of millisecond (~3.33 ms based timer when wait is >= 100ms). 
 /// Lightweight implementation without calling SYS_doVBlankProcess().
 /// This method CAN NOT be called from V-Int callback or when V-Int is disabled.
 /// @param ms >= 100ms, otherwise use waitMs() from timer.h
-void waitMs_ (u32 ms);
+void util_waitMs (u32 ms);
 
 /// Wait for a certain amount of subticks. ONLY values < 150.
-void waitSubTick_ (u32 subtick);
+void util_waitSubTick (u32 subtick);
 
-void unpackSelector (u16 compression, u8* src, u8* dest);
+void util_unpackSelector (u16 compression, u8* src, u8* dest);
 
 #endif // _UTILS_H_

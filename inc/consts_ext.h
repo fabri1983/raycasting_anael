@@ -8,7 +8,6 @@
 #define PB_ADDR 0xC000 // Default Plane B address set in VDP_setPlaneSize(), and starting at 0,0
 #define PW_ADDR_AT_HUD (PLANE_COLUMNS == 64 ? 0xD000+0x0C00 : 0xC800+0x0E00) // As set in VDP_setPlaneSize() depending on the chosen plane size, plus HUD_XP and HUD_YP offsets
 #define PA_ADDR 0xE000 // Default Plane A address set in VDP_setPlaneSize(), and starting at 0,0
-#define VDP_SPRITE_LIST_ADDR 0x0000F400 // Defined on VDP_init() and also updated whenever VDP's reg 05 is updated.
 #define HALF_PLANE_ADDR_OFFSET_BYTES (VERTICAL_ROWS*PLANE_COLUMNS) // In case we split in 2 chunks the DMA of any plane we need to use appropriate offset
 #define QUARTER_PLANE_ADDR_OFFSET_BYTES (HALF_PLANE_ADDR_OFFSET/2) // In case we split in 4 chunks the DMA of any plane we need to use the appropriate offset
 #define EIGHTH_PLANE_ADDR_OFFSET (HALF_PLANE_ADDR_OFFSET/4) // In case we split in 8 chunks the DMA of any plane we need to use the appropriate offset
@@ -57,7 +56,7 @@
 #elif DISPLAY_LOGOS_AT_START == F && DISPLAY_TITLE_SCREEN == T
 #define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF02B2
 #else
-#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF021C
+#define RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS 0xE0FF020E
 #endif
 
 // This is the fixed RAM address for the hud_tilemap_src array.

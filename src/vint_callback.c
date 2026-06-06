@@ -111,7 +111,7 @@ void vint_callback ()
 
     // delay enabled ? --> wait a bit (10 ticks) to improve PCM playback (test on SOR2)
     //if (Z80_getForceDelayDMA())
-	//    waitSubTick_(10);
+	//    util_waitSubTick(10);
 
     render_DMA_flushQueue();
 
@@ -166,8 +166,8 @@ void vint_callback ()
     if (vdpSpriteCache_lenInWord) {
         u16 lenInWord = vdpSpriteCache_lenInWord;
         vdpSpriteCache_lenInWord = 0;
-        //DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_LIST_ADDR, lenInWord, (s16)-1);
-        doDmaFast(lenInWord, RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_DMA_VRAM_ADDR(VDP_SPRITE_LIST_ADDR));
+        //DMA_doDmaFast(DMA_VRAM, (void*) RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_SPRITE_TABLE, lenInWord, (s16)-1);
+        doDmaFast(lenInWord, RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS, VDP_DMA_VRAM_ADDR((u32)VDP_SPRITE_TABLE));
     }
     #endif
 

@@ -2,16 +2,19 @@
 
 Raycasting original demo by **Anael Seghezzi**: [SGDK_raycasting](https://github.com/Stephane-D/SGDK)
 
-This version implements the same ray casting but with a screen size of **320x192** pixels at 60Hz, and a ton of optimizations.
+This version implements the same ray casting but with a effective screen size of **320x192** pixels at 60 FPS, 
+and a **ton** of optimizations.
 
 ![Demo GIF](media/raycasting_v0.1.gif)
 
 You can find me in the SGDK Discord server: https://discord.gg/xmnBWQS
 
+
 ### SGDK lib config
 ---
 Before you compile this project, make sure your SGDK library was built with next switches in `config.h`:
 - `LEGACY_FONT_LOCATION    1`
+
 
 ### fabri1983's notes (since Aug/18/2024)
 ---
@@ -45,9 +48,10 @@ Before you compile this project, make sure your SGDK library was built with next
 - Render bottom half of framebuffer and then mirror it into top region using multi scanline HInts.
   This reduce DMA presure during VBlank up to a 50%, but adds more CPU pressure during top half active display period.
 - SGDK's `SPR_update()` function was copied and modified to handle DMA for specific cases, and also removed unused features.
-  See comments with tag fabri1983 at `spr_eng_override.c` => `~1% saved in cpu usage`.
-- `sega.s`: use `_VINT_lean` instead of SGDK's `_VINT` to only increment vtimer and call user's vint callback immediately.
-- SGDK's `SYS_doVBlankProcessEx()` function was modified to remove unwanted logic. See render.c => `~1% saved in cpu usage`.
+  See `spr_eng_update()` and comments with tag _fabri1983_ at `spr_eng_override.c` => `~1% saved in cpu usage`.
+- SGDK's `SPR_addSpriteEx()` function was copied and modified to handle only particular cases. See `spr_eng_addSpriteEx()` at `spr_eng_override.c`.
+- `sega.s`: use `_VINT_lean` instead of SGDK's `_VINT` to only increment `vtimer` and call user's vint callback immediately.
+- SGDK's `SYS_doVBlankProcessEx()` function was copied and modified to remove unwanted logic. See render.c => `~1% saved in cpu usage`.
 - SGDK's `JOY_update()` and `JOY_readJoypad(JOY_1)` functions were copied and modified to handle only 6 button joypad and used 
   at `render_SYS_doVBlankProcessEx_ON_VBLANK()` => `2% saved in cpu usage`.
 - Commented out the `#pragma` directives for loop unrolling => `~1% saved in cpu usage`. It may vary according the use/abuse of *FORCE_INLINE*.
@@ -58,7 +62,7 @@ Before you compile this project, make sure your SGDK library was built with next
 --
 - `RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS` set in `consts_ext.h`: change it accordingly to the value the inital screen shows you (if it does so).
 - HUD: if resource is compressed then set const `HUD_TILEMAP_COMPRESSED` in `hud_consts.h`.
-- WEAPONS: the location of sprite tiles is given by methods like `weapon_getVRAMLocation()`. Required for `SPR_addSpriteEx()`.
+- WEAPONS: the location of sprite tiles is given by methods like `weapon_getVRAMLocation()`. Required for `spr_eng_addSpriteEx()`.
 - Additional free VRAM: Planes A and B bottom region covered by the HUD, which is in Window Plane, leaves unused VRAM.
   Window Plane leaves unused VRAM from where it begins down to the address where the HUD is displayed.
   See `PB_FREE_VRAM_AT`, `PW_FREE_VRAM_AT`, `PA_FREE_VRAM_AT`, and `LAST_FREE_VRAM_AT` at `consts_ext.h`.

@@ -18,11 +18,12 @@
 extern VoidCallback *vblankCB;
 
 #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
+extern const TileSet font_default;
 extern bool addFrameLoad(u16 frameLoad, u32 vtime);
 extern u16 getAdjustedVCounterInternal(u16 blank, u16 vcnt);
 #endif
 
-u16 render_loadTiles ()
+void render_loadTiles ()
 {
     // ORDERING: Tiles are created in groups of 8 tiles except first one which is the empty tile.
     // Tiles inside each group go from Highest to Smallest in pixel height. Groups go from Darkest to Brightest.
@@ -119,9 +120,16 @@ u16 render_loadTiles ()
     }*/
 
     MEM_free(tile);
+}
 
-    // Returns next available tile index in VRAM
-    return VRAM_INDEX_AFTER_TILES;
+void render_loadFontCPULoad ()
+{
+    #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
+    u8 font_data[FONT_LENGTH*32]; // Allocated in the stack
+    // NOTE: by default the font_default resource is located as NEAR region in the rom, so no need to use FAR_SAFE
+    util_unpackSelector(font_default.compression, (u8*)font_default.tiles, (u8*)font_data);
+    VDP_loadTileData((u32*)font_data, VRAM_INDEX_FONT, FONT_TILES_TOTAL, CPU);
+    #endif
 }
 
 void render_loadWallPalettes ()
@@ -234,8 +242,7 @@ void render_SYS_doVBlankProcessEx_ON_VBLANK ()
 
     #if RENDER_ENABLE_FRAME_LOAD_CALCULATION
     render_calculateFrameLoad();
-    showCPULoad(0, 24); // is shown on WINDOW plane
-    //showFPS(0, 24);
+    util_showCPULoad(0, 24); // is shown on WINDOW plane
     #endif
 }
 

@@ -35,6 +35,8 @@ bool isMoving = FALSE;
 #define MAX_WEAPON_SWAY_X 8 // Maximum weapon sway in pixels
 #define MAX_WEAPON_SWAY_Y 6 // Maximum weapon sway in pixels. Must be >= MAX_WEAPON_SWAY_X
 
+#define WEAPON_SPRITE_CREATION_FLAGS (u16)(SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD)
+
 u16 weapon_biggestAnimTileNum ()
 {
     u16 maxTileNum = 0;
@@ -46,8 +48,7 @@ u16 weapon_biggestAnimTileNum ()
 
 u16 weapon_getVRAMLocation ()
 {
-    // TILE_FONT_INDEX is the VRAM index location where the SGDK's Sprite Engine calculates the dedicated VRAM going backwards
-    return TILE_FONT_INDEX - weapon_biggestAnimTileNum();
+    return TILE_MAX_NUM - weapon_biggestAnimTileNum();
 }
 
 void weapon_resetState ()
@@ -57,10 +58,10 @@ void weapon_resetState ()
     u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
     // Loads fist sprite so we can avoid the check for NULL in other methods
-    spr_currWeapon = spr_eng_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, 
-        (u16)(SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD));
+    spr_currWeapon = spr_eng_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, WEAPON_SPRITE_CREATION_FLAGS);
     SPR_setVisibility(spr_currWeapon, HIDDEN);
-    SPR_setAutoAnimation(spr_currWeapon, FALSE);
+    SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually so turn it off
+
     // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
     memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal_weapon_fist_anim.data, (16*WEAPON_USED_PALS)*2); // *2 for byte addressing
     PAL_setColors(WEAPON_BASE_PAL*16 + 1, (u16*)(RAM_FIXED_WEAPON_PALETTES_ADDRESS + 1*2), 16*WEAPON_USED_PALS - 1, DMA);
@@ -89,9 +90,8 @@ static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
     // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
     u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
 
-    spr_currWeapon = spr_eng_addSpriteEx(sprDef, x, y, baseTileAttribs, 
-        (u16)(SPR_FLAG_AUTO_TILE_UPLOAD | SPR_FLAG_DISABLE_ANIMATION_LOOP | SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE | SPR_FLAG_INSERT_HEAD));
-    SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually
+    spr_currWeapon = spr_eng_addSpriteEx(sprDef, x, y, baseTileAttribs, WEAPON_SPRITE_CREATION_FLAGS);
+    SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually so turn it off
 
     // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
     memcpy((void*)RAM_FIXED_WEAPON_PALETTES_ADDRESS, (void*)pal, (u16)(16*WEAPON_USED_PALS)*2); // *2 for byte addressing

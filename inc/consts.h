@@ -57,7 +57,15 @@
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE F
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE F
 
-#define VRAM_INDEX_AFTER_TILES (1 + 8*8 + 8*8)
+#if RENDER_ENABLE_FRAME_LOAD_CALCULATION
+#define FONT_TILES_TOTAL 26 // Only first 26 font characters
+#else
+#define FONT_TILES_TOTAL 0 // No font tiles
+#endif
+
+#define VRAM_INDEX_AFTER_WALL_TILES (1 + 8*8 + 8*8)
+#define VRAM_INDEX_FONT VRAM_INDEX_AFTER_WALL_TILES
+#define VRAM_INDEX_HUD (VRAM_INDEX_FONT + FONT_TILES_TOTAL)
 
 #define FS 8 // Fixed Point size in bits
 #define FP (1<<FS) // Fixed Precision

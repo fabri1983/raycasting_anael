@@ -477,18 +477,17 @@ static void setHUDFace ()
     COPY_TILEMAP_DATA(from, to, HUD_FACE_W, HUD_FACE_H);
 }
 
-u16 hud_loadInitialState (u16 currentTileIndex)
+void hud_loadInitialState ()
 {
     // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
     memcpy((void*)RAM_FIXED_HUD_PALETTES_ADDRESS, (void*)img_hud_spritesheet.palette->data, (16*HUD_USED_PALS)*2); // *2 for byte addressing
 
-    // We have already set at resource file the base tile index from which the tileset will be located in VRAM: VRAM_INDEX_AFTER_TILES.
     // Loads all the tileset at specified VRAM location.
-	VDP_loadTileSet(img_hud_spritesheet.tileset, VRAM_INDEX_AFTER_TILES, DMA);
+	VDP_loadTileSet(img_hud_spritesheet.tileset, VRAM_INDEX_HUD, DMA);
 
     // Decompress the source HUD tilemap into fixed RAM location
     #if HUD_TILEMAP_COMPRESSED
-    unpackSelector(img_hud_spritesheet.tilemap->compression, 
+    util_unpackSelector(img_hud_spritesheet.tilemap->compression, 
         (u8*) FAR_SAFE(img_hud_spritesheet.tilemap->tilemap, (HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H)*2), 
         (u8*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS);
     #else
@@ -496,14 +495,12 @@ u16 hud_loadInitialState (u16 currentTileIndex)
     #endif
 
     // Apply the fixed map tile base attributes
-    u16 mapBaseAttribs = HUD_BASE_TILE_ATTRIB;
+    u16 mapBaseAttribs = TILE_ATTR_FULL(HUD_BASE_PAL, 1, FALSE, FALSE, VRAM_INDEX_HUD);
     u16* tilemapPtr = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
     for (u16 i=(HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H) - 1; i != 0xFFFF; i--) {
         *tilemapPtr += mapBaseAttribs;
         ++tilemapPtr;
     }
-
-    currentTileIndex += img_hud_spritesheet.tileset->numTile;
 
     // Loads the HUD background, only once
     setHUDBg();
@@ -514,8 +511,6 @@ u16 hud_loadInitialState (u16 currentTileIndex)
     hud_resetArmor(); // default armor
     hud_resetKeys(); // default keys
     hud_resetFaceExpression(); // default face
-
-    return currentTileIndex;
 }
 
 void hud_free_src_buffer () {

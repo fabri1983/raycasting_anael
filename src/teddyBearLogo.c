@@ -110,7 +110,7 @@ void displayTeddyBearLogo ()
 
         if (SPR_isAnimationDone(teddyBearAnimSpr)) {
             // Leave some time the last animation frame in the screen
-            waitMs_(250);
+            util_waitMs(250);
             break;
         }
 

@@ -274,9 +274,22 @@ const unsigned char mod_10[] = {
     '0','1','2','3','4','5',
 };
 
-static char str_cpu_load[] = "   %"; // \0 is implicitelly added
+static void drawCPULoad(VDPPlane plane, const char* str, u16 basetile, u16 x, u16 y)
+{
+    u16 tilemap[4]; // We know in advance cpu load string is 5 minus the temination \0
+    tilemap[0] = (str[0] - 32); // 32 is the ascii value for space ' ' character, which is the first char in the font set
+    tilemap[1] = (str[1] - 32);
+    tilemap[2] = (str[2] - 32);
+    tilemap[3] = (str[3] - 32);
 
-void showCPULoad (u16 xPos, u16 yPos)
+    const u16 addr = VDP_getPlaneAddress(plane, x, y);
+    // CPU copy
+    VDP_setTileMapDataEx(addr, tilemap, basetile, 0, 4, 2);
+}
+
+static char str_cpu_load[5] = "   %"; // \0 is implicitelly added
+
+void util_showCPULoad (u16 xPos, u16 yPos)
 {
 	u16 num = SYS_getCPULoad();
 	str_cpu_load[0] = div_100[num];
@@ -284,24 +297,10 @@ void showCPULoad (u16 xPos, u16 yPos)
     str_cpu_load[2] = mod_10[num];
     str_cpu_load[3] = '%'; // overrides garbage data from mod_10[num] when num > 255
     str_cpu_load[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
-	VDP_drawTextBG(WINDOW, str_cpu_load, xPos, yPos);
-    //VDP_drawTextEx(BG_A, str_cpu_load, TILE_ATTR_FULL(0, 1, FALSE, FALSE, TILE_FONT_INDEX), xPos, yPos, DMA_QUEUE);
+	drawCPULoad(WINDOW, str_cpu_load, TILE_ATTR_FULL(0, 1, FALSE, FALSE, VRAM_INDEX_FONT), xPos, yPos);
 }
 
-static char str_fps[] = "    "; // \0 is implicitelly added
-
-void showFPS (u16 xPos, u16 yPos)
-{
-    u16 num = SYS_getFPS();
-	str_fps[0] = div_100[num];
-    str_fps[1] = div_10_mod_10[num];
-    str_fps[2] = mod_10[num];
-    str_fps[3] = ' '; // overrides garbage data from mod_10[num] when num > 255
-    str_fps[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
-	VDP_drawTextBG(WINDOW, str_fps, xPos, yPos);
-}
-
-void waitMs_ (u32 ms)
+void util_waitMs (u32 ms)
 {
 	u32 tick = (ms * TICKPERSECOND) / 1000;
 	const u32 start = getTick();
@@ -318,7 +317,7 @@ void waitMs_ (u32 ms)
     while (current < max);
 }
 
-FORCE_INLINE void waitSubTick_ (u32 subtick)
+FORCE_INLINE void util_waitSubTick (u32 subtick)
 {
 	if (subtick == 0)
 		return;
@@ -335,7 +334,7 @@ FORCE_INLINE void waitSubTick_ (u32 subtick)
 	);
 }
 
-FORCE_INLINE void unpackSelector (u16 compression, u8* src, u8* dest)
+FORCE_INLINE void util_unpackSelector (u16 compression, u8* src, u8* dest)
 {
     switch (compression) {
         case COMPRESSION_APLIB:

@@ -347,7 +347,7 @@ static FORCE_INLINE void loadTiles (Sprite* sprite)
             // unpack in temp buffer obtained from DMA queue
             //if (buf)
             {
-                unpackSelector(compression, (u8*) FAR_SAFE(tileset->tiles, lenInWord * 2), buf);
+                util_unpackSelector(COMPRESSION_LZ4W, (u8*) FAR_SAFE(tileset->tiles, lenInWord * 2), buf);
                 // enqueue in sprite's queue
                 render_spr_queueDmaFastBuffered(buf, (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord);
                 //DMA_queueDmaFast(DMA_VRAM, buf, (sprite->attribut & TILE_INDEX_MASK) * 32, lenInWord, (u16)2);
