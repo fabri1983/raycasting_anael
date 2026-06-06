@@ -15,13 +15,13 @@
 #include "utils.h"
 #include "logos_res.h"
 
-#define STR_VERSION "v2.12 (Jan 2026)"
+#define STR_VERSION "v2.12 (May 2026)"
 #define STR_VERSION_LEN 17 // String version length including \0
 
 #define TEDDY_BEAR_LOGO_FADE_TO_BLACK_STEPS 7 // How many steps needs to be applied as much to reach black color. Max is 7.
 #define TEDDY_BEAR_LOGO_FADE_TO_BLACK_STEP_FREQ 3 // Every N frames we apply one fade to black step.
 
-static void fadeToBlack_logo ()
+void fadeToBlack_logo ()
 {
 	u16* palsBuffer = MEM_alloc(16 * sizeof(u16));
     memcpy(palsBuffer, sprDefTeddyBearAnim.palette->data, 16 * sizeof(u16));
@@ -120,9 +120,8 @@ void displayTeddyBearLogo ()
     }
 
     // Fade out all graphics to Black
-    // NOTE: SKIP THE FADE OUT TO AVOID ADDRESS ERROR WITH THE RAY CASTER
-    //PAL_fadeOutAll(30, FALSE);
-    fadeToBlack_logo();
+    PAL_fadeOutAll(30, FALSE);
+    //fadeToBlack_logo();
 
     SPR_end();
     SYS_doVBlankProcess();

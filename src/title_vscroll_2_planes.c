@@ -568,7 +568,7 @@ void title_vscroll_2_planes_show ()
     VDP_drawImageEx(BG_B, (const Image*) &img_title_logo, TILE_ATTR_FULL(PAL0, 0, FALSE, FALSE, logoTileIndex), 
         TITLE_LOGO_X_POS_TILES, TITLE_LOGO_Y_POS_TILES, FALSE, TRUE);
 
-    XGM2_play(vmg_13_the_end_of_doom);
+    XGM2_play(vgm_13_the_end_of_doom);
 
     // Fade in the DOOM logo
     PAL_fadeInAll(img_title_logo.palette->data, 30, FALSE);

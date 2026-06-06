@@ -479,13 +479,11 @@ static void setHUDFace ()
 
 u16 hud_loadInitialState (u16 currentTileIndex)
 {
-    // We have already set at resource file the base tile index from which the tileset will be located in VRAM: VRAM_INDEX_AFTER_TILES
-    currentTileIndex += img_hud_spritesheet.tileset->numTile;
-
     // Load the palettes at fixed RAM location so we can use it as a constant for faster DMA setup
     memcpy((void*)RAM_FIXED_HUD_PALETTES_ADDRESS, (void*)img_hud_spritesheet.palette->data, (16*HUD_USED_PALS)*2); // *2 for byte addressing
 
-    // Loads all the tileset at specified VRAM location
+    // We have already set at resource file the base tile index from which the tileset will be located in VRAM: VRAM_INDEX_AFTER_TILES.
+    // Loads all the tileset at specified VRAM location.
 	VDP_loadTileSet(img_hud_spritesheet.tileset, VRAM_INDEX_AFTER_TILES, DMA);
 
     // Decompress the source HUD tilemap into fixed RAM location
@@ -496,6 +494,16 @@ u16 hud_loadInitialState (u16 currentTileIndex)
     #else
     memcpy((void*)RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS, (void*)img_hud_spritesheet.tilemap->tilemap, (HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H)*2); // *2 for byte addressing
     #endif
+
+    // Apply the fixed map tile base attributes
+    u16 mapBaseAttribs = HUD_BASE_TILE_ATTRIB;
+    u16* tilemapPtr = (u16*) RAM_FIXED_HUD_TILEMAP_SRC_ADDRESS;
+    for (u16 i=(HUD_SOURCE_IMAGE_W * HUD_SOURCE_IMAGE_H) - 1; i != 0xFFFF; i--) {
+        *tilemapPtr += mapBaseAttribs;
+        ++tilemapPtr;
+    }
+
+    currentTileIndex += img_hud_spritesheet.tileset->numTile;
 
     // Loads the HUD background, only once
     setHUDBg();

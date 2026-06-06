@@ -57,7 +57,6 @@
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_FOR_SGDK_QUEUE F
 #define DMA_ENQUEUE_VDP_SPRITE_CACHE_ON_CUSTOM_SPR_QUEUE F
 
-// If change this value then update map_base parameter in hud_res.res file using value from HUD_BASE_TILE_ATTRIB
 #define VRAM_INDEX_AFTER_TILES (1 + 8*8 + 8*8)
 
 #define FS 8 // Fixed Point size in bits

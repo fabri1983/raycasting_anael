@@ -13,7 +13,6 @@
 
 #define HUD_BASE_PAL PAL2 // If change this value you'll have to update map_base parameter in resource file
 #define HUD_USED_PALS 2
-// This value is the parameter map_base that has to go in the resource file if you modify one of the above. Currently is 16456.
 #define HUD_BASE_TILE_ATTRIB TILE_ATTR_FULL(HUD_BASE_PAL, 1, FALSE, FALSE, VRAM_INDEX_AFTER_TILES)
 
 #define HUD_TILEMAP_COMPRESSED T // If TRUE then we decompress it into a buffer. Otherwise we use the uncompressed data from ROM.

@@ -8,9 +8,13 @@ This version implements the same ray casting but with a screen size of **320x192
 
 You can find me in the SGDK Discord server: https://discord.gg/xmnBWQS
 
+### SGDK lib config
+---
+Before you compile this project, make sure your SGDK library was built with next switches in `config.h`:
+- `LEGACY_FONT_LOCATION    1`
 
 ### fabri1983's notes (since Aug/18/2024)
--------------------------------------
+---
 - Ray Casting: https://lodev.org/cgtutor/raycasting.html
 - DDA = Digital Differential Analysis.
 - Modified to display full screen in **320x192**, +32 pixels height for the HUD.
@@ -42,20 +46,18 @@ You can find me in the SGDK Discord server: https://discord.gg/xmnBWQS
   This reduce DMA presure during VBlank up to a 50%, but adds more CPU pressure during top half active display period.
 - SGDK's `SPR_update()` function was copied and modified to handle DMA for specific cases, and also removed unused features.
   See comments with tag fabri1983 at `spr_eng_override.c` => `~1% saved in cpu usage`.
-- `sega.s`: use `_VINT_lean` instead of SGDK's `_VINT` to only increment vtimer and call user's vint callback.
+- `sega.s`: use `_VINT_lean` instead of SGDK's `_VINT` to only increment vtimer and call user's vint callback immediately.
 - SGDK's `SYS_doVBlankProcessEx()` function was modified to remove unwanted logic. See render.c => `~1% saved in cpu usage`.
 - SGDK's `JOY_update()` and `JOY_readJoypad(JOY_1)` functions were copied and modified to handle only 6 button joypad and used 
-  at `render_SYS_doVBlankProcessEx_ON_VBLANK()` => => `2% saved in cpu usage`.
+  at `render_SYS_doVBlankProcessEx_ON_VBLANK()` => `2% saved in cpu usage`.
 - Commented out the `#pragma` directives for loop unrolling => `~1% saved in cpu usage`. It may vary according the use/abuse of *FORCE_INLINE*.
 - Manual unrolling of 2 (or 4) iterations for column processing => `2% saved in cpu usage`. It may vary according the use/abuse of *FORCE_INLINE*.
 
 
 ### fabri1983's resources notes:
-----------------------------
-- `RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS` set in `consts_ext.h`: check this constant everytime you get a black screen when running the game.
-- HUD: the hud is treated as an image. The resource definition in `hud_res.res` file expects a map base attribute value which is 
-  calculated before hand. See `HUD_BASE_TILE_ATTRIB` in `hud.h`.
-- HUD: if resource is compressed then also set const `HUD_TILEMAP_COMPRESSED` in `hud.h`.
+--
+- `RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS` set in `consts_ext.h`: change it accordingly to the value the inital screen shows you (if it does so).
+- HUD: if resource is compressed then set const `HUD_TILEMAP_COMPRESSED` in `hud_consts.h`.
 - WEAPONS: the location of sprite tiles is given by methods like `weapon_getVRAMLocation()`. Required for `SPR_addSpriteEx()`.
 - Additional free VRAM: Planes A and B bottom region covered by the HUD, which is in Window Plane, leaves unused VRAM.
   Window Plane leaves unused VRAM from where it begins down to the address where the HUD is displayed.

@@ -24,8 +24,6 @@ NO_INLINE void clear_buffer ()
 {
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	__asm volatile (
-		// Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
-		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Makes a0 points to the memory location at the framebuffer's end 
         "    move.l  %[frame_buffer_end],%%a0\n" // frame_buffer end address
 		// Clear registers
@@ -85,8 +83,6 @@ NO_INLINE void clear_buffer ()
         "    .endif\n"
             // Remaining conditions (up to regs-1) should be added here and adjusted according the available registers
 		".endr\n"
-		// Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6\n"
 		:
 		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2), 
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)
@@ -99,8 +95,6 @@ NO_INLINE void clear_buffer_sp ()
 	// We need to clear only first TILEMAP_COLUMNS columns from each row from the framebuffer.
 	// Here we load the framebuffer address into the SP, previously backed up, to gain 1 more register.
 	__asm volatile (
-        // Save all registers (except scratch pad). NOTE: no need to save them since this is executed at the beginning of display loop
-		//"    movem.l %%d2-%%d7/%%a2-%%a6,-(%%sp)\n"
 		// Save current SP value in USP. Make sure you are not using SGDK's multitasking feature
 		"    move.l  %%sp,%%usp\n"
 		// Makes SP points to the memory location at the framebuffer's end 
@@ -165,8 +159,6 @@ NO_INLINE void clear_buffer_sp ()
 		".endr\n"
 		// Restore SP
 		"    move.l  %%usp,%%sp"
-		// Restore all saved registers
-		//"    movem.l (%%sp)+,%%d2-%%d7/%%a2-%%a6"
 		:
 		: [frame_buffer_end] "i" (RAM_FIXED_FRAME_BUFFER_ADDRESS + (VERTICAL_ROWS*TILEMAP_COLUMNS*2)*2),
 		  [TILEMAP_COLUMNS_BYTES] "i" (TILEMAP_COLUMNS*2), [_VERTICAL_ROWS] "i" (VERTICAL_ROWS)

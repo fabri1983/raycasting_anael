@@ -186,7 +186,7 @@ static void handle_input(u16* posX, u16* posY, u16* angle, u16** delta_a_ptr)
 
 void game_loop ()
 {
-    XGM2_play(vmg_01_at_dooms_gate);
+    XGM2_play(vgm_01_at_dooms_gate);
 
 	// It seems that positions in the map are multiple of FP +/- a fraction. From (1*FP + MAP_FRACTION) to ((MAP_SIZE-1)*FP - MAP_FRACTION).
 	// Smaller positions locate at top-left corner of the map[][] layout (as seen in the .h), bigger positions locate at bottom-right.
@@ -195,7 +195,7 @@ void game_loop ()
 
 	// angle max value is 1023 and is updated in (1024/AP) units.
 	// 0 points down in the map[], 256 points right, 512 points up, 768 points left, 1024 = 0.
-	u16 angle = 0; 
+	u16 angle = 0;
     u16* delta_a_ptr = (u16*)tab_deltas;
 
     #if RENDER_USE_MAP_HIT_COMPRESSED
@@ -320,7 +320,7 @@ void game_loop_auto ()
 static void dda (u16 posX, u16 posY, u16* delta_a_ptr)
 {
     #if RENDER_USE_PERF_HASH_TAB_MULU_DIST_256_SHFT_FS
-    // Value goes from 0...FP (including), multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2 for faster array acces in ASM
+    // Value goes from 0...FP (including), multiplied by MPH_VALUES_DELTADIST_NKEYS and by 2 for faster array access in ASM
     u32 sideDistX_l0, sideDistX_l1, sideDistY_l0, sideDistY_l1;
     sideDistX_l0 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * (posX & (FP-1));
     sideDistX_l1 = MPH_VALUES_DELTADIST_NKEYS * ASM_PERF_HASH_JUMP_BLOCK_SIZE_BYTES * FP - sideDistX_l0;
