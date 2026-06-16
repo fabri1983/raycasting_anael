@@ -10,6 +10,7 @@
 #include "weapons_res.h"
 #include "hud.h"
 #include "spr_eng_override.h"
+#include "spr_vram_selector.h"
 
 u16 resetToIdle_timer;
 u16 fire_coolDown_timer;
@@ -46,16 +47,11 @@ u16 weapon_biggestAnimTileNum ()
     return maxTileNum;
 }
 
-u16 weapon_getVRAMLocation ()
-{
-    return TILE_MAX_NUM - weapon_biggestAnimTileNum();
-}
-
 void weapon_resetState ()
 {
-    // Sprites use tile attributes, but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
-    // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
-    u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
+    // Sprites use tile attributes, but no tile index when flag SPR_FLAG_AUTO_VRAM_ALLOC is set.
+    // But we explicitelly removed the SPR_FLAG_AUTO_VRAM_ALLOC flag, so we need to specify a tile index.
+    u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, spr_vram_getIndex(SPR_VRAM_WEAPON_RES_ID));
 
     // Loads fist sprite so we can avoid the check for NULL in other methods
     spr_currWeapon = spr_eng_addSpriteEx(&sprDef_weapon_fist_anim, 0, 0, baseTileAttribs, WEAPON_SPRITE_CREATION_FLAGS);
@@ -86,9 +82,9 @@ static void weapon_load (const SpriteDefinition* sprDef, u16* pal, s16 x, s16 y)
     fire_coolDown_timer = 0;
     SPR_releaseSprite(spr_currWeapon);
 
-    // Sprites use tile attributes, but no tile index when using SPR_FLAG_AUTO_VRAM_ALLOC.
-    // But here we need to set a fixed VRAM index location so using TILE_ATTR_FULL.
-    u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, weapon_getVRAMLocation());
+    // Sprites use tile attributes, but no tile index when flag SPR_FLAG_AUTO_VRAM_ALLOC is set.
+    // But we explicitelly removed the SPR_FLAG_AUTO_VRAM_ALLOC flag, so we need to specify a tile index.
+    u16 baseTileAttribs = (u16)TILE_ATTR_FULL(WEAPON_BASE_PAL, 0, FALSE, FALSE, spr_vram_getIndex(SPR_VRAM_WEAPON_RES_ID));
 
     spr_currWeapon = spr_eng_addSpriteEx(sprDef, x, y, baseTileAttribs, WEAPON_SPRITE_CREATION_FLAGS);
     SPR_setAutoAnimation(spr_currWeapon, FALSE); // Animation is triggered manually so turn it off

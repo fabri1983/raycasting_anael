@@ -6,8 +6,6 @@
 
 u16 weapon_biggestAnimTileNum ();
 
-u16 weapon_getVRAMLocation ();
-
 void weapon_resetState ();
 
 void weapon_free_pals_buffer ();

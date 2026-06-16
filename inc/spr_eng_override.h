@@ -23,12 +23,12 @@
  *      #SPR_FLAG_DISABLE_DELAYED_FRAME_UPDATE = Disable delaying of frame update when we are running out of DMA capacity.<br>
  *          If you set this flag then sprite frame update always happen immediately but may lead to some graphical glitches (tiles data and sprite table data not synchronized).
  *          You can use SPR_setDelayedFrameUpdate(..) method to change this setting.<br>
- *      #SPR_FLAG_AUTO_VISIBILITY = NOT USED. Visibility defaults to 1. Use SPR_setVisibility(..) method).<br>
+ *      #SPR_FLAG_AUTO_VISIBILITY = NOT USED in this custom engine. Visibility defaults to 1. Use SPR_setVisibility(..) method).<br>
  *      #SPR_FLAG_FAST_AUTO_VISIBILITY = Enable fast computation for the automatic visibility calculation (disabled by default)<br>
  *          If you set this flag the automatic visibility calculation will be done globally for the (meta) sprite and not per internal
  *          hardware sprite. This result in faster visibility computation at the expense of some waste of hardware sprite.
  *          You can set the automatic visibility computation by using SPR_setVisibility(..) method.<br>
- *      #SPR_FLAG_AUTO_VRAM_ALLOC = NOT USED. It defaults to manual VRAM location set with the <i>attribut</i> parameter or by using the #SPR_setVRAMTileIndex(..) method<br>
+ *      #SPR_FLAG_AUTO_VRAM_ALLOC = NOT USED in this custom engine. It defaults to manual VRAM location set with the <i>attribut</i> parameter or by using the #SPR_setVRAMTileIndex(..) method<br>
  *      #SPR_FLAG_AUTO_TILE_UPLOAD = Enable automatic upload of sprite tiles data into VRAM (enabled by default)<br>
  *          If you don't set this flag you will have to manually upload tiles data of sprite into the VRAM (you can change this setting using #SPR_setAutoTileUpload(..) method).<br>
  *      #SPR_FLAG_INSERT_HEAD = Allow to insert the sprite at the start/head of the list.<br>

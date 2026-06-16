@@ -297,7 +297,7 @@ void util_showCPULoad (u16 xPos, u16 yPos)
     str_cpu_load[2] = mod_10[num];
     str_cpu_load[3] = '%'; // overrides garbage data from mod_10[num] when num > 255
     str_cpu_load[4] = '\0'; // overrides garbage data from mod_10[num] when num > 255
-	drawCPULoad(WINDOW, str_cpu_load, TILE_ATTR_FULL(0, 1, FALSE, FALSE, VRAM_INDEX_FONT), xPos, yPos);
+	drawCPULoad(WINDOW, str_cpu_load, TILE_ATTR_FULL(PAL0, 1, FALSE, FALSE, VRAM_INDEX_FONT), xPos, yPos);
 }
 
 void util_waitMs (u32 ms)

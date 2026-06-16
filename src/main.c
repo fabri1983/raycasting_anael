@@ -25,6 +25,7 @@
 #include "hint_callback.h"
 #include "hud.h"
 #include "weapon.h"
+#include "spr_vram_selector.h"
 #if DISPLAY_LOGOS_AT_START
 #include "teddyBearLogo.h"
 #endif
@@ -95,7 +96,7 @@ int main (bool hardReset)
 	render_loadTiles();
     render_loadFontCPULoad();
 	hud_loadInitialState();
-    SPR_initEx(weapon_biggestAnimTileNum()); // NOTE: + others xxx_biggerAnimTileNum()
+    SPR_initEx(spr_vram_getTotalSize());
     weapon_resetState();
 
     // ----------------------

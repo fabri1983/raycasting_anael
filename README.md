@@ -13,7 +13,7 @@ You can find me in the SGDK Discord server: https://discord.gg/xmnBWQS
 ### SGDK lib config
 ---
 Before you compile this project, make sure your SGDK library was built with next switches in `config.h`:
-- `LEGACY_FONT_LOCATION    1`
+- `LEGACY_SPRITE_ENGINE    0`
 
 
 ### fabri1983's notes (since Aug/18/2024)
@@ -62,7 +62,8 @@ Before you compile this project, make sure your SGDK library was built with next
 --
 - `RAM_FIXED_VDP_SPRITE_CACHE_ADDRESS` set in `consts_ext.h`: change it accordingly to the value the inital screen shows you (if it does so).
 - HUD: if resource is compressed then set const `HUD_TILEMAP_COMPRESSED` in `hud_consts.h`.
-- WEAPONS: the location of sprite tiles is given by methods like `weapon_getVRAMLocation()`. Required for `spr_eng_addSpriteEx()`.
+- Sprites VRAM selector: the index location of sprite tileset is given by `spr_vram_getIndex(<res_type>)`. 
+This is so because the custom Sprite Engine doesn't support `SPR_FLAG_AUTO_VRAM_ALLOC`, which reduces some cpu cycles while creating a new sprite.
 - Additional free VRAM: Planes A and B bottom region covered by the HUD, which is in Window Plane, leaves unused VRAM.
   Window Plane leaves unused VRAM from where it begins down to the address where the HUD is displayed.
   See `PB_FREE_VRAM_AT`, `PW_FREE_VRAM_AT`, `PA_FREE_VRAM_AT`, and `LAST_FREE_VRAM_AT` at `consts_ext.h`.
